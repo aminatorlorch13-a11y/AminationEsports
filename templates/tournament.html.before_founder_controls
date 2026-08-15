@@ -239,30 +239,7 @@
     </div>
 
 
-
-    {% if latest_notice %}
-
-        <div class="draw-status" style="margin-bottom:20px;">
-
-            <strong>
-                📢 OFFICIAL FOUNDER NOTICE
-            </strong>
-
-            <p>
-                {{ latest_notice.notes }}
-            </p>
-
-            <small>
-                Published:
-                {{ latest_notice.created_at.strftime("%Y-%m-%d %H:%M") }}
-            </small>
-
-        </div>
-
-    {% endif %}
-
     {% if matches %}
-
 
 
         <div class="draw-status">

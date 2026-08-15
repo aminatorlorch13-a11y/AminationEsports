@@ -265,6 +265,59 @@
 
 
 
+        <!-- ================================= -->
+        <!-- FOUNDER PUBLIC ANNOUNCEMENT DISPLAY -->
+        <!-- ================================= -->
+
+        {% if latest_notice %}
+
+            <div
+                class="draw-status"
+                id="founder-public-announcement"
+                style="
+                    margin-bottom:20px;
+                    padding:18px;
+                    border-radius:12px;
+                "
+            >
+
+                <strong>
+                    📢 FOUNDER PUBLIC ANNOUNCEMENT
+                </strong>
+
+                <br><br>
+
+                {% set notice_parts = latest_notice.notes.split(
+                    '\n\n',
+                    1
+                ) %}
+
+                {% if notice_parts|length > 1 %}
+
+                    <h3>
+                        {{ notice_parts[0] }}
+                    </h3>
+
+                    <p>
+                        {{ notice_parts[1] }}
+                    </p>
+
+                {% else %}
+
+                    <p>
+                        {{ latest_notice.notes }}
+                    </p>
+
+                {% endif %}
+
+                <small>
+                    Official Amination Esports communication
+                </small>
+
+            </div>
+
+        {% endif %}
+
         <div class="draw-status">
 
             <strong>

@@ -1251,202 +1251,6 @@
 
 
 
-
-    <!-- ================================= -->
-    <!-- FOUNDER LIVE MATCH CONTROL -->
-    <!-- ================================= -->
-
-    <section id="founder-live-match-control"
-             class="admin-section">
-
-        <h2>
-            🔴 FOUNDER LIVE MATCH CONTROL
-        </h2>
-
-        <div class="control-card">
-
-            <h3>
-                Official Match Control
-            </h3>
-
-            <p>
-                Start, stop, and finish official tournament
-                matches from the Founder dashboard.
-            </p>
-
-            {% if matches %}
-
-                {% for match in matches %}
-
-                    <div class="activity-card">
-
-                        <h3>
-                            {{ match.round_name }}
-                            — Match #{{ match.id }}
-                        </h3>
-
-                        <p>
-
-                            {% if players_by_id.get(match.player1_id) %}
-                                <strong>
-                                    {{ players_by_id[match.player1_id].name }}
-                                </strong>
-                            {% else %}
-                                TBD
-                            {% endif %}
-
-                            <strong>
-                                {{ match.player1_score or 0 }}
-                                -
-                                {{ match.player2_score or 0 }}
-                            </strong>
-
-                            {% if players_by_id.get(match.player2_id) %}
-                                <strong>
-                                    {{ players_by_id[match.player2_id].name }}
-                                </strong>
-                            {% else %}
-                                TBD
-                            {% endif %}
-
-                        </p>
-
-                        <p>
-                            Status:
-                            <strong>
-                                {{ match.status|upper }}
-                            </strong>
-                        </p>
-
-                        <p>
-                            Live:
-                            <strong>
-                                {% if match.is_live %}
-                                    YES 🔴
-                                {% else %}
-                                    NO
-                                {% endif %}
-                            </strong>
-                        </p>
-
-                        <!-- START LIVE MATCH -->
-
-                        <form
-                            method="POST"
-                            action="{{ url_for(
-                                'founder_live_match_control',
-                                match_id=match.id
-                            ) }}"
-                            style="margin-top:10px;"
-                        >
-
-                            <input
-                                type="hidden"
-                                name="action"
-                                value="start"
-                            >
-
-                            <button
-                                type="submit"
-                                class="button"
-                                style="
-                                    border:none;
-                                    cursor:pointer;
-                                    width:100%;
-                                "
-                                onclick="return confirm(
-                                    'Start this match as the official live match?'
-                                );"
-                            >
-                                🔴 START LIVE MATCH
-                            </button>
-
-                        </form>
-
-                        <!-- STOP LIVE MATCH -->
-
-                        <form
-                            method="POST"
-                            action="{{ url_for(
-                                'founder_live_match_control',
-                                match_id=match.id
-                            ) }}"
-                            style="margin-top:10px;"
-                        >
-
-                            <input
-                                type="hidden"
-                                name="action"
-                                value="stop"
-                            >
-
-                            <button
-                                type="submit"
-                                class="button"
-                                style="
-                                    border:none;
-                                    cursor:pointer;
-                                    width:100%;
-                                "
-                                onclick="return confirm(
-                                    'Stop the live status for this match?'
-                                );"
-                            >
-                                ⏹️ STOP LIVE MATCH
-                            </button>
-
-                        </form>
-
-                        <!-- FINISH MATCH -->
-
-                        <form
-                            method="POST"
-                            action="{{ url_for(
-                                'founder_live_match_control',
-                                match_id=match.id
-                            ) }}"
-                            style="margin-top:10px;"
-                        >
-
-                            <input
-                                type="hidden"
-                                name="action"
-                                value="finish"
-                            >
-
-                            <button
-                                type="submit"
-                                class="button"
-                                style="
-                                    border:none;
-                                    cursor:pointer;
-                                    width:100%;
-                                "
-                                onclick="return confirm(
-                                    'Finish this match officially? Make sure the score is correct.'
-                                );"
-                            >
-                                🏁 FINISH MATCH
-                            </button>
-
-                        </form>
-
-                    </div>
-
-                {% endfor %}
-
-            {% else %}
-
-                <div class="empty">
-                    No tournament matches currently exist.
-                </div>
-
-            {% endif %}
-
-        </div>
-
-    </section>
-
     <!-- ================================= -->
     <!-- FOUNDER PUBLIC ANNOUNCEMENTS -->
     <!-- ================================= -->
@@ -1830,23 +1634,23 @@
     <!-- FOUNDER MATCH CONTROLS -->
     <!-- ================================= -->
 
-    
-    <!-- ================================= -->
-    <!-- FOUNDER MATCH CONTROLS -->
-    <!-- ================================= -->
-
     <section id="match-controls"
              class="admin-section">
 
-        <h2>🎮 FOUNDER MATCH OPERATIONS</h2>
+        <h2>
+            🎮 FOUNDER MATCH OPERATIONS
+        </h2>
 
         <div class="control-card">
 
-            <h3>Official Match Control</h3>
+            <h3>
+                Official Match Control
+            </h3>
 
             <p>
-                The Founder controls the official live status
-                and completion of tournament matches from here.
+                The Founder controls the official match schedule,
+                live status, postponements and results from here.
+                Public tournament pages update from these records.
             </p>
 
             {% if matches %}
@@ -1890,17 +1694,6 @@
                             </strong>
                         </p>
 
-                        <p>
-                            Live:
-                            <strong>
-                                {% if match.is_live %}
-                                    YES 🔴
-                                {% else %}
-                                    NO
-                                {% endif %}
-                            </strong>
-                        </p>
-
                         {% if match.scheduled_time %}
 
                             <p>
@@ -1916,11 +1709,9 @@
 
                             <p>
                                 🏁 Final Score:
-                                <strong>
-                                    {{ match.player1_score or 0 }}
-                                    -
-                                    {{ match.player2_score or 0 }}
-                                </strong>
+                                {{ match.player1_score }}
+                                -
+                                {{ match.player2_score }}
                             </p>
 
                             {% if player_map.get(match.winner_id) %}
@@ -1936,91 +1727,175 @@
 
                         {% else %}
 
-                            {% if not match.is_live %}
-
-                                <form
-                                    method="POST"
-                                    action="{{ url_for(
-                                        'founder_live_match_control',
-                                        match_id=match.id
-                                    ) }}"
-                                >
-
-                                    <input
-                                        type="hidden"
-                                        name="action"
-                                        value="start"
-                                    >
-
-                                    <button
-                                        type="submit"
-                                        class="button"
-                                        style="
-                                            border:none;
-                                            cursor:pointer;
-                                            width:100%;
-                                        "
-                                        onclick="return confirm(
-                                            'Start this match as the official live match?'
-                                        );"
-                                    >
-                                        🔴 START LIVE MATCH
-                                    </button>
-
-                                </form>
-
-                            {% endif %}
-
-                            {% if match.is_live %}
-
-                                <form
-                                    method="POST"
-                                    action="{{ url_for(
-                                        'founder_live_match_control',
-                                        match_id=match.id
-                                    ) }}"
-                                    style="margin-top:10px;"
-                                >
-
-                                    <input
-                                        type="hidden"
-                                        name="action"
-                                        value="stop"
-                                    >
-
-                                    <button
-                                        type="submit"
-                                        class="button"
-                                        style="
-                                            border:none;
-                                            cursor:pointer;
-                                            width:100%;
-                                        "
-                                        onclick="return confirm(
-                                            'Stop the live status for this match?'
-                                        );"
-                                    >
-                                        ⏹️ STOP LIVE MATCH
-                                    </button>
-
-                                </form>
-
-                            {% endif %}
+                            <!-- START MATCH -->
 
                             <form
                                 method="POST"
                                 action="{{ url_for(
-                                    'founder_live_match_control',
+                                    'start_match',
                                     match_id=match.id
                                 ) }}"
-                                style="margin-top:10px;"
+                                style="margin-bottom:15px;"
                             >
 
-                                <input
-                                    type="hidden"
-                                    name="action"
-                                    value="finish"
+                                <button
+                                    type="submit"
+                                    class="button"
+                                    style="
+                                        border:none;
+                                        cursor:pointer;
+                                        width:100%;
+                                    "
                                 >
+                                    🔴 START MATCH / GO LIVE
+                                </button>
+
+                            </form>
+
+
+                            <!-- RECORD RESULT -->
+
+                            {% if match.status == "in_progress"
+                                  or match.status == "live" %}
+
+                                <form
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'record_match_result',
+                                        match_id=match.id
+                                    ) }}"
+                                >
+
+                                    <h4>
+                                        🏆 RECORD OFFICIAL RESULT
+                                    </h4>
+
+                                    <label>
+                                        {{ player_map[match.player1_id].name }}
+                                        Score
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        name="player1_score"
+                                        min="0"
+                                        value="{{ match.player1_score or 0 }}"
+                                        required
+                                        style="
+                                            width:100%;
+                                            box-sizing:border-box;
+                                            padding:10px;
+                                            margin:6px 0 10px;
+                                            border-radius:8px;
+                                        "
+                                    >
+
+                                    <label>
+                                        {{ player_map[match.player2_id].name }}
+                                        Score
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        name="player2_score"
+                                        min="0"
+                                        value="{{ match.player2_score or 0 }}"
+                                        required
+                                        style="
+                                            width:100%;
+                                            box-sizing:border-box;
+                                            padding:10px;
+                                            margin:6px 0 10px;
+                                            border-radius:8px;
+                                        "
+                                    >
+
+                                    <label>
+                                        Winning Player
+                                    </label>
+
+                                    <select
+                                        name="winner_id"
+                                        required
+                                        style="width:100%;"
+                                    >
+
+                                        <option value="">
+                                            Select winner
+                                        </option>
+
+                                        <option value="{{ match.player1_id }}">
+                                            {{ player_map[match.player1_id].name }}
+                                        </option>
+
+                                        <option value="{{ match.player2_id }}">
+                                            {{ player_map[match.player2_id].name }}
+                                        </option>
+
+                                    </select>
+
+                                    <button
+                                        type="submit"
+                                        class="button"
+                                        style="
+                                            border:none;
+                                            cursor:pointer;
+                                            width:100%;
+                                            margin-top:10px;
+                                        "
+                                        onclick="return confirm(
+                                            'Record this official result?'
+                                        );"
+                                    >
+                                        ✅ RECORD RESULT
+                                    </button>
+
+                                </form>
+
+                            {% endif %}
+
+
+                            <!-- POSTPONE / RESCHEDULE -->
+
+                            <form
+                                method="POST"
+                                action="{{ url_for(
+                                    'postpone_match',
+                                    match_id=match.id
+                                ) }}"
+                                style="margin-top:20px;"
+                            >
+
+                                <h4>
+                                    ⏰ POSTPONE / RESCHEDULE
+                                </h4>
+
+                                <label>
+                                    New official date and time
+                                </label>
+
+                                <input
+                                    type="datetime-local"
+                                    name="scheduled_time"
+                                    required
+                                    style="
+                                        width:100%;
+                                        box-sizing:border-box;
+                                        padding:10px;
+                                        margin:8px 0;
+                                        border-radius:8px;
+                                    "
+                                >
+
+                                <label>
+                                    Public explanation / apology
+                                </label>
+
+                                <textarea
+                                    name="public_notice"
+                                    required
+                                    placeholder="Explain the reason for the postponement and apologize to affected players and supporters."
+                                ></textarea>
 
                                 <button
                                     type="submit"
@@ -2031,10 +1906,10 @@
                                         width:100%;
                                     "
                                     onclick="return confirm(
-                                        'Finish this match officially? Make sure the score is correct.'
+                                        'Postpone this official match and publish the notice?'
                                     );"
                                 >
-                                    🏁 FINISH MATCH
+                                    📢 POSTPONE & PUBLISH NOTICE
                                 </button>
 
                             </form>
@@ -2057,7 +1932,11 @@
 
     </section>
 
-<section id="live"
+    <!-- ================================= -->
+    <!-- LIVE CONTROL -->
+    <!-- ================================= -->
+
+    <section id="live"
              class="admin-section">
 
         <h2>

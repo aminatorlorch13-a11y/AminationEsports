@@ -1468,20 +1468,32 @@ def founder_public_announcement():
     methods=["POST"]
 )
 def founder_live_match_control(match_id):
+
     match = Match.query.get_or_404(match_id)
 
-    action_type = request.form.get("action", "").strip()
+    action_type = request.form.get(
+        "action",
+        ""
+    ).strip()
 
-    if action_type not in ["start", "stop", "finish"]:
+    if action_type not in [
+        "start",
+        "stop",
+        "finish"
+    ]:
         return "Invalid live match action.", 400
 
     old_status = match.status
     old_live = bool(match.is_live)
 
     if action_type == "start":
-        if match.status == "finished":
-            return "A finished match cannot be started again.", 409
 
+        if match.status == "finished":
+            return (
+                "A finished match cannot be started again."
+            ), 409
+
+        # Only one match should be live at a time.
         other_live_matches = Match.query.filter(
             Match.is_live.is_(True),
             Match.id != match.id
@@ -1497,6 +1509,7 @@ def founder_live_match_control(match_id):
             match.started_at = datetime.utcnow()
 
     elif action_type == "stop":
+
         match.is_live = False
 
         if match.status == "live":
@@ -1506,28 +1519,20 @@ def founder_live_match_control(match_id):
         if match.status == "finished":
             return "This match is already finished.", 409
 
-        try:
-            player1_score = int(
-                request.form.get("player1_score", "")
-            )
-            player2_score = int(
-                request.form.get("player2_score", "")
-            )
-        except (TypeError, ValueError):
-            return "Both player scores must be valid whole numbers.", 400
+        if match.player1_score is None or match.player2_score is None:
+            return (
+                "Both player scores are required before finishing."
+            ), 400
 
-        if player1_score < 0 or player2_score < 0:
+        if match.player1_score < 0 or match.player2_score < 0:
             return "Scores cannot be negative.", 400
 
-        if player1_score == player2_score:
+        if match.player1_score == match.player2_score:
             return (
                 "A finished match must have a winning score."
             ), 400
 
-        match.player1_score = player1_score
-        match.player2_score = player2_score
-
-        if player1_score > player2_score:
+        if match.player1_score > match.player2_score:
             match.winner_id = match.player1_id
             loser_id = match.player2_id
         else:
@@ -1538,6 +1543,7 @@ def founder_live_match_control(match_id):
         match.status = "finished"
         match.finished_at = datetime.utcnow()
 
+        # Update player statistics.
         from models import PlayerStatistic
 
         for player_id in [
@@ -1575,12 +1581,14 @@ def founder_live_match_control(match_id):
             if player_id == match.player1_id:
                 stats.goals = (
                     stats.goals or 0
-                ) + player1_score
+                ) + (match.player1_score or 0)
             else:
                 stats.goals = (
                     stats.goals or 0
-                ) + player2_score
+                ) + (match.player2_score or 0)
 
+        # Advance the winner when another feeder match
+        # in this round has also been completed.
         tournament = Tournament.query.get(
             match.tournament_id
         )
@@ -1591,13 +1599,15 @@ def founder_live_match_control(match_id):
                 match
             )
 
+            # If this was the Final, there is no next match.
+            # The tournament can therefore be completed.
             if (
                 match.round_name == "Final"
                 and next_match is None
             ):
                 tournament.status = "completed"
 
-    action_labels = {
+        action_labels = {
         "start": "started live match",
         "stop": "stopped live match",
         "finish": "finished match"
@@ -1622,6 +1632,7 @@ def founder_live_match_control(match_id):
     return redirect(
         url_for("admin_dashboard")
     )
+
 
 
 # ============================================================

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Register — Amination Esports</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+<header class="navbar">
+
+    <div class="logo">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+    <nav>
+
+        <a href="/">Home</a>
+        <a href="/tournament">Tournament</a>
+        <a href="/live">Live</a>
+        <a href="/standings">Standings</a>
+        <a href="/players">Players</a>
+        <a href="/matches">Matches</a>
+        <a href="/terms">Rules</a>
+
+    </nav>
+
+</header>
+
+
+<main>
+
+<section class="register-section">
+
+    <h1>ENTER THE COMPETITION</h1>
+
+    <p>
+        Register for the next Amination Esports
+        FC Mobile tournament.
+    </p>
+
+
+    <form method="POST"
+          action="/register">
+
+
+        <label for="name">
+            Player Name / Gamertag
+        </label>
+
+        <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Example: Aminator"
+            required
+        >
+
+
+        <label for="fc_username">
+            FC Mobile Username
+        </label>
+
+        <input
+            type="text"
+            id="fc_username"
+            name="fc_username"
+            placeholder="Your FC Mobile username"
+            required
+        >
+
+
+        <label for="country">
+            Country
+        </label>
+
+        <input
+            type="text"
+            id="country"
+            name="country"
+            placeholder="Example: South Africa"
+            required
+        >
+
+
+        <label for="squad_ovr">
+            Squad OVR
+        </label>
+
+        <input
+            type="number"
+            id="squad_ovr"
+            name="squad_ovr"
+            min="1"
+            max="200"
+            placeholder="Example: 115"
+            required
+        >
+
+
+        <div class="rules-box">
+
+            <h3>
+                Tournament Agreement
+            </h3>
+
+            <p>
+                Before registering, please read the
+                Amination Esports tournament rules.
+            </p>
+
+            <a href="/terms"
+               target="_blank">
+                Read Tournament Rules
+            </a>
+
+        </div>
+
+
+        <label class="checkbox">
+
+            <input
+                type="checkbox"
+                name="terms_accepted"
+                value="yes"
+                required
+            >
+
+            I have read and agree to the
+            Amination Esports Tournament Rules.
+
+        </label>
+
+
+        <button type="submit">
+            REGISTER FOR TOURNAMENT
+        </button>
+
+    </form>
+
+</section>
+
+</main>
+
+
+<footer>
+
+    <p>
+        © 2026 Amination Esports —
+        From Imagination to Reality.
+    </p>
+
+</footer>
+
+</body>
+
+</html>

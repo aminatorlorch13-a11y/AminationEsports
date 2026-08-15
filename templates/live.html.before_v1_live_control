@@ -8,7 +8,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Matches — Amination Esports</title>
+    <title>Live — Amination Esports</title>
 
     <style>
 
@@ -57,7 +57,7 @@
         }
 
         .container {
-            max-width: 950px;
+            max-width: 900px;
             margin: auto;
             padding: 45px 20px;
         }
@@ -66,45 +66,40 @@
             color: #e2b936;
         }
 
-        .match-card {
+        .live-card {
             background: #111;
             border: 1px solid #292929;
-            border-radius: 15px;
-            padding: 25px;
-            margin-top: 18px;
-        }
-
-        .round {
-            color: #e2b936;
-            font-weight: bold;
-        }
-
-        .match-grid {
-            display: grid;
-            grid-template-columns:
-                1fr 90px 1fr;
-            align-items: center;
-            gap: 15px;
+            border-radius: 16px;
+            padding: 28px;
             margin-top: 20px;
         }
 
+        .live-label {
+            color: #ff4040;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .players {
+            display: grid;
+            grid-template-columns:
+                1fr 80px 1fr;
+            align-items: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
         .player {
+            padding: 20px;
             background: #080808;
-            border-radius: 10px;
-            padding: 18px;
+            border-radius: 12px;
             text-align: center;
         }
 
         .score {
-            text-align: center;
-            font-size: 25px;
+            font-size: 30px;
             font-weight: bold;
-        }
-
-        .status {
             text-align: center;
-            color: #999;
-            margin-top: 15px;
         }
 
         .empty {
@@ -112,7 +107,7 @@
             padding: 35px;
             background: #111;
             border: 1px solid #292929;
-            border-radius: 15px;
+            border-radius: 16px;
             text-align: center;
             color: #999;
         }
@@ -146,12 +141,12 @@
 <div class="container">
 
     <h1>
-        🎮 TOURNAMENT MATCHES
+        🔴 LIVE MATCHES
     </h1>
 
     <p>
-        Official Amination tournament matches,
-        scheduled games and results.
+        Follow Amination matches while they are
+        being played.
     </p>
 
 
@@ -159,14 +154,18 @@
 
         {% for match in matches %}
 
-            <div class="match-card">
+            <div class="live-card">
 
-                <div class="round">
+                <div class="live-label">
+                    🔴 LIVE NOW
+                </div>
+
+                <div>
                     {{ match.round_name or "Tournament Match" }}
                 </div>
 
 
-                <div class="match-grid">
+                <div class="players">
 
                     <div class="player">
 
@@ -196,26 +195,6 @@
 
                 </div>
 
-
-                <div class="status">
-
-                    {% if match.is_live %}
-
-                        🔴 LIVE
-
-                    {% elif match.status == "completed"
-                       or match.status == "finished" %}
-
-                        ✅ Completed
-
-                    {% else %}
-
-                        🕒 Scheduled
-
-                    {% endif %}
-
-                </div>
-
             </div>
 
         {% endfor %}
@@ -224,12 +203,12 @@
 
         <div class="empty">
 
-            🎮 No tournament matches have been created yet.
+            🔴 No matches are live right now.
 
             <br><br>
 
-            The official matches will appear here
-            after the Founder releases the draw.
+            Check the Tournament and Matches pages
+            for the official schedule and results.
 
         </div>
 

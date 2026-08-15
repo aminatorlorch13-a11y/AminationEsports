@@ -287,13 +287,9 @@ def tournament():
 @app.route("/live")
 def live():
 
-    # Public live page is driven directly from Founder-controlled
-    # Match records. No separate live-state system is created.
-
-    live_matches = Match.query.filter(
-        Match.is_live.is_(True)
+    live_matches = Match.query.filter_by(
+        is_live=True
     ).order_by(
-        Match.scheduled_time.asc(),
         Match.id.asc()
     ).all()
 
@@ -524,12 +520,6 @@ def admin_dashboard():
         Player.registered_at.desc()
     ).all()
 
-    players_by_id = {
-        player.id: player
-        for player in players
-    }
-
-
     approved_count = Player.query.filter_by(
         application_status="approved"
     ).count()
@@ -584,7 +574,6 @@ def admin_dashboard():
     return render_template(
         "admin/dashboard.html",
         players=players,
-        players_by_id=players_by_id,
         player_map=player_map,
         approved_count=approved_count,
         pending_count=pending_count,
@@ -1457,171 +1446,6 @@ def founder_public_announcement():
         url_for("admin_dashboard")
     )
 
-
-
-# ============================================================
-# FOUNDER — LIVE MATCH CONTROL
-# ============================================================
-
-@app.route(
-    "/admin/founder/match/<int:match_id>/live",
-    methods=["POST"]
-)
-def founder_live_match_control(match_id):
-    match = Match.query.get_or_404(match_id)
-
-    action_type = request.form.get("action", "").strip()
-
-    if action_type not in ["start", "stop", "finish"]:
-        return "Invalid live match action.", 400
-
-    old_status = match.status
-    old_live = bool(match.is_live)
-
-    if action_type == "start":
-        if match.status == "finished":
-            return "A finished match cannot be started again.", 409
-
-        other_live_matches = Match.query.filter(
-            Match.is_live.is_(True),
-            Match.id != match.id
-        ).all()
-
-        for other_match in other_live_matches:
-            other_match.is_live = False
-
-        match.is_live = True
-        match.status = "live"
-
-        if not match.started_at:
-            match.started_at = datetime.utcnow()
-
-    elif action_type == "stop":
-        match.is_live = False
-
-        if match.status == "live":
-            match.status = "scheduled"
-
-    elif action_type == "finish":
-        if match.status == "finished":
-            return "This match is already finished.", 409
-
-        try:
-            player1_score = int(
-                request.form.get("player1_score", "")
-            )
-            player2_score = int(
-                request.form.get("player2_score", "")
-            )
-        except (TypeError, ValueError):
-            return "Both player scores must be valid whole numbers.", 400
-
-        if player1_score < 0 or player2_score < 0:
-            return "Scores cannot be negative.", 400
-
-        if player1_score == player2_score:
-            return (
-                "A finished match must have a winning score."
-            ), 400
-
-        match.player1_score = player1_score
-        match.player2_score = player2_score
-
-        if player1_score > player2_score:
-            match.winner_id = match.player1_id
-            loser_id = match.player2_id
-        else:
-            match.winner_id = match.player2_id
-            loser_id = match.player1_id
-
-        match.is_live = False
-        match.status = "finished"
-        match.finished_at = datetime.utcnow()
-
-        from models import PlayerStatistic
-
-        for player_id in [
-            match.player1_id,
-            match.player2_id
-        ]:
-            stats = PlayerStatistic.query.filter_by(
-                player_id=player_id
-            ).first()
-
-            if not stats:
-                stats = PlayerStatistic(
-                    player_id=player_id,
-                    matches_played=0,
-                    wins=0,
-                    draws=0,
-                    losses=0,
-                    goals=0,
-                    assists=0,
-                    clean_sheets=0,
-                    saves=0,
-                    critical_saves=0
-                )
-                db.session.add(stats)
-
-            stats.matches_played = (
-                stats.matches_played or 0
-            ) + 1
-
-            if player_id == match.winner_id:
-                stats.wins = (stats.wins or 0) + 1
-            elif player_id == loser_id:
-                stats.losses = (stats.losses or 0) + 1
-
-            if player_id == match.player1_id:
-                stats.goals = (
-                    stats.goals or 0
-                ) + player1_score
-            else:
-                stats.goals = (
-                    stats.goals or 0
-                ) + player2_score
-
-        tournament = Tournament.query.get(
-            match.tournament_id
-        )
-
-        if tournament:
-            next_match = create_next_round_match(
-                tournament,
-                match
-            )
-
-            if (
-                match.round_name == "Final"
-                and next_match is None
-            ):
-                tournament.status = "completed"
-
-    action_labels = {
-        "start": "started live match",
-        "stop": "stopped live match",
-        "finish": "finished match"
-    }
-
-    action = AdminAction(
-        action="founder_live_match_control",
-        notes=(
-            f"Founder {action_labels[action_type]}. "
-            f"Match ID: {match.id}. "
-            f"Previous status: {old_status}. "
-            f"New status: {match.status}. "
-            f"Previous live state: {old_live}. "
-            f"New live state: {bool(match.is_live)}."
-        ),
-        created_at=datetime.utcnow()
-    )
-
-    db.session.add(action)
-    db.session.commit()
-
-    return redirect(
-        url_for("admin_dashboard")
-    )
 
 
 # ============================================================

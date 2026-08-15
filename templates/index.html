@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Amination Esports</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #050505;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            padding: 28px 20px;
+            text-align: center;
+            border-bottom: 1px solid #222;
+        }
+
+        .brand {
+            font-size: 30px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .brand span {
+            color: #e2b936;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 22px;
+            padding: 22px 15px;
+            border-bottom: 1px solid #222;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 17px;
+        }
+
+        nav a:hover {
+            color: #e2b936;
+        }
+
+        .hero {
+            max-width: 1100px;
+            margin: auto;
+            padding: 70px 25px 50px;
+        }
+
+        .tag {
+            color: #e2b936;
+            font-weight: bold;
+            font-size: 17px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: clamp(48px, 9vw, 92px);
+            line-height: 0.95;
+            margin: 0;
+        }
+
+        h1 span {
+            color: #e2b936;
+        }
+
+        .hero p {
+            max-width: 700px;
+            color: #aaa;
+            font-size: 21px;
+            line-height: 1.6;
+            margin-top: 30px;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 35px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 17px 25px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            background: #e2b936;
+            color: #000;
+        }
+
+        .button.secondary {
+            background: transparent;
+            color: white;
+            border: 1px solid #555;
+        }
+
+        .button:hover {
+            opacity: 0.88;
+        }
+
+        .access {
+            max-width: 1100px;
+            margin: 20px auto 70px;
+            padding: 0 25px;
+        }
+
+        .access-card {
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 16px;
+            padding: 30px;
+        }
+
+        .access-card h2 {
+            margin-top: 0;
+        }
+
+        .access-card p {
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .grid {
+            max-width: 1100px;
+            margin: 0 auto 80px;
+            padding: 0 25px;
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        .card .icon {
+            font-size: 42px;
+        }
+
+        .card h2 {
+            margin-top: 18px;
+        }
+
+        .card p {
+            color: #999;
+            line-height: 1.6;
+        }
+
+        footer {
+            border-top: 1px solid #222;
+            padding: 30px 20px;
+            text-align: center;
+            color: #777;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<header>
+
+    <div class="brand">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+</header>
+
+
+<nav>
+
+    <a href="{{ url_for('home') }}">Home</a>
+
+    <a href="{{ url_for('tournament') }}">
+        Tournament
+    </a>
+
+    <a href="{{ url_for('live') }}">
+        Live
+    </a>
+
+    <a href="{{ url_for('standings') }}">
+        Standings
+    </a>
+
+    <a href="{{ url_for('players') }}">
+        Players
+    </a>
+
+</nav>
+
+
+<section class="hero">
+
+    <div class="tag">
+        ● AMINATION ESPORTS
+    </div>
+
+    <h1>
+        CONNECT.<br>
+        COMPETE.<br>
+        <span>WATCH.</span>
+    </h1>
+
+    <p>
+        The home of competitive FC Mobile tournaments.
+        Bring your squad. Prove your skill.
+        Follow the draw, matches, results and
+        championship journey.
+    </p>
+
+
+    <div class="actions">
+
+        <a class="button"
+           href="{{ url_for('register') }}">
+            📝 SIGN UP / REGISTER
+        </a>
+
+        <a class="button secondary"
+           href="{{ url_for('players') }}">
+            👥 BROWSE PLAYERS
+        </a>
+
+        <a class="button secondary"
+           href="{{ url_for('tournament') }}">
+            🏆 VIEW TOURNAMENT
+        </a>
+
+    </div>
+
+</section>
+
+
+<section class="access">
+
+    <div class="access-card">
+
+        <h2>
+            🎮 PLAYER ACCESS
+        </h2>
+
+        <p>
+            Players do not need an account just to browse
+            Amination Esports. You can view players,
+            tournament information, standings, matches
+            and live games publicly.
+        </p>
+
+        <p>
+            Want to compete?
+            Use the registration button below to submit
+            your tournament application.
+        </p>
+
+        <a class="button"
+           href="{{ url_for('register') }}">
+            REGISTER FOR THE TOURNAMENT
+        </a>
+
+    </div>
+
+</section>
+
+
+<section class="grid">
+
+    <div class="card">
+
+        <div class="icon">⚽</div>
+
+        <h2>
+            REAL COMPETITION
+        </h2>
+
+        <p>
+            Compete using the FC Mobile squad
+            you've built.
+        </p>
+
+    </div>
+
+
+    <div class="card">
+
+        <div class="icon">🎲</div>
+
+        <h2>
+            OFFICIAL DRAW
+        </h2>
+
+        <p>
+            Once the Founder releases the draw,
+            official matchups appear on the
+            tournament page.
+        </p>
+
+    </div>
+
+
+    <div class="card">
+
+        <div class="icon">🔴</div>
+
+        <h2>
+            LIVE MATCHES
+        </h2>
+
+        <p>
+            Follow matches and live scores
+            as the tournament progresses.
+        </p>
+
+    </div>
+
+
+    <div class="card">
+
+        <div class="icon">🏆</div>
+
+        <h2>
+            PLAYER PROFILES
+        </h2>
+
+        <p>
+            Browse player profiles and follow
+            their tournament journey.
+        </p>
+
+    </div>
+
+</section>
+
+
+<footer>
+
+    AMINATION ESPORTS —
+    Competitive FC Mobile
+
+</footer>
+
+
+</body>
+
+</html>

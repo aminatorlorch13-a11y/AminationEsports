@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Contact Founder | Amination Esports</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+
+<body>
+
+<header class="navbar">
+
+    <div class="logo">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+</header>
+
+
+<main>
+
+<section class="register-section">
+
+    <div class="live-badge">
+        💬 CONTACT FOUNDER
+    </div>
+
+
+    <h1>PLAYER<br>MESSAGE</h1>
+
+
+    <p>
+        Hello {{ player.name }}.
+    </p>
+
+
+    <p>
+        If you cannot manage your scheduled match,
+        need to withdraw, or have an important
+        tournament issue, contact the founder
+        as early as possible.
+    </p>
+
+
+    <div class="rules-box">
+
+        <p>
+            <strong>
+                Please don't wait until match time.
+            </strong>
+        </p>
+
+        <p>
+            Early notice gives Amination the chance
+            to contact a waiting-list player and
+            arrange a replacement.
+        </p>
+
+    </div>
+
+
+    <form method="POST">
+
+
+        <label for="subject">
+            Reason
+        </label>
+
+        <select id="subject"
+                name="subject"
+                required>
+
+            <option value="">
+                Select a reason
+            </option>
+
+            <option value="Cannot manage match time">
+                ⏰ I cannot manage my match time
+            </option>
+
+            <option value="Tournament withdrawal">
+                🚫 I need to withdraw
+            </option>
+
+            <option value="Connection problem">
+                📶 Connection problem
+            </option>
+
+            <option value="Tournament question">
+                ❓ Tournament question
+            </option>
+
+            <option value="Other">
+                📝 Other
+            </option>
+
+        </select>
+
+
+        <br><br>
+
+
+        <label for="message">
+            Message
+        </label>
+
+        <textarea
+            id="message"
+            name="message"
+            rows="7"
+            required
+            placeholder="Tell the founder what is happening..."></textarea>
+
+
+        <br><br>
+
+
+        <button
+            class="button primary"
+            type="submit">
+
+            SEND MESSAGE TO FOUNDER
+
+        </button>
+
+
+    </form>
+
+</section>
+
+</main>
+
+
+<footer>
+
+    <p>
+        © 2026 Amination Esports
+    </p>
+
+</footer>
+
+</body>
+
+</html>

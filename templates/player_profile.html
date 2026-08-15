@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>{{ player.name }} — Amination Esports</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #050505;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            padding: 22px 15px;
+            text-align: center;
+            border-bottom: 1px solid #222;
+        }
+
+        .brand {
+            font-size: 26px;
+            font-weight: bold;
+        }
+
+        .brand span {
+            color: #e2b936;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            padding: 15px 10px;
+            border-bottom: 1px solid #222;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 10px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 25px auto;
+            padding: 15px;
+        }
+
+        .profile-card {
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 16px;
+            padding: 25px;
+        }
+
+        .profile-title {
+            color: #e2b936;
+            font-size: 17px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        h1 {
+            font-size: 36px;
+            margin: 10px 0 25px;
+        }
+
+        .info {
+            padding: 12px 0;
+            border-bottom: 1px solid #222;
+            font-size: 17px;
+        }
+
+        .stars-box {
+            margin-top: 30px;
+            padding: 25px 15px;
+            background: #080808;
+            border: 1px solid #333;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stars {
+            font-size: 40px;
+            letter-spacing: 5px;
+            margin: 20px 0;
+            word-break: break-word;
+        }
+
+        .earned-star {
+            color: #e2b936;
+        }
+
+        .empty-star {
+            color: #555;
+            cursor: pointer;
+        }
+
+        .star-note {
+            color: #aaa;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .status {
+            margin-top: 25px;
+            padding: 18px;
+            border-radius: 10px;
+            background: #171717;
+            line-height: 1.6;
+        }
+
+        .button {
+            display: block;
+            width: 100%;
+            text-align: center;
+            text-decoration: none;
+            background: #e2b936;
+            color: #000;
+            padding: 16px;
+            border-radius: 10px;
+            font-weight: bold;
+            margin-top: 25px;
+        }
+
+        .notice {
+            margin-top: 25px;
+            padding: 20px;
+            background: #171717;
+            border-left: 4px solid #e2b936;
+            line-height: 1.7;
+        }
+
+        .draw-box {
+            margin-top: 20px;
+            padding: 18px;
+            border-radius: 10px;
+            background: #0c0c0c;
+            border: 1px solid #333;
+        }
+
+        .small-text {
+            color: #aaa;
+            font-size: 14px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<header>
+
+    <div class="brand">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+</header>
+
+
+<nav>
+
+    <a href="{{ url_for('home') }}">
+        Home
+    </a>
+
+    <a href="{{ url_for('tournament') }}">
+        Tournament
+    </a>
+
+    <a href="{{ url_for('live') }}">
+        Live
+    </a>
+
+    <a href="{{ url_for('standings') }}">
+        Standings
+    </a>
+
+    <a href="{{ url_for('players') }}">
+        Players
+    </a>
+
+</nav>
+
+
+<div class="container">
+
+    <div class="profile-card">
+
+
+        <!-- PROFILE HEADER -->
+
+        <div class="profile-title">
+            AMINATION PLAYER PROFILE
+        </div>
+
+        <h1>
+            {{ player.name }}
+        </h1>
+
+
+        <!-- PLAYER INFORMATION -->
+
+        <div class="info">
+
+            <strong>
+                Player ID:
+            </strong>
+
+            #{{ player.id }}
+
+        </div>
+
+
+        <div class="info">
+
+            <strong>
+                FC Mobile:
+            </strong>
+
+            {{ player.fc_username }}
+
+        </div>
+
+
+        <div class="info">
+
+            <strong>
+                Country:
+            </strong>
+
+            {{ player.country }}
+
+        </div>
+
+
+        <div class="info">
+
+            <strong>
+                Squad OVR:
+            </strong>
+
+            {{ player.squad_ovr }}
+
+        </div>
+
+
+        <!-- ================================= -->
+        <!-- CHAMPIONSHIP STARS -->
+        <!-- ================================= -->
+
+        <div class="stars-box">
+
+            <div class="profile-title">
+                ⭐ CHAMPIONSHIP STATUS
+            </div>
+
+
+            <div class="stars">
+
+
+                {% for i in range(player.championship_stars) %}
+
+                    <span
+                        class="earned-star">
+                        ★
+                    </span>
+
+                {% endfor %}
+
+
+                {% for i in range(5 - player.championship_stars) %}
+
+                    <span
+                        class="empty-star"
+                        onclick="showStarMessage()">
+                        ☆
+                    </span>
+
+                {% endfor %}
+
+
+            </div>
+
+
+            <div>
+
+                Stars earned:
+
+                <strong>
+                    {{ player.championship_stars }}
+                </strong>
+
+            </div>
+
+
+            <div class="star-note">
+
+                Stars are awarded by Amination
+                after championship victories.
+
+            </div>
+
+        </div>
+
+        <!-- PLAYER MATCH -->
+
+        <div class="status">
+
+            <strong>
+                🎮 YOUR TOURNAMENT MATCH
+            </strong>
+
+            <br><br>
+
+
+            {% if player_match %}
+
+                {% if player_match.player1_id == player.id %}
+
+                    {% set opponent_id = player_match.player2_id %}
+
+                {% else %}
+
+                    {% set opponent_id = player_match.player1_id %}
+
+                {% endif %}
+
+
+                <div style="
+                    margin-top:15px;
+                    padding:18px;
+                    background:#080808;
+                    border:1px solid #333;
+                    border-radius:12px;
+                ">
+
+                    <div style="
+                        color:#e2b936;
+                        font-size:14px;
+                        font-weight:bold;
+                        margin-bottom:10px;
+                    ">
+
+                        {% if player_match.is_live %}
+
+                            🔴 MATCH LIVE
+
+                        {% elif player_match.status == "finished" %}
+
+                            ✅ MATCH FINISHED
+
+                        {% else %}
+
+                            📅 MATCH SCHEDULED
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <div style="
+                        font-size:20px;
+                        font-weight:bold;
+                        margin-bottom:12px;
+                    ">
+
+                        {% if players is defined and
+                              players.get(opponent_id) %}
+
+                            {{ player.name }}
+
+                            <span style="color:#777;">
+                                VS
+                            </span>
+
+                            {{ players[opponent_id].name }}
+
+                        {% else %}
+
+                            Your opponent has been selected.
+
+                        {% endif %}
+
+                    </div>
+
+
+                    {% if player_match.scheduled_time %}
+
+                        <div style="
+                            color:#aaa;
+                            margin-top:8px;
+                        ">
+
+                            🕐 Scheduled:
+                            {{ player_match.scheduled_time }}
+
+                        </div>
+
+                    {% endif %}
+
+
+                    <div style="
+                        margin-top:12px;
+                        color:#aaa;
+                    ">
+
+                        Round:
+                        {{ player_match.round_name or "Tournament Match" }}
+
+                    </div>
+
+
+                    {% if player_match.is_live %}
+
+                        <div style="
+                            margin-top:18px;
+                            font-size:26px;
+                            font-weight:bold;
+                            color:#e2b936;
+                        ">
+
+                            {% if player_match.player1_id == player.id %}
+
+                                {{ player_match.player1_score }}
+                                -
+                                {{ player_match.player2_score }}
+
+                            {% else %}
+
+                                {{ player_match.player2_score }}
+                                -
+                                {{ player_match.player1_score }}
+
+                            {% endif %}
+
+                        </div>
+
+                    {% elif player_match.status == "finished" %}
+
+                        <div style="
+                            margin-top:18px;
+                            font-size:22px;
+                            font-weight:bold;
+                        ">
+
+                            Final Score:
+
+                            {% if player_match.player1_id == player.id %}
+
+                                {{ player_match.player1_score }}
+                                -
+                                {{ player_match.player2_score }}
+
+                            {% else %}
+
+                                {{ player_match.player2_score }}
+                                -
+                                {{ player_match.player1_score }}
+
+                            {% endif %}
+
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+
+            {% else %}
+
+
+                <div style="
+                    margin-top:15px;
+                    padding:18px;
+                    background:#080808;
+                    border:1px solid #333;
+                    border-radius:12px;
+                    color:#aaa;
+                ">
+
+                    🎲 Your opponent has not been selected yet.
+
+                    <br><br>
+
+                    Please check your profile before Friday
+                    for the official tournament draw.
+
+                </div>
+
+
+            {% endif %}
+
+        </div>
+
+        <!-- ================================= -->
+        <!-- APPLICATION STATUS -->
+        <!-- ================================= -->
+
+        <div class="status">
+
+            <strong>
+                Tournament Status:
+            </strong>
+
+            <br>
+
+
+            {% if player.application_status == "approved" %}
+
+                🟢 <strong>APPROVED</strong>
+
+                <br><br>
+
+                You have been approved for the tournament.
+
+                <br>
+
+                Your next important date is
+                <strong>Friday — Draw Day.</strong>
+
+
+            {% elif player.application_status == "waitlist" %}
+
+                🔵 <strong>WAITLIST</strong>
+
+                <br><br>
+
+                Your application is currently on the
+                waiting list.
+
+
+            {% elif player.application_status == "removed" %}
+
+                🔴 <strong>REMOVED</strong>
+
+                <br><br>
+
+                Your tournament application has been removed.
+
+
+            {% elif player.application_status == "withdrawn" %}
+
+                ⚪ <strong>WITHDRAWN</strong>
+
+                <br><br>
+
+                Your tournament application was withdrawn.
+
+
+            {% elif player.application_status == "suspended" %}
+
+                🚫 <strong>SUSPENDED</strong>
+
+                <br><br>
+
+                Your tournament participation is currently suspended.
+
+
+            {% else %}
+
+                🟡 <strong>PENDING REVIEW</strong>
+
+                <br><br>
+
+                Your registration has been received and is waiting
+                for Founder review.
+
+            {% endif %}
+
+        </div>
+
+
+        <!-- ================================= -->
+        <!-- REGISTER -->
+        <!-- ================================= -->
+
+        {% if player.application_status in ["pending", "withdrawn"] %}
+
+
+            <a
+                class="button"
+                href="{{ url_for('register') }}">
+
+                📝 REGISTER FOR TOURNAMENT
+
+            </a>
+
+
+        {% endif %}
+
+
+        <!-- ================================= -->
+        <!-- FRIDAY DRAW NOTICE -->
+        <!-- ================================= -->
+
+        <div class="notice">
+
+            <strong>
+                📅 IMPORTANT: CHECK YOUR PROFILE BEFORE FRIDAY
+            </strong>
+
+
+            <br><br>
+
+
+            After registering, make sure you return to your
+            player profile and check your application status.
+
+
+            <br><br>
+
+
+            The Founder will review tournament applications
+            before the draw.
+
+
+            <br><br>
+
+
+            <strong>
+                🎲 FRIDAY IS DRAW DAY
+            </strong>
+
+
+            <br><br>
+
+
+            Approved players will be entered into the draw
+            to determine who plays against whom.
+
+
+        </div>
+
+
+        <!-- ================================= -->
+        <!-- DRAW STATUS -->
+        <!-- ================================= -->
+
+        {% if player.application_status == "approved" %}
+
+            <div class="draw-box">
+
+                <strong>
+                    🎲 YOUR TOURNAMENT DRAW
+                </strong>
+
+                <br><br>
+
+                Your opponent will appear here once the
+                Friday draw has been completed.
+
+                <br><br>
+
+                <span class="small-text">
+
+                    Keep checking your profile for updates.
+
+                </span>
+
+            </div>
+
+        {% endif %}
+
+
+    </div>
+
+</div>
+
+
+<script>
+
+function showStarMessage() {
+
+    alert(
+        "⭐ Reserved for stars you've earned.\n\n" +
+        "Win Amination tournaments to earn " +
+        "Championship Stars."
+    );
+
+}
+
+</script>
+
+
+</body>
+
+</html>

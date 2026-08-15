@@ -287,13 +287,9 @@ def tournament():
 @app.route("/live")
 def live():
 
-    # Public live page is driven directly from Founder-controlled
-    # Match records. No separate live-state system is created.
-
-    live_matches = Match.query.filter(
-        Match.is_live.is_(True)
+    live_matches = Match.query.filter_by(
+        is_live=True
     ).order_by(
-        Match.scheduled_time.asc(),
         Match.id.asc()
     ).all()
 
@@ -524,12 +520,6 @@ def admin_dashboard():
         Player.registered_at.desc()
     ).all()
 
-    players_by_id = {
-        player.id: player
-        for player in players
-    }
-
-
     approved_count = Player.query.filter_by(
         application_status="approved"
     ).count()
@@ -584,7 +574,6 @@ def admin_dashboard():
     return render_template(
         "admin/dashboard.html",
         players=players,
-        players_by_id=players_by_id,
         player_map=player_map,
         approved_count=approved_count,
         pending_count=pending_count,
@@ -847,244 +836,20 @@ def player_messages(player_id):
     "/admin/draw-tournament",
     methods=["POST"]
 )
-
-# ============================================================
-# FOUNDER — TOURNAMENT CONTROL
-# ============================================================
-
-@app.route(
-    "/admin/tournament/control",
-    methods=["POST"]
-)
-def founder_tournament_control():
-
-    tournament = Tournament.query.order_by(
-        Tournament.id.desc()
-    ).first()
-
-    if not tournament:
-        return "No tournament exists.", 404
-
-    action_type = request.form.get(
-        "action",
-        ""
-    ).strip()
-
-    allowed_actions = {
-        "open_registration": "registration",
-        "start_tournament": "in_progress",
-        "pause_tournament": "paused",
-        "resume_tournament": "in_progress",
-        "complete_tournament": "completed"
-    }
-
-    if action_type == "release_draw":
-        return redirect(
-            url_for("draw_tournament")
-        )
-
-    if action_type == "reset_registration":
-        return redirect(
-            url_for("reset_tournament")
-        )
-
-    if action_type not in allowed_actions:
-        return "Invalid tournament control action.", 400
-
-    old_status = tournament.status
-    new_status = allowed_actions[action_type]
-
-    if action_type == "start_tournament":
-        if old_status not in ["draw_released", "paused"]:
-            return (
-                "The tournament must have a released draw "
-                "before it can start."
-            ), 409
-
-    if action_type == "pause_tournament":
-        if old_status != "in_progress":
-            return (
-                "Only an in-progress tournament can be paused."
-            ), 409
-
-    if action_type == "resume_tournament":
-        if old_status != "paused":
-            return (
-                "Only a paused tournament can be resumed."
-            ), 409
-
-    if action_type == "complete_tournament":
-        if old_status not in ["in_progress", "paused"]:
-            return (
-                "The tournament must be in progress or paused "
-                "before it can be completed."
-            ), 409
-
-    tournament.status = new_status
-
-    labels = {
-        "open_registration":
-            "Founder opened tournament registration.",
-
-        "start_tournament":
-            "Founder started the tournament.",
-
-        "pause_tournament":
-            "Founder paused the tournament.",
-
-        "resume_tournament":
-            "Founder resumed the tournament.",
-
-        "complete_tournament":
-            "Founder marked the tournament completed."
-    }
-
-    action = AdminAction(
-        action="tournament_control",
-        old_status=old_status,
-        new_status=new_status,
-        notes=labels[action_type],
-        created_at=datetime.utcnow()
-    )
-
-    db.session.add(action)
-    db.session.commit()
-
-    return redirect(
-        url_for("admin_dashboard")
-    )
-
-
-# ============================================================
-# FOUNDER — TOURNAMENT SETTINGS
-# ============================================================
-
-@app.route(
-    "/admin/tournament/settings",
-    methods=["POST"]
-)
-def founder_tournament_settings():
-
-    tournament = Tournament.query.order_by(
-        Tournament.id.desc()
-    ).first()
-
-    if not tournament:
-        return "No tournament exists.", 404
-
-    name = request.form.get(
-        "name",
-        ""
-    ).strip()
-
-    max_players_raw = request.form.get(
-        "max_players",
-        ""
-    ).strip()
-
-    competition_day = request.form.get(
-        "competition_day",
-        ""
-    ).strip()
-
-    final_day = request.form.get(
-        "final_day",
-        ""
-    ).strip()
-
-    if not name:
-        return "Tournament name is required.", 400
-
-    if not max_players_raw.isdigit():
-        return (
-            "Maximum players must be a whole number."
-        ), 400
-
-    max_players = int(max_players_raw)
-
-    if max_players not in [2, 4, 8, 16]:
-        return (
-            "Maximum players must be 2, 4, 8 or 16."
-        ), 400
-
-    if not competition_day:
-        return "Competition day is required.", 400
-
-    if not final_day:
-        return "Final day is required.", 400
-
-    old_values = (
-        f"name={tournament.name}, "
-        f"max_players={tournament.max_players}, "
-        f"competition_day={tournament.competition_day}, "
-        f"final_day={tournament.final_day}"
-    )
-
-    tournament.name = name
-    tournament.max_players = max_players
-    tournament.competition_day = competition_day
-    tournament.final_day = final_day
-
-    new_values = (
-        f"name={tournament.name}, "
-        f"max_players={tournament.max_players}, "
-        f"competition_day={tournament.competition_day}, "
-        f"final_day={tournament.final_day}"
-    )
-
-    action = AdminAction(
-        action="tournament_settings_updated",
-        notes=(
-            "Founder updated tournament settings. "
-            f"Previous: {old_values}. "
-            f"New: {new_values}."
-        ),
-        created_at=datetime.utcnow()
-    )
-
-    db.session.add(action)
-    db.session.commit()
-
-    return redirect(
-        url_for("admin_dashboard")
-    )
-
-
-# ============================================================
-# FOUNDER — OFFICIAL TOURNAMENT DRAW
-# ============================================================
-
-@app.route(
-    "/admin/tournament/draw",
-    methods=["POST"]
-)
 def draw_tournament():
 
-    tournament = Tournament.query.order_by(
+    tournament = Tournament.query.filter_by(
+        status="registration"
+    ).order_by(
         Tournament.id.desc()
     ).first()
 
     if not tournament:
-        return "No tournament exists.", 404
 
-    if tournament.status not in [
-        "registration",
-        "draw_released"
-    ]:
         return (
-            "The tournament draw cannot be changed "
-            "from its current state."
-        ), 409
-
-    existing_matches = Match.query.filter_by(
-        tournament_id=tournament.id
-    ).all()
-
-    if existing_matches:
-        return (
-            "An official draw already exists. "
-            "Reset the tournament before creating another draw."
-        ), 409
+            "No tournament is currently waiting for "
+            "the official draw."
+        ), 400
 
     approved_players = Player.query.filter_by(
         application_status="approved",
@@ -1093,45 +858,65 @@ def draw_tournament():
         Player.id.asc()
     ).all()
 
-    if len(approved_players) < 2:
+    player_count = len(
+        approved_players
+    )
+
+    if player_count < 2:
+
         return (
-            "At least two approved active players "
-            "are required."
+            "There are not enough approved players "
+            "to create the tournament draw."
         ), 400
 
-    if len(approved_players) > tournament.max_players:
+    if player_count > tournament.max_players:
+
         return (
             "There are more approved players than "
-            "the tournament player limit."
+            "the tournament capacity."
         ), 400
 
-    if len(approved_players) not in [2, 4, 8, 16]:
+    if player_count & (
+        player_count - 1
+    ):
+
         return (
-            "The official draw currently requires "
-            "2, 4, 8 or 16 approved players."
+            "The number of approved players must be "
+            "2, 4, 8 or 16 so the bracket can advance "
+            "cleanly."
         ), 400
+
+    existing_match = Match.query.filter_by(
+        tournament_id=tournament.id
+    ).first()
+
+    if existing_match:
+
+        return (
+            "The official draw already exists. "
+            "Use Reset Draw before creating a new one."
+        ), 409
 
     random.shuffle(
         approved_players
     )
 
-    if len(approved_players) == 16:
-        round_name = "Round 1"
-    elif len(approved_players) == 8:
-        round_name = "Quarter-Final"
-    elif len(approved_players) == 4:
-        round_name = "Semi-Final"
-    else:
-        round_name = "Final"
+    rounds = tournament_rounds(
+        player_count
+    )
 
-    for index in range(
+    first_round = rounds[0]
+
+    created_matches = []
+
+    for i in range(
         0,
-        len(approved_players),
+        player_count,
         2
     ):
 
-        player1 = approved_players[index]
-        player2 = approved_players[index + 1]
+        player1 = approved_players[i]
+        player2 = approved_players[i + 1]
 
         match = Match(
             tournament_id=tournament.id,
@@ -1140,38 +925,49 @@ def draw_tournament():
             player1_score=0,
             player2_score=0,
             status="scheduled",
-            round_name=round_name,
+            round_name=first_round,
             is_live=False
         )
 
-        db.session.add(match)
+        db.session.add(
+            match
+        )
+
+        created_matches.append(
+            match
+        )
 
     tournament.status = "draw_released"
 
     action = AdminAction(
-        action="tournament_draw_released",
+        action="tournament_draw_created",
         notes=(
-            f"Founder released the official draw for "
+            f"Created official draw for "
             f"{tournament.name} with "
-            f"{len(approved_players)} players."
+            f"{player_count} approved players."
         ),
         created_at=datetime.utcnow()
     )
 
-    db.session.add(action)
+    db.session.add(
+        action
+    )
+
     db.session.commit()
 
     return redirect(
-        url_for("admin_dashboard")
+        url_for(
+            "admin_dashboard"
+        )
     )
 
 
 # ============================================================
-# FOUNDER — RESET TOURNAMENT
+# FOUNDER — RESET / CANCEL DRAW
 # ============================================================
 
 @app.route(
-    "/admin/tournament/reset",
+    "/admin/reset-tournament",
     methods=["POST"]
 )
 def reset_tournament():
@@ -1181,441 +977,347 @@ def reset_tournament():
     ).first()
 
     if not tournament:
-        return "No tournament exists.", 404
 
-    if tournament.status == "completed":
         return (
-            "A completed tournament cannot be reset."
-        ), 409
+            "No tournament exists to reset."
+        ), 400
 
     matches = Match.query.filter_by(
         tournament_id=tournament.id
     ).all()
 
+    deleted_count = len(
+        matches
+    )
+
     for match in matches:
-        db.session.delete(match)
+
+        db.session.delete(
+            match
+        )
+
+    # If a previous test already produced a champion
+    # or runner-up, return those players to approved.
+    Player.query.filter(
+        Player.application_status.in_([
+            "champion",
+            "runner_up"
+        ])
+    ).update(
+        {
+            "application_status": "approved",
+            "active": True
+        },
+        synchronize_session=False
+    )
 
     tournament.status = "registration"
 
     action = AdminAction(
-        action="tournament_reset",
+        action="tournament_draw_reset",
         notes=(
-            f"Founder reset {tournament.name} "
-            "to registration."
+            f"Reset official tournament draw. "
+            f"Removed {deleted_count} generated matches."
         ),
         created_at=datetime.utcnow()
     )
 
-    db.session.add(action)
+    db.session.add(
+        action
+    )
+
     db.session.commit()
 
     return redirect(
-        url_for("admin_dashboard")
+        url_for(
+            "admin_dashboard"
+        )
     )
 
 
-
-
 # ============================================================
-# FOUNDER — PLAYER ADMINISTRATION
+# FOUNDER — RECORD MATCH RESULT
 # ============================================================
 
 @app.route(
-    "/admin/founder/player/<int:player_id>/status",
+    "/admin/match/<int:match_id>/result",
     methods=["POST"]
 )
-def founder_player_status(player_id):
+def record_match_result(match_id):
 
-    player = Player.query.get_or_404(player_id)
-
-    new_status = request.form.get(
-        "status",
-        ""
-    ).strip()
-
-    allowed_statuses = [
-        "pending",
-        "approved",
-        "waitlist",
-        "withdrawn",
-        "removed",
-        "suspended",
-        "eliminated",
-        "champion",
-        "runner_up"
-    ]
-
-    if new_status not in allowed_statuses:
-        return "Invalid player status.", 400
-
-    old_status = player.application_status
-
-    player.application_status = new_status
-
-    if new_status in [
-        "removed",
-        "suspended",
-        "withdrawn"
-    ]:
-        player.active = False
-
-    elif new_status in [
-        "pending",
-        "approved",
-        "waitlist"
-    ]:
-        player.active = True
-
-    action = AdminAction(
-        player_id=player.id,
-        action="founder_player_status_changed",
-        old_status=old_status,
-        new_status=new_status,
-        notes=(
-            f"Founder changed {player.name} "
-            f"from {old_status} to {new_status}."
-        ),
-        created_at=datetime.utcnow()
+    match = Match.query.get_or_404(
+        match_id
     )
 
-    db.session.add(action)
-    db.session.commit()
-
-    return redirect(
-        url_for("admin_dashboard")
+    tournament = Tournament.query.get_or_404(
+        match.tournament_id
     )
 
+    if match.status == "finished":
 
-# ============================================================
-# FOUNDER — RESTORE PLAYER
-# ============================================================
-
-@app.route(
-    "/admin/founder/player/<int:player_id>/restore",
-    methods=["POST"]
-)
-def founder_restore_player(player_id):
-
-    player = Player.query.get_or_404(player_id)
-
-    old_status = player.application_status
-
-    player.application_status = "approved"
-    player.active = True
-
-    action = AdminAction(
-        player_id=player.id,
-        action="founder_player_restored",
-        old_status=old_status,
-        new_status="approved",
-        notes=(
-            f"Founder restored {player.name} "
-            "to active approved status."
-        ),
-        created_at=datetime.utcnow()
-    )
-
-    db.session.add(action)
-    db.session.commit()
-
-    return redirect(
-        url_for("admin_dashboard")
-    )
-
-
-# ============================================================
-# FOUNDER — CHAMPIONSHIP STARS
-# ============================================================
-
-@app.route(
-    "/admin/founder/player/<int:player_id>/stars",
-    methods=["POST"]
-)
-def founder_player_stars(player_id):
-
-    player = Player.query.get_or_404(player_id)
-
-    operation = request.form.get(
-        "operation",
-        ""
-    ).strip()
-
-    amount_raw = request.form.get(
-        "amount",
-        "1"
-    ).strip()
-
-    if operation not in [
-        "add",
-        "remove"
-    ]:
-        return "Invalid star operation.", 400
-
-    if not amount_raw.isdigit():
-        return "Star amount must be a whole number.", 400
-
-    amount = int(amount_raw)
-
-    if amount < 1 or amount > 100:
         return (
-            "Star amount must be between 1 and 100."
+            "This match has already been completed."
+        ), 409
+
+    winner_id = request.form.get(
+        "winner_id",
+        ""
+    ).strip()
+
+    if not winner_id.isdigit():
+
+        return (
+            "Please select the winning player."
         ), 400
 
-    old_stars = player.championship_stars or 0
+    winner_id = int(
+        winner_id
+    )
 
-    if operation == "add":
-        player.championship_stars = old_stars + amount
-    else:
-        player.championship_stars = max(
-            0,
-            old_stars - amount
+    if winner_id not in [
+        match.player1_id,
+        match.player2_id
+    ]:
+
+        return (
+            "The selected winner is not part of this match."
+        ), 400
+
+    player1_score = request.form.get(
+        "player1_score",
+        "0"
+    ).strip()
+
+    player2_score = request.form.get(
+        "player2_score",
+        "0"
+    ).strip()
+
+    if not player1_score.isdigit():
+        player1_score = "0"
+
+    if not player2_score.isdigit():
+        player2_score = "0"
+
+    match.player1_score = int(
+        player1_score
+    )
+
+    match.player2_score = int(
+        player2_score
+    )
+
+    match.winner_id = winner_id
+
+    match.status = "finished"
+
+    match.is_live = False
+
+    match.finished_at = datetime.utcnow()
+
+    tournament.status = "in_progress"
+
+    # --------------------------------------------------------
+    # FINAL
+    # --------------------------------------------------------
+
+    if match.round_name == "Final":
+
+        loser_id = (
+            match.player2_id
+            if winner_id == match.player1_id
+            else match.player1_id
         )
 
+        winner = Player.query.get(
+            winner_id
+        )
+
+        loser = Player.query.get(
+            loser_id
+        )
+
+        winner.application_status = "champion"
+        loser.application_status = "runner_up"
+
+        tournament.status = "completed"
+
+        action = AdminAction(
+            player_id=winner_id,
+            action="tournament_completed",
+            notes=(
+                f"{winner.name} won the final of "
+                f"{tournament.name} and became champion."
+            ),
+            created_at=datetime.utcnow()
+        )
+
+        db.session.add(
+            action
+        )
+
+        db.session.commit()
+
+        return redirect(
+            url_for(
+                "admin_dashboard"
+            )
+        )
+
+    # --------------------------------------------------------
+    # AUTOMATIC ADVANCEMENT
+    # --------------------------------------------------------
+
+    next_match = create_next_round_match(
+        tournament,
+        match
+    )
+
     action = AdminAction(
-        player_id=player.id,
-        action="founder_championship_stars",
+        player_id=winner_id,
+        action="match_result_recorded",
         notes=(
-            f"Founder {operation}ed {amount} "
-            f"championship star(s) for {player.name}. "
-            f"Previous: {old_stars}. "
-            f"New: {player.championship_stars}."
+            f"Winner recorded for Match #{match.id}. "
+            f"Winner ID: {winner_id}."
         ),
         created_at=datetime.utcnow()
     )
 
-    db.session.add(action)
+    db.session.add(
+        action
+    )
+
+    if next_match:
+
+        action2 = AdminAction(
+            action="automatic_advancement",
+            notes=(
+                f"Created {next_match.round_name} "
+                f"match #{next_match.id} "
+                f"automatically from completed matches."
+            ),
+            created_at=datetime.utcnow()
+        )
+
+        db.session.add(
+            action2
+        )
+
     db.session.commit()
 
     return redirect(
-        url_for("admin_dashboard")
+        url_for(
+            "admin_dashboard"
+        )
     )
 
 
-
 # ============================================================
-# FOUNDER — PUBLIC ANNOUNCEMENT
+# FOUNDER — START MATCH
 # ============================================================
 
 @app.route(
-    "/admin/founder/public-announcement",
+    "/admin/match/<int:match_id>/start",
     methods=["POST"]
 )
-def founder_public_announcement():
+def start_match(match_id):
 
-    tournament = Tournament.query.order_by(
-        Tournament.id.desc()
-    ).first()
-
-    if not tournament:
-        return (
-            "No tournament exists."
-        ), 404
-
-    title = request.form.get(
-        "title",
-        ""
-    ).strip()
-
-    message = request.form.get(
-        "message",
-        ""
-    ).strip()
-
-    if not title:
-        return (
-            "Announcement title is required."
-        ), 400
-
-    if not message:
-        return (
-            "Announcement message is required."
-        ), 400
-
-    if len(title) > 150:
-        return (
-            "Announcement title is too long."
-        ), 400
-
-    if len(message) > 5000:
-        return (
-            "Announcement message is too long."
-        ), 400
-
-    action = AdminAction(
-        action="public_notice",
-        notes=(
-            f"{title}\n\n"
-            f"{message}"
-        ),
-        created_at=datetime.utcnow()
-    )
-
-    db.session.add(action)
-    db.session.commit()
-
-    return redirect(
-        url_for("admin_dashboard")
-    )
-
-
-
-# ============================================================
-# FOUNDER — LIVE MATCH CONTROL
-# ============================================================
-
-@app.route(
-    "/admin/founder/match/<int:match_id>/live",
-    methods=["POST"]
-)
-def founder_live_match_control(match_id):
     match = Match.query.get_or_404(match_id)
 
-    action_type = request.form.get("action", "").strip()
+    if match.status == "finished":
+        return (
+            "This match has already been completed."
+        ), 409
 
-    if action_type not in ["start", "stop", "finish"]:
-        return "Invalid live match action.", 400
+    match.status = "in_progress"
+    match.is_live = True
 
-    old_status = match.status
-    old_live = bool(match.is_live)
-
-    if action_type == "start":
-        if match.status == "finished":
-            return "A finished match cannot be started again.", 409
-
-        other_live_matches = Match.query.filter(
-            Match.is_live.is_(True),
-            Match.id != match.id
-        ).all()
-
-        for other_match in other_live_matches:
-            other_match.is_live = False
-
-        match.is_live = True
-        match.status = "live"
-
-        if not match.started_at:
-            match.started_at = datetime.utcnow()
-
-    elif action_type == "stop":
-        match.is_live = False
-
-        if match.status == "live":
-            match.status = "scheduled"
-
-    elif action_type == "finish":
-        if match.status == "finished":
-            return "This match is already finished.", 409
-
-        try:
-            player1_score = int(
-                request.form.get("player1_score", "")
-            )
-            player2_score = int(
-                request.form.get("player2_score", "")
-            )
-        except (TypeError, ValueError):
-            return "Both player scores must be valid whole numbers.", 400
-
-        if player1_score < 0 or player2_score < 0:
-            return "Scores cannot be negative.", 400
-
-        if player1_score == player2_score:
-            return (
-                "A finished match must have a winning score."
-            ), 400
-
-        match.player1_score = player1_score
-        match.player2_score = player2_score
-
-        if player1_score > player2_score:
-            match.winner_id = match.player1_id
-            loser_id = match.player2_id
-        else:
-            match.winner_id = match.player2_id
-            loser_id = match.player1_id
-
-        match.is_live = False
-        match.status = "finished"
-        match.finished_at = datetime.utcnow()
-
-        from models import PlayerStatistic
-
-        for player_id in [
-            match.player1_id,
-            match.player2_id
-        ]:
-            stats = PlayerStatistic.query.filter_by(
-                player_id=player_id
-            ).first()
-
-            if not stats:
-                stats = PlayerStatistic(
-                    player_id=player_id,
-                    matches_played=0,
-                    wins=0,
-                    draws=0,
-                    losses=0,
-                    goals=0,
-                    assists=0,
-                    clean_sheets=0,
-                    saves=0,
-                    critical_saves=0
-                )
-                db.session.add(stats)
-
-            stats.matches_played = (
-                stats.matches_played or 0
-            ) + 1
-
-            if player_id == match.winner_id:
-                stats.wins = (stats.wins or 0) + 1
-            elif player_id == loser_id:
-                stats.losses = (stats.losses or 0) + 1
-
-            if player_id == match.player1_id:
-                stats.goals = (
-                    stats.goals or 0
-                ) + player1_score
-            else:
-                stats.goals = (
-                    stats.goals or 0
-                ) + player2_score
-
-        tournament = Tournament.query.get(
-            match.tournament_id
-        )
-
-        if tournament:
-            next_match = create_next_round_match(
-                tournament,
-                match
-            )
-
-            if (
-                match.round_name == "Final"
-                and next_match is None
-            ):
-                tournament.status = "completed"
-
-    action_labels = {
-        "start": "started live match",
-        "stop": "stopped live match",
-        "finish": "finished match"
-    }
+    if not match.started_at:
+        match.started_at = datetime.utcnow()
 
     action = AdminAction(
-        action="founder_live_match_control",
+        action="match_started",
         notes=(
-            f"Founder {action_labels[action_type]}. "
-            f"Match ID: {match.id}. "
-            f"Previous status: {old_status}. "
-            f"New status: {match.status}. "
-            f"Previous live state: {old_live}. "
-            f"New live state: {bool(match.is_live)}."
+            f"Founder started Match #{match.id} "
+            f"({match.round_name})."
         ),
         created_at=datetime.utcnow()
     )
 
+    db.session.add(action)
+    db.session.commit()
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
+# ============================================================
+# FOUNDER — POSTPONE MATCH + PUBLIC NOTICE
+# ============================================================
+
+@app.route(
+    "/admin/match/<int:match_id>/postpone",
+    methods=["POST"]
+)
+def postpone_match(match_id):
+
+    match = Match.query.get_or_404(match_id)
+
+    if match.status == "finished":
+        return (
+            "A completed match cannot be postponed."
+        ), 409
+
+    new_time = request.form.get(
+        "scheduled_time",
+        ""
+    ).strip()
+
+    reason = request.form.get(
+        "public_notice",
+        ""
+    ).strip()
+
+    if not new_time:
+        return (
+            "Please provide the new match date and time."
+        ), 400
+
+    if not reason:
+        return (
+            "Please provide the public notice."
+        ), 400
+
+    try:
+        scheduled_time = datetime.fromisoformat(
+            new_time
+        )
+    except ValueError:
+        return (
+            "Invalid date/time format."
+        ), 400
+
+    match.scheduled_time = scheduled_time
+    match.status = "scheduled"
+    match.is_live = False
+
+    notice = AdminAction(
+        action="public_notice",
+        notes=reason,
+        created_at=datetime.utcnow()
+    )
+
+    action = AdminAction(
+        action="match_postponed",
+        notes=(
+            f"Match #{match.id} postponed to "
+            f"{scheduled_time.strftime('%Y-%m-%d %H:%M')}."
+        ),
+        created_at=datetime.utcnow()
+    )
+
+    db.session.add(notice)
     db.session.add(action)
     db.session.commit()
 

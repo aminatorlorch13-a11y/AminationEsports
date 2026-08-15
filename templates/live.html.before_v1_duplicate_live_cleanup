@@ -210,7 +210,19 @@
 
     {% else %}
 
-        
+        <section
+            id="founder-controlled-live-match"
+        >
+
+            <h2>
+                🔴 LIVE MATCH
+            </h2>
+
+            <p>
+                There are currently no live matches.
+            </p>
+
+        </section>
 
     {% endif %}
 

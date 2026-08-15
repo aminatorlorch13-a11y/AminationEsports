@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amination Esports — Tournament Rules</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<header class="navbar">
+    <div class="logo">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+    <nav>
+        <a href="/">Home</a>
+        <a href="/tournament">Tournament</a>
+        <a href="/live">Live</a>
+        <a href="/standings">Standings</a>
+        <a href="/players">Players</a>
+        <a href="/matches">Matches</a>
+        <a href="/terms">Rules</a>
+    </nav>
+</header>
+
+<main class="terms-page">
+
+    <!-- Put the agreement content here -->
+
+</main>
+
+<footer>
+    <p>
+        © 2026 Amination Esports —
+        From Imagination to Reality.
+    </p>
+</footer>
+
+</body>
+</html>
+
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")

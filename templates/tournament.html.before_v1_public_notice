@@ -264,7 +264,6 @@
     {% if matches %}
 
 
-
         <div class="draw-status">
 
             <strong>

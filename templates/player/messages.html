@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>My Messages | Amination Esports</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+
+<body>
+
+
+<header class="navbar">
+
+    <div class="logo">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+</header>
+
+
+<main>
+
+<section class="register-section">
+
+
+    <div class="live-badge">
+        💬 AMINATION MESSAGES
+    </div>
+
+
+    <h1>
+        MY<br>
+        MESSAGES
+    </h1>
+
+
+    <p>
+        Welcome {{ player.name }}.
+    </p>
+
+
+    {% if messages %}
+
+
+        {% for message in messages %}
+
+        <div class="rules-box">
+
+
+            <h3>
+                {{ message.subject }}
+            </h3>
+
+
+            <p>
+                <strong>
+                    Your message:
+                </strong>
+            </p>
+
+
+            <p>
+                {{ message.message }}
+            </p>
+
+
+            {% if message.founder_reply %}
+
+                <hr>
+
+                <p>
+                    <strong>
+                        👑 Founder response:
+                    </strong>
+                </p>
+
+                <p>
+                    {{ message.founder_reply }}
+                </p>
+
+                <small>
+                    Responded:
+                    {{ message.replied_at }}
+                </small>
+
+
+            {% else %}
+
+                <p>
+                    🟡 Your message is currently
+                    being reviewed by Amination.
+                </p>
+
+            {% endif %}
+
+
+        </div>
+
+        {% endfor %}
+
+
+    {% else %}
+
+        <div class="rules-box">
+
+            <p>
+                You don't have any messages yet.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+
+    <a
+        class="button primary"
+        href="{{ url_for(
+            'player_contact',
+            player_id=player.id
+        ) }}">
+
+        💬 CONTACT FOUNDER
+
+    </a>
+
+
+</section>
+
+</main>
+
+
+<footer>
+
+    <p>
+        © 2026 Amination Esports
+    </p>
+
+</footer>
+
+
+</body>
+
+</html>

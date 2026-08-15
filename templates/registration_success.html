@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Application Received | Amination Esports</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<header class="navbar">
+
+    <div class="logo">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+</header>
+
+
+<main>
+
+<section class="register-section">
+
+    <div class="live-badge">
+        🟡 APPLICATION RECEIVED
+    </div>
+
+    <h1>APPLICATION<br>UNDER REVIEW</h1>
+
+    <p>
+        Thank you for applying to the Amination Esports
+        FC Mobile tournament.
+    </p>
+
+    <div class="rules-box">
+
+        <h3>YOUR APPLICATION</h3>
+
+        <p>
+            <strong>Player:</strong>
+            {{ player.name }}
+        </p>
+
+        <p>
+            <strong>FC Mobile:</strong>
+            {{ player.fc_username }}
+        </p>
+
+        <p>
+            <strong>Country:</strong>
+            {{ player.country }}
+        </p>
+
+        <p>
+            <strong>Squad OVR:</strong>
+            {{ player.squad_ovr }}
+        </p>
+
+        <p>
+            <strong>Application ID:</strong>
+            #{{ player.id }}
+        </p>
+
+        <p>
+            <strong>Status:</strong>
+            🟡 Under Review
+        </p>
+
+    </div>
+
+
+    <h2>WHILE YOU WAIT...</h2>
+
+    <p>
+        Your application is being reviewed by
+        Amination Esports administration.
+    </p>
+
+    <p>
+        While you wait, explore the world of Amination.
+        Learn the rules, discover legendary players,
+        and see the records future competitors will
+        try to break.
+    </p>
+
+
+    <div class="rules-box">
+
+        <h3>EXPLORE AMINATION</h3>
+
+        <p>
+            📜 <strong>Tournament Rules</strong><br>
+            Learn the rules and sportsmanship standards.
+        </p>
+
+        <p>
+            🏛️ <strong>Hall of Legends</strong><br>
+            Discover champions and historic performances.
+        </p>
+
+        <p>
+            🔥 <strong>Records to Beat</strong><br>
+            See the performances future players must beat.
+        </p>
+
+        <p>
+            🎬 <strong>Highlights</strong><br>
+            Relive great goals, saves and matches.
+        </p>
+
+        <p>
+            🏆 <strong>Tournament Information</strong><br>
+            Learn how Amination competitions work.
+        </p>
+
+    </div>
+
+
+    <p>
+        <strong>Important:</strong>
+        Registration does not guarantee a tournament
+        position. Approved players will be notified
+        when selections are complete.
+    </p>
+
+
+    <a class="button primary"
+       href="/">
+        RETURN HOME
+    </a>
+
+</section>
+
+</main>
+
+
+<footer>
+
+    <p>
+        © 2026 Amination Esports —
+        From Imagination to Reality.
+    </p>
+
+</footer>
+
+</body>
+
+</html>

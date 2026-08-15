@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Amination Founder Control Center</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+
+        body {
+            margin: 0;
+        }
+
+        .admin-container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        .founder-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .founder-badge {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+        }
+
+        .admin-nav {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+            margin-bottom: 35px;
+        }
+
+        .admin-nav a {
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .admin-section {
+            margin-bottom: 45px;
+        }
+
+        .admin-section h2 {
+            margin-bottom: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            background: rgba(255,255,255,0.06);
+        }
+
+        .stat-card h2 {
+            margin: 8px 0 0;
+        }
+
+        .player-card,
+        .message-card,
+        .control-card,
+        .activity-card {
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.06);
+        }
+
+        .message-card {
+            border-left: 4px solid orange;
+        }
+
+        .message-card.replied {
+            border-left: 4px solid limegreen;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 110px;
+            box-sizing: border-box;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+
+        select {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 8px 0;
+        }
+
+        .status {
+            font-weight: bold;
+        }
+
+        .empty {
+            padding: 20px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+        }
+
+        .back-top {
+            display: block;
+            text-align: right;
+            margin-top: 15px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<header class="navbar">
+
+    <div class="logo">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+</header>
+
+
+<main class="admin-container">
+
+
+    <!-- ================================= -->
+    <!-- FOUNDER HEADER -->
+    <!-- ================================= -->
+
+    <section class="founder-header">
+
+        <div class="founder-badge">
+            👑 FOUNDER ACCESS
+        </div>
+
+        <h1>
+            AMINATION
+            <br>
+            CONTROL CENTER
+        </h1>
+
+        <p>
+            Private tournament administration
+        </p>
+
+    </section>
+
+
+    <!-- ================================= -->
+    <!-- NAVIGATION -->
+    <!-- ================================= -->
+
+    <nav class="admin-nav">
+
+        <a class="button"
+           href="#overview">
+            📊 Overview
+        </a>
+
+        <a class="button"
+           href="#players">
+            👥 Players
+        </a>
+
+        <a class="button"
+           href="#messages">
+            💬 Messages
+        </a>
+
+        <a class="button"
+           href="#tournament">
+            🏆 Tournament
+        </a>
+
+        <a class="button"
+           href="#live">
+            🔴 Live
+        </a>
+
+        <a class="button"
+           href="#activity">
+            📜 Activity
+        </a>
+
+    </nav>
+
+
+    <!-- ================================= -->
+    <!-- OVERVIEW -->
+    <!-- ================================= -->
+
+    <section id="overview"
+             class="admin-section">
+
+        <h2>
+            📊 OVERVIEW
+        </h2>
+
+
+        <div class="stats-grid">
+
+
+            <div class="stat-card">
+
+                <small>
+                    APPROVED
+                </small>
+
+                <h2>
+                    {{ approved_count }}/16
+                </h2>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <small>
+                    PENDING
+                </small>
+
+                <h2>
+                    {{ pending_count }}
+                </h2>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <small>
+                    WAITLIST
+                </small>
+
+                <h2>
+                    {{ waitlist_count }}
+                </h2>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <small>
+                    WITHDRAWN
+                </small>
+
+                <h2>
+                    {{ withdrawn_count }}
+                </h2>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <small>
+                    REMOVED
+                </small>
+
+                <h2>
+                    {{ removed_count }}
+                </h2>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <small>
+                    UNREAD
+                </small>
+
+                <h2>
+                    {{ unread_messages }}
+                </h2>
+
+            </div>
+
+
+        </div>
+
+    </section>
+
+    <!-- ================================= -->
+    <!-- TOURNAMENT CONTROL -->
+    <!-- ================================= -->
+
+    <section id="tournament"
+             class="admin-section">
+
+        <h2>
+            🏆 TOURNAMENT CONTROL
+        </h2>
+
+        <div class="control-card">
+
+            <h3>
+                🎲 Official Tournament Draw
+            </h3>
+
+            <p>
+                This is where the Founder creates the official
+                tournament draw.
+            </p>
+
+            <p>
+                The system will randomly pair every approved
+                and active player.
+            </p>
+
+            <p>
+                Once the draw is created, the matches will
+                automatically appear on the public tournament
+                page and on the profiles of the players involved.
+            </p>
+
+            <p>
+                <strong>
+                    ⚠️ Important:
+                </strong>
+
+                Do not press the button until the approved
+                player list is final.
+            </p>
+
+
+            <form
+                method="POST"
+                action="{{ url_for('draw_tournament') }}"
+                onsubmit="return confirm(
+                    'Are you sure you want to create the official tournament draw?'
+                );"
+            >
+
+                <button
+                    type="submit"
+                    class="button"
+                    style="
+                        border:none;
+                        cursor:pointer;
+                        width:100%;
+                        font-size:16px;
+                    "
+                >
+
+                    🎲 CREATE OFFICIAL DRAW
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </section>
+
+    <!-- ================================= -->
+    <!-- PLAYER CONTROL -->
+    <!-- ================================= -->
+
+    <section id="players"
+             class="admin-section">
+
+        <h2>
+            👥 PLAYER CONTROL
+        </h2>
+
+        <p>
+            Manage every registered player's
+            tournament status.
+        </p>
+
+
+        {% if players %}
+
+
+            {% for player in players %}
+
+
+            <div class="player-card">
+
+
+                <h3>
+
+                    #{{ player.id }}
+                    —
+                    {{ player.name }}
+
+                </h3>
+
+
+                <p>
+
+                    <strong>
+                        FC Mobile:
+                    </strong>
+
+                    {{ player.fc_username }}
+
+                </p>
+
+
+                <p>
+
+                    <strong>
+                        Country:
+                    </strong>
+
+                    {{ player.country }}
+
+                </p>
+
+
+                <p>
+
+                    <strong>
+                        Squad OVR:
+                    </strong>
+
+                    {{ player.squad_ovr }}
+
+                </p>
+
+
+                <p>
+
+                    <strong>
+                        Status:
+                    </strong>
+
+
+                    {% if player.application_status == "approved" %}
+
+                        🟢 Approved
+
+                    {% elif player.application_status == "waitlist" %}
+
+                        🔵 Waitlist
+
+                    {% elif player.application_status == "withdrawn" %}
+
+                        ⚪ Withdrawn
+
+                    {% elif player.application_status == "removed" %}
+
+                        🔴 Removed
+
+                    {% elif player.application_status == "suspended" %}
+
+                        🚫 Suspended
+
+                    {% else %}
+
+                        🟡 Pending
+
+                    {% endif %}
+
+                </p>
+
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'change_player_status',
+                        player_id=player.id
+                    ) }}">
+
+
+                    <label>
+                        Change status:
+                    </label>
+
+
+                    <br>
+
+
+                    <select name="status">
+
+                        <option value="pending">
+                            🟡 Pending
+                        </option>
+
+                        <option value="approved">
+                            🟢 Approved
+                        </option>
+
+                        <option value="waitlist">
+                            🔵 Waitlist
+                        </option>
+
+                        <option value="withdrawn">
+                            ⚪ Withdrawn
+                        </option>
+
+                        <option value="removed">
+                            🔴 Removed
+                        </option>
+
+                        <option value="suspended">
+                            🚫 Suspended
+                        </option>
+
+                    </select>
+
+
+                    <button
+                        class="button primary"
+                        type="submit">
+
+                        UPDATE PLAYER
+
+                    </button>
+
+
+                </form>
+
+
+                <br>
+
+
+                <a
+                    class="button"
+                    href="{{ url_for(
+                        'player_contact',
+                        player_id=player.id
+                    ) }}">
+
+                    💬 CONTACT PLAYER
+
+                </a>
+
+
+            </div>
+
+
+            {% endfor %}
+
+
+        {% else %}
+
+
+            <div class="empty">
+
+                No players registered yet.
+
+            </div>
+
+
+        {% endif %}
+
+
+        <a class="back-top"
+           href="#overview">
+            ↑ Back to top
+        </a>
+
+    </section>
+
+
+    <!-- ================================= -->
+    <!-- MESSAGES -->
+    <!-- ================================= -->
+
+    <section id="messages"
+             class="admin-section">
+
+        <h2>
+            💬 PLAYER MESSAGES
+        </h2>
+
+        <p>
+            Review player requests and communicate
+            directly with participants.
+        </p>
+
+
+        {% if messages %}
+
+
+            {% for message in messages %}
+
+
+            <div class="message-card
+                {% if message.status == 'replied' %}
+                    replied
+                {% endif %}">
+
+
+                <h3>
+
+                    {% if message.status == "unread" %}
+
+                        🟠 NEW MESSAGE
+
+                    {% elif message.status == "replied" %}
+
+                        🟢 REPLIED
+
+                    {% else %}
+
+                        🔵 REVIEWED
+
+                    {% endif %}
+
+                </h3>
+
+
+                <p>
+
+                    <strong>
+                        Player:
+                    </strong>
+
+                    #{{ message.player_id }}
+
+                </p>
+
+
+                <p>
+
+                    <strong>
+                        Subject:
+                    </strong>
+
+                    {{ message.subject }}
+
+                </p>
+
+
+                <p>
+
+                    <strong>
+                        Player message:
+                    </strong>
+
+                </p>
+
+
+                <p>
+                    {{ message.message }}
+                </p>
+
+
+                <small>
+
+                    Received:
+                    {{ message.created_at }}
+
+                </small>
+
+
+                {% if message.founder_reply %}
+
+
+                    <hr>
+
+
+                    <p>
+
+                        <strong>
+                            👑 Founder reply:
+                        </strong>
+
+                    </p>
+
+
+                    <p>
+                        {{ message.founder_reply }}
+                    </p>
+
+
+                    <small>
+
+                        Replied:
+                        {{ message.replied_at }}
+
+                    </small>
+
+
+                {% endif %}
+
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'reply_to_message',
+                        message_id=message.id
+                    ) }}">
+
+
+                    <textarea
+                        name="founder_reply"
+                        placeholder="Write your response to this player..."
+                        required></textarea>
+
+
+                    <button
+                        class="button primary"
+                        type="submit">
+
+                        👑 SEND FOUNDER REPLY
+
+                    </button>
+
+
+                </form>
+
+
+            </div>
+
+
+            {% endfor %}
+
+
+        {% else %}
+
+
+            <div class="empty">
+
+                No player messages yet.
+
+            </div>
+
+
+        {% endif %}
+
+
+        <a class="back-top"
+           href="#overview">
+            ↑ Back to top
+        </a>
+
+    </section>
+
+
+
+
+
+    <!-- ================================= -->
+    <!-- FOUNDER MATCH CONTROLS -->
+    <!-- ================================= -->
+
+    <section id="match-controls"
+             class="admin-section">
+
+        <h2>
+            🎮 FOUNDER MATCH OPERATIONS
+        </h2>
+
+        <div class="control-card">
+
+            <h3>
+                Official Match Control
+            </h3>
+
+            <p>
+                The Founder controls the official match schedule,
+                live status, postponements and results from here.
+                Public tournament pages update from these records.
+            </p>
+
+            {% if matches %}
+
+                {% for match in matches %}
+
+                    <div class="activity-card">
+
+                        <h3>
+                            Match #{{ match.id }}
+                        </h3>
+
+                        <p>
+                            <strong>
+                                {{ match.round_name }}
+                            </strong>
+                        </p>
+
+                        <p>
+
+                            {% if player_map.get(match.player1_id) %}
+                                {{ player_map[match.player1_id].name }}
+                            {% else %}
+                                TBD
+                            {% endif %}
+
+                            <strong> vs </strong>
+
+                            {% if player_map.get(match.player2_id) %}
+                                {{ player_map[match.player2_id].name }}
+                            {% else %}
+                                TBD
+                            {% endif %}
+
+                        </p>
+
+                        <p>
+                            Status:
+                            <strong>
+                                {{ match.status|upper }}
+                            </strong>
+                        </p>
+
+                        {% if match.scheduled_time %}
+
+                            <p>
+                                🕐 Scheduled:
+                                {{ match.scheduled_time.strftime(
+                                    "%Y-%m-%d %H:%M"
+                                ) }}
+                            </p>
+
+                        {% endif %}
+
+                        {% if match.status == "finished" %}
+
+                            <p>
+                                🏁 Final Score:
+                                {{ match.player1_score }}
+                                -
+                                {{ match.player2_score }}
+                            </p>
+
+                            {% if player_map.get(match.winner_id) %}
+
+                                <p>
+                                    🏆 Winner:
+                                    <strong>
+                                        {{ player_map[match.winner_id].name }}
+                                    </strong>
+                                </p>
+
+                            {% endif %}
+
+                        {% else %}
+
+                            <!-- START MATCH -->
+
+                            <form
+                                method="POST"
+                                action="{{ url_for(
+                                    'start_match',
+                                    match_id=match.id
+                                ) }}"
+                                style="margin-bottom:15px;"
+                            >
+
+                                <button
+                                    type="submit"
+                                    class="button"
+                                    style="
+                                        border:none;
+                                        cursor:pointer;
+                                        width:100%;
+                                    "
+                                >
+                                    🔴 START MATCH / GO LIVE
+                                </button>
+
+                            </form>
+
+
+                            <!-- RECORD RESULT -->
+
+                            {% if match.status == "in_progress"
+                                  or match.status == "live" %}
+
+                                <form
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'record_match_result',
+                                        match_id=match.id
+                                    ) }}"
+                                >
+
+                                    <h4>
+                                        🏆 RECORD OFFICIAL RESULT
+                                    </h4>
+
+                                    <label>
+                                        {{ player_map[match.player1_id].name }}
+                                        Score
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        name="player1_score"
+                                        min="0"
+                                        value="{{ match.player1_score or 0 }}"
+                                        required
+                                        style="
+                                            width:100%;
+                                            box-sizing:border-box;
+                                            padding:10px;
+                                            margin:6px 0 10px;
+                                            border-radius:8px;
+                                        "
+                                    >
+
+                                    <label>
+                                        {{ player_map[match.player2_id].name }}
+                                        Score
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        name="player2_score"
+                                        min="0"
+                                        value="{{ match.player2_score or 0 }}"
+                                        required
+                                        style="
+                                            width:100%;
+                                            box-sizing:border-box;
+                                            padding:10px;
+                                            margin:6px 0 10px;
+                                            border-radius:8px;
+                                        "
+                                    >
+
+                                    <label>
+                                        Winning Player
+                                    </label>
+
+                                    <select
+                                        name="winner_id"
+                                        required
+                                        style="width:100%;"
+                                    >
+
+                                        <option value="">
+                                            Select winner
+                                        </option>
+
+                                        <option value="{{ match.player1_id }}">
+                                            {{ player_map[match.player1_id].name }}
+                                        </option>
+
+                                        <option value="{{ match.player2_id }}">
+                                            {{ player_map[match.player2_id].name }}
+                                        </option>
+
+                                    </select>
+
+                                    <button
+                                        type="submit"
+                                        class="button"
+                                        style="
+                                            border:none;
+                                            cursor:pointer;
+                                            width:100%;
+                                            margin-top:10px;
+                                        "
+                                        onclick="return confirm(
+                                            'Record this official result?'
+                                        );"
+                                    >
+                                        ✅ RECORD RESULT
+                                    </button>
+
+                                </form>
+
+                            {% endif %}
+
+
+                            <!-- POSTPONE / RESCHEDULE -->
+
+                            <form
+                                method="POST"
+                                action="{{ url_for(
+                                    'postpone_match',
+                                    match_id=match.id
+                                ) }}"
+                                style="margin-top:20px;"
+                            >
+
+                                <h4>
+                                    ⏰ POSTPONE / RESCHEDULE
+                                </h4>
+
+                                <label>
+                                    New official date and time
+                                </label>
+
+                                <input
+                                    type="datetime-local"
+                                    name="scheduled_time"
+                                    required
+                                    style="
+                                        width:100%;
+                                        box-sizing:border-box;
+                                        padding:10px;
+                                        margin:8px 0;
+                                        border-radius:8px;
+                                    "
+                                >
+
+                                <label>
+                                    Public explanation / apology
+                                </label>
+
+                                <textarea
+                                    name="public_notice"
+                                    required
+                                    placeholder="Explain the reason for the postponement and apologize to affected players and supporters."
+                                ></textarea>
+
+                                <button
+                                    type="submit"
+                                    class="button"
+                                    style="
+                                        border:none;
+                                        cursor:pointer;
+                                        width:100%;
+                                    "
+                                    onclick="return confirm(
+                                        'Postpone this official match and publish the notice?'
+                                    );"
+                                >
+                                    📢 POSTPONE & PUBLISH NOTICE
+                                </button>
+
+                            </form>
+
+                        {% endif %}
+
+                    </div>
+
+                {% endfor %}
+
+            {% else %}
+
+                <div class="empty">
+                    No tournament matches currently exist.
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+    <!-- ================================= -->
+    <!-- LIVE CONTROL -->
+    <!-- ================================= -->
+
+    <section id="live"
+             class="admin-section">
+
+        <h2>
+            🔴 LIVE CONTROL
+        </h2>
+
+
+        <div class="control-card">
+
+            <h3>
+                Amination Live Operations
+            </h3>
+
+            <p>
+                This will become the command center
+                for live tournament operations.
+            </p>
+
+            <ul>
+
+                <li>
+                    Live matches
+                </li>
+
+                <li>
+                    Score updates
+                </li>
+
+                <li>
+                    Match status
+                </li>
+
+                <li>
+                    Winners
+                </li>
+
+                <li>
+                    Real-time public results
+                </li>
+
+            </ul>
+
+        </div>
+
+    </section>
+
+
+    <!-- ================================= -->
+    <!-- ACTIVITY -->
+    <!-- ================================= -->
+
+    <section id="activity"
+             class="admin-section">
+
+        <h2>
+            📜 FOUNDER ACTIVITY
+        </h2>
+
+
+        {% if actions %}
+
+
+            {% for action in actions %}
+
+
+            <div class="activity-card">
+
+                <p>
+
+                    Player #{{ action.player_id }}
+
+                    changed from
+
+                    <strong>
+                        {{ action.old_status }}
+                    </strong>
+
+                    to
+
+                    <strong>
+                        {{ action.new_status }}
+                    </strong>
+
+                </p>
+
+
+                <small>
+                    {{ action.created_at }}
+                </small>
+
+
+            </div>
+
+
+            {% endfor %}
+
+
+        {% else %}
+
+
+            <div class="empty">
+
+                No founder activity recorded yet.
+
+            </div>
+
+
+        {% endif %}
+
+
+    </section>
+
+
+</main>
+
+
+<footer>
+
+    <p>
+        © 2026 Amination Esports
+    </p>
+
+</footer>
+
+
+</body>
+
+</html>

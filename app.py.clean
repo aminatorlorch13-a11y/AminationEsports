@@ -1,0 +1,847 @@
+from flask import Flask, render_template, request, redirect, url_for
+from datetime import datetime
+import random
+
+from config import Config
+
+from models import (
+    db,
+    Player,
+    Match,
+    Tournament,
+    AdminAction,
+    FounderMessage
+)
+
+
+app = Flask(__name__)
+
+app.config.from_object(Config)
+
+db.init_app(app)
+
+
+# ============================================================
+# PUBLIC PAGES
+# ============================================================
+
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+
+@app.route("/tournament")
+def tournament():
+
+    matches = Match.query.filter(
+        Match.status != "cancelled"
+    ).order_by(
+        Match.scheduled_time.asc(),
+        Match.id.asc()
+    ).all()
+
+    players = {
+        player.id: player
+        for player in Player.query.all()
+    }
+
+    tournament_obj = Tournament.query.order_by(
+        Tournament.id.desc()
+    ).first()
+
+    return render_template(
+        "tournament.html",
+        matches=matches,
+        players=players,
+        tournament=tournament_obj
+    )
+
+
+@app.route("/live")
+def live():
+    return render_template("live.html")
+
+
+@app.route("/standings")
+def standings():
+    return render_template("standings.html")
+
+
+@app.route("/players")
+def players():
+    players_list = Player.query.filter_by(
+        active=True
+    ).order_by(
+        Player.name.asc()
+    ).all()
+
+    return render_template(
+        "players.html",
+        players=players_list
+    )
+
+
+# ============================================================
+# PLAYER PROFILE
+# ============================================================
+
+@app.route("/player/<int:player_id>")
+def player_profile(player_id):
+
+    player = Player.query.get_or_404(player_id)
+
+    player_match = Match.query.filter(
+        db.or_(
+            Match.player1_id == player.id,
+            Match.player2_id == player.id
+        ),
+        Match.status != "cancelled"
+    ).order_by(
+        Match.scheduled_time.asc(),
+        Match.id.asc()
+    ).first()
+
+    players = {
+        p.id: p
+        for p in Player.query.all()
+    }
+
+    return render_template(
+        "player_profile.html",
+        player=player,
+        player_match=player_match,
+        players=players
+    )
+
+
+@app.route("/matches")
+def matches():
+    matches_list = Match.query.filter(
+        Match.status != "cancelled"
+    ).order_by(
+        Match.scheduled_time.asc(),
+        Match.id.asc()
+    ).all()
+
+    players = {
+        player.id: player
+        for player in Player.query.all()
+    }
+
+    return render_template(
+        "matches.html",
+        matches=matches_list,
+        players=players
+    )
+
+
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+
+# ============================================================
+# PLAYER REGISTRATION
+# ============================================================
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+
+    if request.method == "POST":
+
+        name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+        fc_username = request.form.get(
+            "fc_username",
+            ""
+        ).strip()
+
+        country = request.form.get(
+            "country",
+            ""
+        ).strip()
+
+        squad_ovr = request.form.get(
+            "squad_ovr",
+            ""
+        ).strip()
+
+        terms_accepted = request.form.get(
+            "terms_accepted"
+        )
+
+        # ----------------------------------------
+        # REQUIRED FIELDS
+        # ----------------------------------------
+
+        if not name or not fc_username or not country:
+
+            return (
+                "Please complete all required fields."
+            ), 400
+
+        # ----------------------------------------
+        # SQUAD OVR
+        # ----------------------------------------
+
+        if not squad_ovr.isdigit():
+
+            return (
+                "Squad OVR must be a number."
+            ), 400
+
+        squad_ovr = int(squad_ovr)
+
+        if squad_ovr < 1 or squad_ovr > 200:
+
+            return (
+                "Invalid Squad OVR."
+            ), 400
+
+        # ----------------------------------------
+        # TERMS
+        # ----------------------------------------
+
+        if terms_accepted != "yes":
+
+            return (
+                "You must accept the tournament rules."
+            ), 400
+
+        # ----------------------------------------
+        # DUPLICATE FC USERNAME
+        # ----------------------------------------
+
+        existing_player = Player.query.filter_by(
+            fc_username=fc_username
+        ).first()
+
+        if existing_player:
+
+            return (
+                "This FC Mobile username is already registered."
+            ), 409
+
+        # ----------------------------------------
+        # CREATE PLAYER
+        # ----------------------------------------
+
+        player = Player(
+
+            name=name,
+
+            fc_username=fc_username,
+
+            country=country,
+
+            squad_ovr=squad_ovr,
+
+            application_status="pending",
+
+            terms_accepted=True,
+
+            terms_version="1.0",
+
+            terms_accepted_at=datetime.utcnow(),
+
+            active=True
+
+        )
+
+        db.session.add(player)
+
+        db.session.commit()
+
+        return redirect(
+            url_for(
+                "registration_success",
+                player_id=player.id
+            )
+        )
+
+    return render_template(
+        "register.html"
+    )
+
+
+# ============================================================
+# REGISTRATION SUCCESS
+# ============================================================
+
+@app.route(
+    "/registration-success/<int:player_id>"
+)
+def registration_success(player_id):
+
+    player = Player.query.get_or_404(
+        player_id
+    )
+
+    return render_template(
+        "registration_success.html",
+        player=player
+    )
+
+
+# ============================================================
+# FOUNDER DASHBOARD
+# ============================================================
+
+@app.route("/admin/dashboard")
+def admin_dashboard():
+
+    players = Player.query.order_by(
+        Player.registered_at.desc()
+    ).all()
+
+    approved_count = Player.query.filter_by(
+        application_status="approved"
+    ).count()
+
+    pending_count = Player.query.filter_by(
+        application_status="pending"
+    ).count()
+
+    waitlist_count = Player.query.filter_by(
+        application_status="waitlist"
+    ).count()
+
+    withdrawn_count = Player.query.filter_by(
+        application_status="withdrawn"
+    ).count()
+
+    removed_count = Player.query.filter_by(
+        application_status="removed"
+    ).count()
+
+    messages = FounderMessage.query.order_by(
+        FounderMessage.created_at.desc()
+    ).all()
+
+    unread_messages = FounderMessage.query.filter_by(
+        status="unread"
+    ).count()
+
+    actions = AdminAction.query.order_by(
+        AdminAction.created_at.desc()
+    ).limit(20).all()
+
+    tournament_obj = Tournament.query.order_by(
+        Tournament.id.desc()
+    ).first()
+
+    tournament_matches = []
+
+    if tournament_obj:
+
+        tournament_matches = Match.query.filter_by(
+            tournament_id=tournament_obj.id
+        ).order_by(
+            Match.id.asc()
+        ).all()
+
+    return render_template(
+        "admin/dashboard.html",
+
+        players=players,
+
+        approved_count=approved_count,
+
+        pending_count=pending_count,
+
+        waitlist_count=waitlist_count,
+
+        withdrawn_count=withdrawn_count,
+
+        removed_count=removed_count,
+
+        messages=messages,
+
+        unread_messages=unread_messages,
+
+        actions=actions,
+
+        tournament=tournament_obj,
+
+        tournament_matches=tournament_matches
+    )
+
+
+# ============================================================
+# CHANGE PLAYER STATUS
+# ============================================================
+
+@app.route(
+    "/admin/player/<int:player_id>/status",
+    methods=["POST"]
+)
+def change_player_status(player_id):
+
+    player = Player.query.get_or_404(
+        player_id
+    )
+
+    new_status = request.form.get(
+        "status"
+    )
+
+    allowed_statuses = [
+        "pending",
+        "approved",
+        "waitlist",
+        "withdrawn",
+        "removed",
+        "suspended"
+    ]
+
+    if new_status not in allowed_statuses:
+
+        return (
+            "Invalid player status."
+        ), 400
+
+    old_status = player.application_status
+
+    # ----------------------------------------
+    # APPROVED PLAYER LIMIT
+    # ----------------------------------------
+
+    if new_status == "approved":
+
+        approved_count = Player.query.filter_by(
+            application_status="approved"
+        ).count()
+
+        if (
+            old_status != "approved"
+            and approved_count >= 16
+        ):
+
+            return (
+                "The tournament already has "
+                "16 approved players. "
+                "Use the waitlist until a place "
+                "becomes available."
+            ), 400
+
+    player.application_status = new_status
+
+    # ----------------------------------------
+    # ACTIVE / INACTIVE
+    # ----------------------------------------
+
+    if new_status in [
+        "withdrawn",
+        "removed",
+        "suspended"
+    ]:
+
+        player.active = False
+
+    elif new_status in [
+        "pending",
+        "approved",
+        "waitlist"
+    ]:
+
+        player.active = True
+
+    # ----------------------------------------
+    # RECORD FOUNDER ACTION
+    # ----------------------------------------
+
+    action = AdminAction(
+
+        player_id=player.id,
+
+        action="status_change",
+
+        old_status=old_status,
+
+        new_status=new_status,
+
+        notes=(
+            "Founder changed player "
+            "application status."
+        ),
+
+        created_at=datetime.utcnow()
+
+    )
+
+    db.session.add(action)
+
+    db.session.commit()
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
+# ============================================================
+# PLAYER CONTACT FOUNDER
+# ============================================================
+
+@app.route(
+    "/player/<int:player_id>/contact",
+    methods=["GET", "POST"]
+)
+def player_contact(player_id):
+
+    player = Player.query.get_or_404(
+        player_id
+    )
+
+    if request.method == "POST":
+
+        subject = request.form.get(
+            "subject",
+            ""
+        ).strip()
+
+        message = request.form.get(
+            "message",
+            ""
+        ).strip()
+
+        if not subject or not message:
+
+            return (
+                "Please complete the subject and message."
+            ), 400
+
+        founder_message = FounderMessage(
+
+            player_id=player.id,
+
+            subject=subject,
+
+            message=message,
+
+            status="unread",
+
+            created_at=datetime.utcnow()
+
+        )
+
+        db.session.add(
+            founder_message
+        )
+
+        db.session.commit()
+
+        return render_template(
+            "player/message_sent.html",
+            player=player
+        )
+
+    return render_template(
+        "player/contact_founder.html",
+        player=player
+    )
+
+
+# ============================================================
+# MARK MESSAGE AS READ
+# ============================================================
+
+@app.route(
+    "/admin/message/<int:message_id>/read",
+    methods=["POST"]
+)
+def mark_message_read(message_id):
+
+    message = FounderMessage.query.get_or_404(
+        message_id
+    )
+
+    message.status = "read"
+
+    db.session.commit()
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
+# ============================================================
+# FOUNDER REPLY TO PLAYER
+# ============================================================
+
+@app.route(
+    "/admin/message/<int:message_id>/reply",
+    methods=["POST"]
+)
+def reply_to_message(message_id):
+
+    message = FounderMessage.query.get_or_404(
+        message_id
+    )
+
+    reply = request.form.get(
+        "founder_reply",
+        ""
+    ).strip()
+
+    if not reply:
+
+        return (
+            "Please enter a reply."
+        ), 400
+
+    message.founder_reply = reply
+
+    message.replied_at = datetime.utcnow()
+
+    message.status = "replied"
+
+    db.session.commit()
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
+# ============================================================
+# PLAYER MESSAGE CENTER
+# ============================================================
+
+@app.route(
+    "/player/<int:player_id>/messages"
+)
+def player_messages(player_id):
+
+    player = Player.query.get_or_404(
+        player_id
+    )
+
+    messages = FounderMessage.query.filter_by(
+        player_id=player.id
+    ).order_by(
+        FounderMessage.created_at.desc()
+    ).all()
+
+    return render_template(
+        "player/messages.html",
+        player=player,
+        messages=messages
+    )
+
+
+# ============================================================
+# CREATE OFFICIAL TOURNAMENT DRAW
+# ============================================================
+
+@app.route(
+    "/admin/draw-tournament",
+    methods=["POST"]
+)
+def draw_tournament():
+
+    # ----------------------------------------
+    # FIND ACTIVE REGISTRATION TOURNAMENT
+    # ----------------------------------------
+
+    tournament_obj = Tournament.query.filter_by(
+        status="registration"
+    ).order_by(
+        Tournament.id.desc()
+    ).first()
+
+    if not tournament_obj:
+
+        return (
+            "No active tournament is available "
+            "for the draw."
+        ), 400
+
+    # ----------------------------------------
+    # APPROVED + ACTIVE PLAYERS ONLY
+    # ----------------------------------------
+
+    approved_players = Player.query.filter_by(
+        application_status="approved",
+        active=True
+    ).all()
+
+    # ----------------------------------------
+    # MINIMUM PLAYERS
+    # ----------------------------------------
+
+    if len(approved_players) < 2:
+
+        return (
+            "There are not enough approved players "
+            "to create the tournament draw."
+        ), 400
+
+    # ----------------------------------------
+    # TOURNAMENT CAPACITY
+    # ----------------------------------------
+
+    if len(approved_players) > tournament_obj.max_players:
+
+        return (
+            "There are more approved players than "
+            "the tournament capacity."
+        ), 400
+
+    # ----------------------------------------
+    # EVEN NUMBER REQUIRED
+    # ----------------------------------------
+
+    if len(approved_players) % 2 != 0:
+
+        return (
+            "The number of approved players must "
+            "be even before the draw can be created."
+        ), 400
+
+    # ----------------------------------------
+    # PREVENT DUPLICATE DRAW
+    # ----------------------------------------
+
+    existing_match = Match.query.filter_by(
+        tournament_id=tournament_obj.id
+    ).first()
+
+    if existing_match:
+
+        return (
+            "The official draw has already been "
+            "created for this tournament."
+        ), 409
+
+    # ----------------------------------------
+    # RANDOMIZE APPROVED PLAYERS
+    # ----------------------------------------
+
+    random.shuffle(
+        approved_players
+    )
+
+    # ----------------------------------------
+    # CREATE ROUND 1 MATCHES
+    # ----------------------------------------
+
+    created_matches = []
+
+    for i in range(
+        0,
+        len(approved_players),
+        2
+    ):
+
+        player1 = approved_players[i]
+
+        player2 = approved_players[i + 1]
+
+        match = Match(
+
+            tournament_id=tournament_obj.id,
+
+            player1_id=player1.id,
+
+            player2_id=player2.id,
+
+            player1_score=0,
+
+            player2_score=0,
+
+            status="scheduled",
+
+            round_name="Round 1",
+
+            scheduled_time=None,
+
+            started_at=None,
+
+            finished_at=None,
+
+            winner_id=None,
+
+            is_live=False
+
+        )
+
+        db.session.add(
+            match
+        )
+
+        created_matches.append(
+            match
+        )
+
+    # ----------------------------------------
+    # RELEASE THE DRAW
+    # ----------------------------------------
+
+    tournament_obj.status = "draw_released"
+
+    # ----------------------------------------
+    # SAVE MATCHES
+    # ----------------------------------------
+
+    db.session.commit()
+
+    # ----------------------------------------
+    # RECORD FOUNDER ACTION
+    # ----------------------------------------
+
+    action = AdminAction(
+
+        action="tournament_draw_created",
+
+        notes=(
+            f"Created "
+            f"{len(created_matches)} "
+            f"Round 1 matches for "
+            f"{tournament_obj.name}."
+        ),
+
+        created_at=datetime.utcnow()
+
+    )
+
+    db.session.add(
+        action
+    )
+
+    db.session.commit()
+
+    # ----------------------------------------
+    # RETURN TO FOUNDER DASHBOARD
+    # ----------------------------------------
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
+# ============================================================
+# DATABASE INITIALIZATION
+# ============================================================
+
+with app.app_context():
+
+    db.create_all()
+
+
+# ============================================================
+# START SERVER
+# ============================================================
+
+if __name__ == "__main__":
+
+    app.run(
+
+        debug=True,
+
+        host="0.0.0.0",
+
+        port=5000
+
+    )
