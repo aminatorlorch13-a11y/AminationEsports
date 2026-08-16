@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Player Login — Amination Esports</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<header class="navbar">
+
+    <div class="logo">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+    <nav>
+        <a href="/">Home</a>
+        <a href="/tournament">Tournament</a>
+        <a href="/live">Live</a>
+        <a href="/standings">Standings</a>
+        <a href="/players">Players</a>
+        <a href="/matches">Matches</a>
+        <a href="/terms">Rules</a>
+        <a href="/register">Register</a>
+    </nav>
+
+</header>
+
+
+<main>
+
+<section class="register-section">
+
+    <h1>PLAYER LOGIN</h1>
+
+    <p>
+        Sign in to access your Amination Esports player profile.
+    </p>
+
+    <form method="POST" action="{{ url_for('player_login') }}">
+
+        <label for="email">
+            Email Address
+        </label>
+
+        <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="you@example.com"
+            required
+            autocomplete="email"
+        >
+
+
+        <label for="password">
+            Password
+        </label>
+
+        <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter your password"
+            required
+            autocomplete="current-password"
+        >
+
+
+        <button type="submit">
+            LOGIN
+        </button>
+
+    </form>
+
+
+    <p class="form-help">
+        Don't have a player account?
+        <a href="{{ url_for('register') }}">Register here</a>.
+    </p>
+
+
+    <p class="form-help">
+        Forgot your password?
+        <a href="/forgot-password">Reset it here</a>.
+    </p>
+
+</section>
+
+</main>
+
+
+<footer>
+
+    <p>
+        © 2026 Amination Esports —
+        From Imagination to Reality.
+    </p>
+
+</footer>
+
+</body>
+</html>

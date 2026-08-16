@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Standings — Amination Esports</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #050505;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            padding: 28px 20px;
+            text-align: center;
+            border-bottom: 1px solid #222;
+        }
+
+        .brand {
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .brand span {
+            color: #e2b936;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 22px;
+            padding: 22px 15px;
+            border-bottom: 1px solid #222;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+        }
+
+        nav a:hover {
+            color: #e2b936;
+        }
+
+        .container {
+            max-width: 1050px;
+            margin: auto;
+            padding: 45px 15px;
+        }
+
+        h1 {
+            color: #e2b936;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 25px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+            background: #111;
+            border: 1px solid #292929;
+        }
+
+        th {
+            background: #181818;
+            color: #e2b936;
+        }
+
+        th,
+        td {
+            padding: 15px 12px;
+            text-align: center;
+            border-bottom: 1px solid #292929;
+        }
+
+        td:first-child,
+        td:nth-child(2) {
+            text-align: left;
+        }
+
+        .empty {
+            margin-top: 30px;
+            padding: 30px;
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 15px;
+            color: #999;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<header>
+
+    <div class="brand">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+</header>
+
+
+<nav>
+
+    <a href="{{ url_for('home') }}">Home</a>
+    <a href="{{ url_for('tournament') }}">Tournament</a>
+    <a href="{{ url_for('live') }}">Live</a>
+    <a href="{{ url_for('standings') }}">Standings</a>
+    <a href="{{ url_for('players') }}">Players</a>
+    <a href="{{ url_for('player_login') }}">Login</a>
+
+</nav>
+
+
+<div class="container">
+
+    <h1>
+        🏆 AMINATION STANDINGS
+    </h1>
+
+    <p>
+        Current tournament standings based on completed
+        matches.
+    </p>
+
+
+    {% if standings %}
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>#</th>
+                        <th>Player</th>
+                        <th>MP</th>
+                        <th>W</th>
+                        <th>D</th>
+                        <th>L</th>
+                        <th>GF</th>
+                        <th>GA</th>
+                        <th>GD</th>
+                        <th>PTS</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for row in standings %}
+
+                        <tr>
+
+                            <td>
+                                {{ loop.index }}
+                            </td>
+
+                            <td>
+                                <strong>
+                                    {{ row.player.name }}
+                                </strong>
+                            </td>
+
+                            <td>
+                                {{ row.played }}
+                            </td>
+
+                            <td>
+                                {{ row.wins }}
+                            </td>
+
+                            <td>
+                                {{ row.draws }}
+                            </td>
+
+                            <td>
+                                {{ row.losses }}
+                            </td>
+
+                            <td>
+                                {{ row.gf }}
+                            </td>
+
+                            <td>
+                                {{ row.ga }}
+                            </td>
+
+                            <td>
+                                {{ row.gd }}
+                            </td>
+
+                            <td>
+                                <strong>
+                                    {{ row.points }}
+                                </strong>
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    {% else %}
+
+        <div class="empty">
+
+            🏆 Standings are not available yet.
+
+            <br><br>
+
+            Once completed tournament matches are
+            recorded, the standings will appear here.
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+
+</html>

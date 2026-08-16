@@ -1,0 +1,438 @@
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+
+from constants import (
+    DEFAULT_MAX_PLAYERS,
+    TOURNAMENT_REGISTRATION,
+    MATCH_SCHEDULED,
+)
+db = SQLAlchemy()
+
+
+# ==========================================
+# PLAYER
+# ==========================================
+
+class Player(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    name = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    fc_username = db.Column(
+        db.String(100),
+        nullable=False,
+        unique=True
+    )
+
+    # Player account authentication
+    email = db.Column(
+        db.String(255),
+        nullable=True,
+        unique=True
+    )
+
+    password_hash = db.Column(
+        db.String(255),
+        nullable=True
+    )
+
+    # Password recovery
+    reset_token = db.Column(
+        db.String(255),
+        nullable=True,
+        unique=True
+    )
+
+    reset_token_expires = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    country = db.Column(
+        db.String(100),
+        default="South Africa"
+    )
+
+    squad_ovr = db.Column(
+        db.Integer,
+        nullable=True
+    )
+
+    registered_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    active = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+    # Application lifecycle
+    #
+    # pending
+    # approved
+    # waitlist
+    # withdrawn
+    # removed
+    # suspended
+    # eliminated
+    # champion
+    # runner_up
+
+    application_status = db.Column(
+        db.String(30),
+        default="pending",
+        nullable=False
+    )
+
+    terms_accepted = db.Column(
+        db.Boolean,
+        default=False,
+        nullable=False
+    )
+
+    terms_version = db.Column(
+        db.String(20),
+        default="1.0"
+    )
+
+    terms_accepted_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    # Championship stars
+    # Awarded only by the Founder
+    championship_stars = db.Column(
+        db.Integer,
+        default=0,
+        nullable=False
+    )
+
+# ==========================================
+# TOURNAMENT
+# ==========================================
+
+class Tournament(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    name = db.Column(
+        db.String(150),
+        nullable=False
+    )
+
+    status = db.Column(
+        db.String(30),
+        default=TOURNAMENT_REGISTRATION
+    )
+
+    max_players = db.Column(
+        db.Integer,
+        default=DEFAULT_MAX_PLAYERS
+    )
+
+    entry_fee = db.Column(
+        db.Float,
+        default=0
+    )
+
+    competition_day = db.Column(
+        db.String(20),
+        default="Saturday"
+    )
+
+    final_day = db.Column(
+        db.String(20),
+        default="Sunday"
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+
+# ==========================================
+# MATCH
+# ==========================================
+
+class Match(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    tournament_id = db.Column(
+        db.Integer,
+        db.ForeignKey("tournament.id"),
+        nullable=False
+    )
+
+    player1_id = db.Column(
+        db.Integer,
+        db.ForeignKey("player.id"),
+        nullable=False
+    )
+
+    player2_id = db.Column(
+        db.Integer,
+        db.ForeignKey("player.id"),
+        nullable=False
+    )
+
+    player1_score = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    player2_score = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    status = db.Column(
+        db.String(30),
+        default=MATCH_SCHEDULED
+    )
+
+    round_name = db.Column(
+        db.String(50),
+        nullable=True
+    )
+
+    scheduled_time = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    started_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    finished_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    winner_id = db.Column(
+        db.Integer,
+        db.ForeignKey("player.id"),
+        nullable=True
+    )
+
+    is_live = db.Column(
+        db.Boolean,
+        default=False
+    )
+
+
+# ==========================================
+# PLAYER STATISTICS
+# ==========================================
+
+class PlayerStatistic(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    player_id = db.Column(
+        db.Integer,
+        db.ForeignKey("player.id"),
+        nullable=False
+    )
+
+    matches_played = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    wins = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    draws = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    losses = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    goals = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    assists = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    clean_sheets = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    saves = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    critical_saves = db.Column(
+        db.Integer,
+        default=0
+    )
+
+
+# ==========================================
+# RECORDS
+# ==========================================
+
+class Record(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    record_type = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    record_value = db.Column(
+        db.Float,
+        nullable=False
+    )
+
+    player_id = db.Column(
+        db.Integer,
+        db.ForeignKey("player.id"),
+        nullable=False
+    )
+
+    tournament_id = db.Column(
+        db.Integer,
+        db.ForeignKey("tournament.id"),
+        nullable=True
+    )
+
+    achieved_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    is_current = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+
+# ==========================================
+# FOUNDER ACTION HISTORY
+# ==========================================
+
+class AdminAction(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    player_id = db.Column(
+        db.Integer,
+        db.ForeignKey("player.id"),
+        nullable=True
+    )
+
+    action = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    old_status = db.Column(
+        db.String(30),
+        nullable=True
+    )
+
+    new_status = db.Column(
+        db.String(30),
+        nullable=True
+    )
+
+    notes = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+
+# ==========================================
+# PLAYER → FOUNDER MESSAGES
+# ==========================================
+
+class FounderMessage(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    player_id = db.Column(
+        db.Integer,
+        db.ForeignKey("player.id"),
+        nullable=False
+    )
+
+    subject = db.Column(
+        db.String(150),
+        nullable=False
+    )
+
+    message = db.Column(
+        db.Text,
+        nullable=False
+    )
+
+    status = db.Column(
+        db.String(30),
+        default="unread"
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    founder_reply = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    replied_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )

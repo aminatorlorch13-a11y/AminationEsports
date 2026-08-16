@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Password Reset — Amination Esports</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<header class="navbar">
+    <div class="logo">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+    <nav>
+        <a href="/">Home</a>
+        <a href="/login">Login</a>
+        <a href="/register">Register</a>
+    </nav>
+</header>
+
+<main>
+
+<section class="register-section">
+
+    <h1>RESET REQUESTED</h1>
+
+    {% if reset_token %}
+
+        <p>
+            Development mode is active.
+            Use the secure reset link below.
+        </p>
+
+        <p>
+            This link expires in 30 minutes and can only be used once.
+        </p>
+
+        <p>
+            <a href="{{ url_for('reset_password', token=reset_token) }}">
+                OPEN PASSWORD RESET
+            </a>
+        </p>
+
+    {% else %}
+
+        <p>
+            If an account exists for that email address,
+            password-reset instructions have been generated.
+        </p>
+
+    {% endif %}
+
+    <p class="form-help">
+        <a href="{{ url_for('player_login') }}">
+            Return to login
+        </a>
+    </p>
+
+</section>
+
+</main>
+
+<footer>
+    <p>
+        © 2026 Amination Esports —
+        From Imagination to Reality.
+    </p>
+</footer>
+
+</body>
+</html>

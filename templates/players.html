@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Players — Amination Esports</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #050505;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            padding: 28px 20px;
+            text-align: center;
+            border-bottom: 1px solid #222;
+        }
+
+        .brand {
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .brand span {
+            color: #e2b936;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 22px;
+            padding: 22px 15px;
+            border-bottom: 1px solid #222;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+        }
+
+        nav a:hover {
+            color: #e2b936;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            padding: 45px 20px;
+        }
+
+        h1 {
+            color: #e2b936;
+        }
+
+        .intro {
+            color: #999;
+            line-height: 1.6;
+        }
+
+        .player-grid {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(250px, 1fr));
+            gap: 18px;
+            margin-top: 30px;
+        }
+
+        .player-card {
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 15px;
+            padding: 24px;
+        }
+
+        .player-id {
+            color: #e2b936;
+            font-weight: bold;
+        }
+
+        .player-card h2 {
+            margin: 12px 0;
+        }
+
+        .info {
+            color: #aaa;
+            margin: 8px 0;
+        }
+
+        .profile-button {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            padding: 13px;
+            border-radius: 9px;
+            background: #e2b936;
+            color: #000;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .empty {
+            margin-top: 30px;
+            padding: 30px;
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 15px;
+            color: #aaa;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<header>
+
+    <div class="brand">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+</header>
+
+
+<nav>
+
+    <a href="{{ url_for('home') }}">Home</a>
+    <a href="{{ url_for('tournament') }}">Tournament</a>
+    <a href="{{ url_for('live') }}">Live</a>
+    <a href="{{ url_for('standings') }}">Standings</a>
+    <a href="{{ url_for('players') }}">Players</a>
+    <a href="{{ url_for('player_login') }}">Login</a>
+
+</nav>
+
+
+<div class="container">
+
+    <h1>
+        👥 AMINATION PLAYERS
+    </h1>
+
+    <p class="intro">
+        Browse the active Amination Esports player
+        profiles. Select a player to view their
+        tournament profile, status and match information.
+    </p>
+
+
+    {% if players %}
+
+        <div class="player-grid">
+
+            {% for player in players %}
+
+                <div class="player-card">
+
+                    <div class="player-id">
+                        PLAYER #{{ player.id }}
+                    </div>
+
+                    <h2>
+                        {{ player.name }}
+                    </h2>
+
+                    <div class="info">
+                        FC Mobile:
+                        <strong>
+                            {{ player.fc_username }}
+                        </strong>
+                    </div>
+
+                    <div class="info">
+                        Country:
+                        {{ player.country }}
+                    </div>
+
+                    <div class="info">
+                        Squad OVR:
+                        {{ player.squad_ovr or "Not submitted" }}
+                    </div>
+
+                    <a class="profile-button"
+                       href="{{ url_for(
+                           'player_profile',
+                           player_id=player.id
+                       ) }}">
+                        VIEW PROFILE
+                    </a>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty">
+
+            👥 No active players are currently listed.
+
+            <br><br>
+
+            Tournament players will appear here
+            once they are registered and active.
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+
+</html>

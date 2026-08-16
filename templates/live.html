@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Live — Amination Esports</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #050505;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            padding: 28px 20px;
+            text-align: center;
+            border-bottom: 1px solid #222;
+        }
+
+        .brand {
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .brand span {
+            color: #e2b936;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 22px;
+            padding: 22px 15px;
+            border-bottom: 1px solid #222;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+        }
+
+        nav a:hover {
+            color: #e2b936;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 45px 20px;
+        }
+
+        h1 {
+            color: #e2b936;
+        }
+
+        .live-card {
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 16px;
+            padding: 28px;
+            margin-top: 20px;
+        }
+
+        .live-label {
+            color: #ff4040;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .players {
+            display: grid;
+            grid-template-columns:
+                1fr 80px 1fr;
+            align-items: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .player {
+            padding: 20px;
+            background: #080808;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .score {
+            font-size: 30px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .empty {
+            margin-top: 30px;
+            padding: 35px;
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 16px;
+            text-align: center;
+            color: #999;
+        }
+
+    </style>
+
+</head>
+
+<body
+
+    {% if matches %}
+
+        <section
+            id="founder-controlled-live-match"
+            class="admin-section"
+        >
+
+            <h2>
+                🔴 LIVE MATCHES
+            </h2>
+
+            <p>
+                Official live match information is controlled
+                by the Amination Esports Founder.
+            </p>
+
+            {% for match in matches %}
+
+                <div class="activity-card">
+
+                    <h3>
+                        {{ match.round_name }}
+                        — Match #{{ match.id }}
+                    </h3>
+
+                    <p>
+
+                        {% if players.get(match.player1_id) %}
+                            <strong>
+                                {{ players[match.player1_id].name }}
+                            </strong>
+                        {% else %}
+                            TBD
+                        {% endif %}
+
+                        <strong>
+                            {{ match.player1_score or 0 }}
+                            -
+                            {{ match.player2_score or 0 }}
+                        </strong>
+
+                        {% if players.get(match.player2_id) %}
+                            <strong>
+                                {{ players[match.player2_id].name }}
+                            </strong>
+                        {% else %}
+                            TBD
+                        {% endif %}
+
+                    </p>
+
+                    <p>
+                        Status:
+                        <strong>
+                            {{ match.status|upper }}
+                        </strong>
+                    </p>
+
+                    {% if match.started_at %}
+
+                        <p>
+                            Started:
+                            {{ match.started_at.strftime(
+                                "%Y-%m-%d %H:%M"
+                            ) }}
+                        </p>
+
+                    {% endif %}
+
+                    {% if match.status == "finished" %}
+
+                        {% if players.get(match.winner_id) %}
+
+                            <p>
+                                🏆 Winner:
+                                <strong>
+                                    {{ players[match.winner_id].name }}
+                                </strong>
+                            </p>
+
+                        {% endif %}
+
+                    {% endif %}
+
+                </div>
+
+            {% endfor %}
+
+        </section>
+
+    {% else %}
+
+        
+
+    {% endif %}
+
+>
+
+<header>
+
+    <div class="brand">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+</header>
+
+
+<nav>
+
+    <a href="{{ url_for('home') }}">Home</a>
+    <a href="{{ url_for('tournament') }}">Tournament</a>
+    <a href="{{ url_for('live') }}">Live</a>
+    <a href="{{ url_for('standings') }}">Standings</a>
+    <a href="{{ url_for('players') }}">Players</a>
+    <a href="{{ url_for('player_login') }}">Login</a>
+
+</nav>
+
+
+<div class="container">
+
+    <h1>
+        🔴 LIVE MATCHES
+    </h1>
+
+    <p>
+        Follow Amination matches while they are
+        being played.
+    </p>
+
+
+    {% if matches %}
+
+        {% for match in matches %}
+
+            <div class="live-card">
+
+                <div class="live-label">
+                    🔴 LIVE NOW
+                </div>
+
+                <div>
+                    {{ match.round_name or "Tournament Match" }}
+                </div>
+
+
+                <div class="players">
+
+                    <div class="player">
+
+                        <strong>
+                            {{ players[match.player1_id].name }}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="score">
+
+                        {{ match.player1_score or 0 }}
+                        -
+                        {{ match.player2_score or 0 }}
+
+                    </div>
+
+
+                    <div class="player">
+
+                        <strong>
+                            {{ players[match.player2_id].name }}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        {% endfor %}
+
+    {% else %}
+
+        <div class="empty">
+
+            🔴 No matches are live right now.
+
+            <br><br>
+
+            Check the Tournament and Matches pages
+            for the official schedule and results.
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+
+</html>

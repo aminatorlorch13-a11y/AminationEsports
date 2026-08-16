@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Amination Esports — Tournament</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #050505;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            padding: 22px 15px;
+            text-align: center;
+            border-bottom: 1px solid #222;
+        }
+
+        .brand {
+            font-size: 26px;
+            font-weight: bold;
+        }
+
+        .brand span {
+            color: #e2b936;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            padding: 15px 10px;
+            border-bottom: 1px solid #222;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 10px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 25px auto;
+            padding: 15px;
+        }
+
+        .title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title h1 {
+            margin-bottom: 10px;
+            font-size: 36px;
+        }
+
+        .title p {
+            color: #aaa;
+        }
+
+        .draw-status {
+            padding: 20px;
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 14px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .draw-status strong {
+            color: #e2b936;
+        }
+
+        .bracket {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            align-items: start;
+        }
+
+        .round {
+            background: #0b0b0b;
+            border: 1px solid #292929;
+            border-radius: 14px;
+            padding: 15px;
+        }
+
+        .round-title {
+            text-align: center;
+            color: #e2b936;
+            font-weight: bold;
+            margin-bottom: 18px;
+            letter-spacing: 1px;
+        }
+
+        .match-card {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            overflow: hidden;
+        }
+
+        .match-header {
+            padding: 10px;
+            background: #171717;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .player-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 13px;
+            border-top: 1px solid #222;
+        }
+
+        .player-name {
+            font-weight: bold;
+        }
+
+        .score {
+            font-weight: bold;
+            color: #e2b936;
+        }
+
+        .live {
+            color: #ff4444;
+            font-weight: bold;
+        }
+
+        .finished {
+            color: #55cc77;
+            font-weight: bold;
+        }
+
+        .scheduled {
+            color: #aaa;
+        }
+
+        .empty {
+            text-align: center;
+            color: #666;
+            padding: 40px 15px;
+        }
+
+        .info-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: #111;
+            border-left: 4px solid #e2b936;
+            line-height: 1.7;
+        }
+
+        @media (max-width: 800px) {
+
+            .bracket {
+                grid-template-columns: 1fr;
+            }
+
+            .title h1 {
+                font-size: 28px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<header>
+
+    <div class="brand">
+        AMINATION <span>ESPORTS</span>
+    </div>
+
+</header>
+
+
+<nav>
+
+    <a href="{{ url_for('home') }}">
+        Home
+    </a>
+
+    <a href="{{ url_for('tournament') }}">
+        Tournament
+    </a>
+
+    <a href="{{ url_for('live') }}">
+        Live
+    </a>
+
+    <a href="{{ url_for('standings') }}">
+        Standings
+    </a>
+
+    <a href="{{ url_for('players') }}">
+        Players
+    </a>
+    <a href="{{ url_for('player_login') }}">Login</a>
+
+</nav>
+
+
+<div class="container">
+
+
+    <div class="title">
+
+        <h1>
+            🏆 AMINATION TOURNAMENT
+        </h1>
+
+        <p>
+            Follow the official tournament draw,
+            matches and results.
+        </p>
+
+    </div>
+
+
+
+    {% if latest_notice %}
+
+        <div class="draw-status" style="margin-bottom:20px;">
+
+            <strong>
+                📢 OFFICIAL FOUNDER NOTICE
+            </strong>
+
+            <p>
+                {{ latest_notice.notes }}
+            </p>
+
+            <small>
+                Published:
+                {{ latest_notice.created_at.strftime("%Y-%m-%d %H:%M") }}
+            </small>
+
+        </div>
+
+    {% endif %}
+
+    {% if matches %}
+
+
+
+        <div class="draw-status">
+
+            <strong>
+                🎲 OFFICIAL TOURNAMENT DRAW
+            </strong>
+
+            <br><br>
+
+            The bracket below is automatically generated
+            from the official Amination match records.
+
+        </div>
+
+
+        <div class="bracket">
+
+
+            <!-- ROUND 1 -->
+
+            <div class="round">
+
+                <div class="round-title">
+                    ROUND 1
+                </div>
+
+
+                {% for match in matches
+                   if match.round_name == "Round 1" %}
+
+
+                    <div class="match-card">
+
+
+                        <div class="match-header">
+
+                            Match #{{ match.id }}
+
+                            {% if match.is_live %}
+
+                                <span class="live">
+                                    🔴 LIVE
+                                </span>
+
+                            {% elif match.status == "finished" %}
+
+                                <span class="finished">
+                                    ✅ FINAL
+                                </span>
+
+                            {% else %}
+
+                                <span class="scheduled">
+                                    SCHEDULED
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        <div class="player-row">
+
+                            <span class="player-name">
+
+                                {% if players.get(match.player1_id) %}
+
+                                    <a
+                                        href="{{ url_for(
+                                            'player_profile',
+                                            player_id=match.player1_id
+                                        ) }}"
+                                        style="color:white;text-decoration:none;">
+
+                                        {{ players[match.player1_id].name }}
+
+                                    </a>
+
+                                {% else %}
+
+                                    Player 1
+
+                                {% endif %}
+
+                            </span>
+
+
+                            <span class="score">
+                                {{ match.player1_score }}
+                            </span>
+
+                        </div>
+
+
+                        <div class="player-row">
+
+                            <span class="player-name">
+
+                                {% if players.get(match.player2_id) %}
+
+                                    <a
+                                        href="{{ url_for(
+                                            'player_profile',
+                                            player_id=match.player2_id
+                                        ) }}"
+                                        style="color:white;text-decoration:none;">
+
+                                        {{ players[match.player2_id].name }}
+
+                                    </a>
+
+                                {% else %}
+
+                                    Player 2
+
+                                {% endif %}
+
+                            </span>
+
+
+                            <span class="score">
+                                {{ match.player2_score }}
+                            </span>
+
+                        </div>
+
+
+                    </div>
+
+
+                {% endfor %}
+
+            </div>
+
+
+            <!-- QUARTER FINALS -->
+
+            <div class="round">
+
+                <div class="round-title">
+                    QUARTER-FINALS
+                </div>
+
+
+                {% for match in matches
+                   if match.round_name == "Quarter-Final" %}
+
+
+                    <div class="match-card">
+
+
+                        <div class="match-header">
+
+                            Match #{{ match.id }}
+
+
+                            {% if match.is_live %}
+
+                                <span class="live">
+                                    🔴 LIVE
+                                </span>
+
+                            {% elif match.status == "finished" %}
+
+                                <span class="finished">
+                                    ✅ FINAL
+                                </span>
+
+                            {% else %}
+
+                                <span class="scheduled">
+                                    SCHEDULED
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        <div class="player-row">
+
+                            <span class="player-name">
+
+                                {% if players.get(match.player1_id) %}
+
+                                    <a
+                                        href="{{ url_for(
+                                            'player_profile',
+                                            player_id=match.player1_id
+                                        ) }}"
+                                        style="color:white;text-decoration:none;">
+
+                                        {{ players[match.player1_id].name }}
+
+                                    </a>
+
+                                {% else %}
+
+                                    TBD
+
+                                {% endif %}
+
+                            </span>
+
+
+                            <span class="score">
+                                {{ match.player1_score }}
+                            </span>
+
+                        </div>
+
+
+                        <div class="player-row">
+
+                            <span class="player-name">
+
+                                {% if players.get(match.player2_id) %}
+
+                                    <a
+                                        href="{{ url_for(
+                                            'player_profile',
+                                            player_id=match.player2_id
+                                        ) }}"
+                                        style="color:white;text-decoration:none;">
+
+                                        {{ players[match.player2_id].name }}
+
+                                    </a>
+
+                                {% else %}
+
+                                    TBD
+
+                                {% endif %}
+
+                            </span>
+
+
+                            <span class="score">
+                                {{ match.player2_score }}
+                            </span>
+
+                        </div>
+
+
+                    </div>
+
+
+                {% endfor %}
+
+            </div>
+
+
+            <!-- SEMI FINALS -->
+
+            <div class="round">
+
+                <div class="round-title">
+                    SEMI-FINALS
+                </div>
+
+
+                {% for match in matches
+                   if match.round_name == "Semi-Final" %}
+
+
+                    <div class="match-card">
+
+
+                        <div class="match-header">
+
+                            Match #{{ match.id }}
+
+
+                            {% if match.is_live %}
+
+                                <span class="live">
+                                    🔴 LIVE
+                                </span>
+
+                            {% elif match.status == "finished" %}
+
+                                <span class="finished">
+                                    ✅ FINAL
+                                </span>
+
+                            {% else %}
+
+                                <span class="scheduled">
+                                    SCHEDULED
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        <div class="player-row">
+
+                            <span class="player-name">
+
+                                {% if players.get(match.player1_id) %}
+
+                                    {{ players[match.player1_id].name }}
+
+                                {% else %}
+
+                                    TBD
+
+                                {% endif %}
+
+                            </span>
+
+                            <span class="score">
+                                {{ match.player1_score }}
+                            </span>
+
+                        </div>
+
+
+                        <div class="player-row">
+
+                            <span class="player-name">
+
+                                {% if players.get(match.player2_id) %}
+
+                                    {{ players[match.player2_id].name }}
+
+                                {% else %}
+
+                                    TBD
+
+                                {% endif %}
+
+                            </span>
+
+                            <span class="score">
+                                {{ match.player2_score }}
+                            </span>
+
+                        </div>
+
+
+                    </div>
+
+
+                {% endfor %}
+
+            </div>
+
+
+            <!-- FINAL -->
+
+            <div class="round">
+
+                <div class="round-title">
+                    🏆 FINAL
+                </div>
+
+
+                {% for match in matches
+                   if match.round_name == "Final" %}
+
+
+                    <div class="match-card">
+
+
+                        <div class="match-header">
+
+                            Match #{{ match.id }}
+
+
+                            {% if match.is_live %}
+
+                                <span class="live">
+                                    🔴 LIVE
+                                </span>
+
+                            {% elif match.status == "finished" %}
+
+                                <span class="finished">
+                                    🏆 FINAL RESULT
+                                </span>
+
+                            {% else %}
+
+                                <span class="scheduled">
+                                    SCHEDULED
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        <div class="player-row">
+
+                            <span class="player-name">
+
+                                {% if players.get(match.player1_id) %}
+
+                                    {{ players[match.player1_id].name }}
+
+                                {% else %}
+
+                                    TBD
+
+                                {% endif %}
+
+                            </span>
+
+                            <span class="score">
+                                {{ match.player1_score }}
+                            </span>
+
+                        </div>
+
+
+                        <div class="player-row">
+
+                            <span class="player-name">
+
+                                {% if players.get(match.player2_id) %}
+
+                                    {{ players[match.player2_id].name }}
+
+                                {% else %}
+
+                                    TBD
+
+                                {% endif %}
+
+                            </span>
+
+                            <span class="score">
+                                {{ match.player2_score }}
+                            </span>
+
+                        </div>
+
+
+                    </div>
+
+
+                {% endfor %}
+
+            </div>
+
+
+        </div>
+
+
+    {% else %}
+
+
+        <div class="empty">
+
+            <h2>
+                🎲 Draw Not Yet Released
+            </h2>
+
+            <p>
+                The official tournament draw will appear here
+                once the Founder releases it.
+            </p>
+
+            <p>
+                Check back before Friday.
+            </p>
+
+        </div>
+
+
+    {% endif %}
+
+
+    <div class="info-box">
+
+        <strong>
+            📢 Amination Tournament Information
+        </strong>
+
+        <br><br>
+
+        The public bracket shows the official tournament
+        matches.
+
+        <br><br>
+
+        Individual player profiles will only show that
+        player's own upcoming match.
+
+        <br><br>
+
+        Match scores and results will update from the
+        official Amination match records.
+
+    </div>
+
+
+</div>
+
+
+</body>
+
+</html>

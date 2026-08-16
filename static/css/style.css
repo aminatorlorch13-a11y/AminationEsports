@@ -1,0 +1,202 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #080808;
+    color: white;
+    line-height: 1.6;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 6%;
+    background: #050505;
+    border-bottom: 1px solid #222;
+}
+
+.logo {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 2px;
+}
+
+.logo span {
+    color: #d4af37;
+}
+
+nav {
+    display: flex;
+    gap: 20px;
+}
+
+nav a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+nav a:hover {
+    color: white;
+}
+
+.hero {
+    min-height: 70vh;
+    padding: 90px 8%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background:
+        radial-gradient(circle at top right, #332600, transparent 35%),
+        #080808;
+}
+
+.live-badge {
+    color: #d4af37;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.hero h1 {
+    font-size: clamp(48px, 9vw, 100px);
+    line-height: 0.95;
+    letter-spacing: -3px;
+}
+
+.hero h1 span {
+    color: #d4af37;
+}
+
+.hero p {
+    max-width: 600px;
+    margin: 25px 0;
+    color: #aaa;
+    font-size: 18px;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.button {
+    display: inline-block;
+    padding: 13px 22px;
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 6px;
+}
+
+.primary {
+    background: #d4af37;
+    color: #000;
+}
+
+.secondary {
+    border: 1px solid #444;
+    color: white;
+}
+
+.feature-section {
+    padding: 70px 8%;
+}
+
+.feature-section h2 {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.card {
+    background: #111;
+    border: 1px solid #242424;
+    border-radius: 10px;
+    padding: 30px;
+}
+
+.icon {
+    font-size: 35px;
+    margin-bottom: 15px;
+}
+
+.card h3 {
+    margin-bottom: 10px;
+}
+
+.card p {
+    color: #999;
+}
+
+.status-section {
+    margin: 20px 8% 70px;
+    padding: 25px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 10px;
+}
+
+.status-section div {
+    display: flex;
+    flex-direction: column;
+}
+
+.status-section strong {
+    color: #777;
+    font-size: 12px;
+}
+
+.status-section span {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.free {
+    color: #d4af37;
+}
+
+footer {
+    padding: 30px;
+    text-align: center;
+    color: #666;
+    border-top: 1px solid #222;
+}
+
+@media (max-width: 700px) {
+
+    .navbar {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    nav {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .cards {
+        grid-template-columns: 1fr;
+    }
+
+    .status-section {
+        grid-template-columns: 1fr;
+    }
+
+    .hero {
+        padding: 70px 6%;
+    }
+}
+
