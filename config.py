@@ -9,7 +9,6 @@ def load_env_file():
     Load simple KEY=VALUE entries from the local .env file.
     Existing environment variables take priority.
     """
-
     if not os.path.exists(ENV_FILE):
         return
 
@@ -21,7 +20,6 @@ def load_env_file():
                 continue
 
             key, value = line.split("=", 1)
-
             key = key.strip()
             value = value.strip()
 
@@ -33,11 +31,24 @@ load_env_file()
 
 
 class Config:
-    SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(
-        BASE_DIR,
-        "instance",
-        "amination_esports.db"
+    # Use PostgreSQL in production when DATABASE_URL is provided.
+    # Keep the existing SQLite database for local development.
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "DATABASE_URL",
+        "sqlite:///" + os.path.join(
+            BASE_DIR,
+            "instance",
+            "amination_esports.db"
+        )
     )
+
+    # Some hosting providers use the postgres:// prefix.
+    # SQLAlchemy expects postgresql://.
+    if SQLALCHEMY_DATABASE_URI.startswith("postgres://"):
+        SQLALCHEMY_DATABASE_URI = (
+            "postgresql://"
+            + SQLALCHEMY_DATABASE_URI[len("postgres://"):]
+        )
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
