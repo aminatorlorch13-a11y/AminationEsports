@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Founder Login | Amination Esports</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+
+<body>
+
+    <main class="container">
+
+        <section class="card">
+
+            <h1>Founder Login</h1>
+
+            <p>
+                Amination Esports Founder Dashboard
+            </p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+
+                <div>
+                    <label for="email">
+                        Founder Email
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label for="password">
+                        Founder Password
+                    </label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
+
+                <button type="submit">
+                    Sign In
+                </button>
+
+            </form>
+
+            <p>
+                <a href="{{ url_for('home') }}">
+                    Return to Amination Esports
+                </a>
+            </p>
+
+        </section>
+
+    </main>
+
+</body>
+</html>

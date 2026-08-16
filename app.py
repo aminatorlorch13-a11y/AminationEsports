@@ -1,16 +1,36 @@
-from flask import Flask, render_template, request, redirect, url_for
-from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from datetime import datetime, timedelta
 import random
+import secrets
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from sqlalchemy import or_
 
 from config import Config
+from constants import (
+    SUPPORTED_PLAYER_COUNTS,
+    DEFAULT_MAX_PLAYERS,
+    TOURNAMENT_REGISTRATION,
+    TOURNAMENT_DRAW_RELEASED,
+    TOURNAMENT_IN_PROGRESS,
+    TOURNAMENT_PAUSED,
+    TOURNAMENT_COMPLETED,
+    MATCH_SCHEDULED,
+    MATCH_IN_PROGRESS,
+    MATCH_LIVE,
+    MATCH_FINISHED,
+    ROUND_1,
+    QUARTER_FINAL,
+    SEMI_FINAL,
+    FINAL,
+)
 
 from models import (
     db,
     Player,
     Match,
     Tournament,
+    Record,
     AdminAction,
     FounderMessage
 )
@@ -21,6 +41,26 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
+
+
+# ============================================================
+# FOUNDER AUTHENTICATION
+# ============================================================
+
+def founder_required():
+    """
+    Protect founder/admin routes.
+
+    Returns a redirect response when the founder is not
+    authenticated. Returns None when authenticated.
+    """
+
+    if not session.get("founder_authenticated"):
+        return redirect(url_for("admin_login"))
+
+    return None
+
+
 
 
 # ============================================================
@@ -52,27 +92,27 @@ def tournament_rounds(player_count):
 
     if player_count >= 16:
         return [
-            "Round 1",
-            "Quarter-Final",
-            "Semi-Final",
-            "Final"
+            ROUND_1,
+            QUARTER_FINAL,
+            SEMI_FINAL,
+            FINAL
         ]
 
     if player_count >= 8:
         return [
-            "Quarter-Final",
-            "Semi-Final",
-            "Final"
+            QUARTER_FINAL,
+            SEMI_FINAL,
+            FINAL
         ]
 
     if player_count >= 4:
         return [
-            "Semi-Final",
-            "Final"
+            SEMI_FINAL,
+            FINAL
         ]
 
     return [
-        "Final"
+        FINAL
     ]
 
 
@@ -106,9 +146,9 @@ def get_player_match(player_id):
             Match.player2_id == player_id
         ),
         Match.status.in_([
-            "scheduled",
-            "in_progress",
-            "live"
+            MATCH_SCHEDULED,
+            MATCH_IN_PROGRESS,
+            MATCH_LIVE
         ])
     ).order_by(
         Match.id.desc()
@@ -236,7 +276,7 @@ def create_next_round_match(tournament, finished_match):
         player2_id=winner_b,
         player1_score=0,
         player2_score=0,
-        status="scheduled",
+        status=MATCH_SCHEDULED,
         round_name=next_round,
         is_live=False
     )
@@ -391,6 +431,114 @@ def terms():
 
 
 # ============================================================
+# PLAYER AUTHENTICATION
+# ============================================================
+
+@app.route("/login", methods=["GET", "POST"])
+def player_login():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        if not email or not password:
+            return "Please enter your email and password.", 400
+
+        player = Player.query.filter_by(email=email).first()
+
+        if not player or not player.password_hash:
+            return "Invalid email or password.", 401
+
+        if not check_password_hash(player.password_hash, password):
+            return "Invalid email or password.", 401
+
+        if not player.active:
+            return "This player account is currently inactive.", 403
+
+        session.clear()
+        session["player_id"] = player.id
+
+        return redirect(
+            url_for("player_profile", player_id=player.id)
+        )
+
+    return render_template("login.html")
+
+
+@app.route("/logout", methods=["POST"])
+def player_logout():
+    session.pop("player_id", None)
+    return redirect(url_for("home"))
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+
+        if not email:
+            return "Please enter your email address.", 400
+
+        player = Player.query.filter_by(email=email).first()
+
+        # Do not reveal whether an email exists.
+        # This prevents account enumeration.
+        if player:
+            player.reset_token = secrets.token_urlsafe(32)
+            player.reset_token_expires = datetime.utcnow() + timedelta(minutes=30)
+            db.session.commit()
+
+            # Development/testing only:
+            # In production this token should be delivered by email.
+            return render_template(
+                "reset_requested.html",
+                reset_token=player.reset_token
+            )
+
+        return render_template("reset_requested.html")
+
+    return render_template("forgot_password.html")
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    player = Player.query.filter_by(reset_token=token).first()
+
+    if not player:
+        return "This password reset link is invalid or has already been used.", 400
+
+    if not player.reset_token_expires:
+        return "This password reset link is invalid.", 400
+
+    if datetime.utcnow() > player.reset_token_expires:
+        player.reset_token = None
+        player.reset_token_expires = None
+        db.session.commit()
+        return "This password reset link has expired. Please request a new one.", 400
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if len(password) < 8:
+            return "Password must be at least 8 characters long.", 400
+
+        if password != confirm_password:
+            return "Passwords do not match.", 400
+
+        player.password_hash = generate_password_hash(password)
+
+        # Make the reset token single-use.
+        player.reset_token = None
+        player.reset_token_expires = None
+
+        db.session.commit()
+
+        return redirect(url_for("player_login"))
+
+    return render_template("reset_password.html")
+
+
+
+# ============================================================
 # PLAYER REGISTRATION
 # ============================================================
 
@@ -422,6 +570,16 @@ def register():
             ""
         ).strip()
 
+
+        email = request.form.get(
+            "email",
+            ""
+        ).strip().lower()
+
+        password = request.form.get(
+            "password",
+            ""
+        )
         terms_accepted = request.form.get(
             "terms_accepted"
         )
@@ -431,6 +589,20 @@ def register():
             return (
                 "Please complete all required fields."
             ), 400
+
+        if not email or not password:
+            return "Email and password are required.", 400
+
+        if "@" not in email or "." not in email:
+            return "Please enter a valid email address.", 400
+
+        if len(password) < 8:
+            return "Password must be at least 8 characters long.", 400
+
+        existing_email = Player.query.filter_by(email=email).first()
+
+        if existing_email:
+            return "This email address is already registered.", 409
 
         if not squad_ovr.isdigit():
 
@@ -469,6 +641,8 @@ def register():
             fc_username=fc_username,
             country=country,
             squad_ovr=squad_ovr,
+            email=email,
+            password_hash=generate_password_hash(password),
             application_status="pending",
             terms_accepted=True,
             terms_version="1.0",
@@ -514,11 +688,109 @@ def registration_success(player_id):
 
 
 # ============================================================
+# FOUNDER LOGIN
+# ============================================================
+
+@app.route(
+    "/admin/login",
+    methods=["GET", "POST"]
+)
+def admin_login():
+
+    if session.get("founder_authenticated"):
+        return redirect(
+            url_for("admin_dashboard")
+        )
+
+    if request.method == "POST":
+
+        email = request.form.get(
+            "email",
+            ""
+        ).strip().lower()
+
+        password = request.form.get(
+            "password",
+            ""
+        )
+
+        configured_email = (
+            app.config.get("FOUNDER_EMAIL", "")
+            .strip()
+            .lower()
+        )
+
+        configured_password = (
+            app.config.get("FOUNDER_PASSWORD", "")
+        )
+
+        if (
+            email
+            and password
+            and configured_email
+            and configured_password
+            and secrets.compare_digest(
+                email,
+                configured_email
+            )
+            and secrets.compare_digest(
+                password,
+                configured_password
+            )
+        ):
+
+            session["founder_authenticated"] = True
+            session["founder_email"] = configured_email
+
+            return redirect(
+                url_for("admin_dashboard")
+            )
+
+        flash(
+            "Invalid founder credentials.",
+            "error"
+        )
+
+    return render_template(
+        "admin/login.html"
+    )
+
+
+# ============================================================
+# FOUNDER LOGOUT
+# ============================================================
+
+@app.route(
+    "/admin/logout",
+    methods=["POST"]
+)
+def admin_logout():
+
+    session.pop(
+        "founder_authenticated",
+        None
+    )
+
+    session.pop(
+        "founder_email",
+        None
+    )
+
+    return redirect(
+        url_for("admin_login")
+    )
+
+
+# ============================================================
 # FOUNDER DASHBOARD
 # ============================================================
 
 @app.route("/admin/dashboard")
 def admin_dashboard():
+
+    access = founder_required()
+    if access:
+        return access
 
     players = Player.query.order_by(
         Player.registered_at.desc()
@@ -609,6 +881,11 @@ def admin_dashboard():
     methods=["POST"]
 )
 def change_player_status(player_id):
+
+    access = founder_required()
+    if access:
+        return access
+
 
     player = Player.query.get_or_404(
         player_id
@@ -760,6 +1037,11 @@ def player_contact(player_id):
 )
 def mark_message_read(message_id):
 
+    access = founder_required()
+    if access:
+        return access
+
+
     message = FounderMessage.query.get_or_404(
         message_id
     )
@@ -784,6 +1066,11 @@ def mark_message_read(message_id):
     methods=["POST"]
 )
 def reply_to_message(message_id):
+
+    access = founder_required()
+    if access:
+        return access
+
 
     message = FounderMessage.query.get_or_404(
         message_id
@@ -858,6 +1145,10 @@ def player_messages(player_id):
 )
 def founder_tournament_control():
 
+    access = founder_required()
+    if access:
+        return access
+
     tournament = Tournament.query.order_by(
         Tournament.id.desc()
     ).first()
@@ -871,11 +1162,11 @@ def founder_tournament_control():
     ).strip()
 
     allowed_actions = {
-        "open_registration": "registration",
-        "start_tournament": "in_progress",
-        "pause_tournament": "paused",
-        "resume_tournament": "in_progress",
-        "complete_tournament": "completed"
+        "open_registration": TOURNAMENT_REGISTRATION,
+        "start_tournament": TOURNAMENT_IN_PROGRESS,
+        "pause_tournament": TOURNAMENT_PAUSED,
+        "resume_tournament": TOURNAMENT_IN_PROGRESS,
+        "complete_tournament": TOURNAMENT_COMPLETED
     }
 
     if action_type == "release_draw":
@@ -895,26 +1186,26 @@ def founder_tournament_control():
     new_status = allowed_actions[action_type]
 
     if action_type == "start_tournament":
-        if old_status not in ["draw_released", "paused"]:
+        if old_status not in [TOURNAMENT_DRAW_RELEASED, TOURNAMENT_PAUSED]:
             return (
                 "The tournament must have a released draw "
                 "before it can start."
             ), 409
 
     if action_type == "pause_tournament":
-        if old_status != "in_progress":
+        if old_status != TOURNAMENT_IN_PROGRESS:
             return (
                 "Only an in-progress tournament can be paused."
             ), 409
 
     if action_type == "resume_tournament":
-        if old_status != "paused":
+        if old_status != TOURNAMENT_PAUSED:
             return (
                 "Only a paused tournament can be resumed."
             ), 409
 
     if action_type == "complete_tournament":
-        if old_status not in ["in_progress", "paused"]:
+        if old_status not in [TOURNAMENT_IN_PROGRESS, TOURNAMENT_PAUSED]:
             return (
                 "The tournament must be in progress or paused "
                 "before it can be completed."
@@ -964,6 +1255,10 @@ def founder_tournament_control():
     methods=["POST"]
 )
 def founder_tournament_settings():
+
+    access = founder_required()
+    if access:
+        return access
 
     tournament = Tournament.query.order_by(
         Tournament.id.desc()
@@ -1060,6 +1355,10 @@ def founder_tournament_settings():
 )
 def draw_tournament():
 
+    access = founder_required()
+    if access:
+        return access
+
     tournament = Tournament.query.order_by(
         Tournament.id.desc()
     ).first()
@@ -1068,8 +1367,8 @@ def draw_tournament():
         return "No tournament exists.", 404
 
     if tournament.status not in [
-        "registration",
-        "draw_released"
+        TOURNAMENT_REGISTRATION,
+        TOURNAMENT_DRAW_RELEASED
     ]:
         return (
             "The tournament draw cannot be changed "
@@ -1116,13 +1415,13 @@ def draw_tournament():
     )
 
     if len(approved_players) == 16:
-        round_name = "Round 1"
+        round_name = ROUND_1
     elif len(approved_players) == 8:
-        round_name = "Quarter-Final"
+        round_name = QUARTER_FINAL
     elif len(approved_players) == 4:
-        round_name = "Semi-Final"
+        round_name = SEMI_FINAL
     else:
-        round_name = "Final"
+        round_name = FINAL
 
     for index in range(
         0,
@@ -1139,14 +1438,14 @@ def draw_tournament():
             player2_id=player2.id,
             player1_score=0,
             player2_score=0,
-            status="scheduled",
+            status=MATCH_SCHEDULED,
             round_name=round_name,
             is_live=False
         )
 
         db.session.add(match)
 
-    tournament.status = "draw_released"
+    tournament.status = TOURNAMENT_DRAW_RELEASED
 
     action = AdminAction(
         action="tournament_draw_released",
@@ -1176,6 +1475,10 @@ def draw_tournament():
 )
 def reset_tournament():
 
+    access = founder_required()
+    if access:
+        return access
+
     tournament = Tournament.query.order_by(
         Tournament.id.desc()
     ).first()
@@ -1183,7 +1486,7 @@ def reset_tournament():
     if not tournament:
         return "No tournament exists.", 404
 
-    if tournament.status == "completed":
+    if tournament.status == TOURNAMENT_COMPLETED:
         return (
             "A completed tournament cannot be reset."
         ), 409
@@ -1195,7 +1498,7 @@ def reset_tournament():
     for match in matches:
         db.session.delete(match)
 
-    tournament.status = "registration"
+    tournament.status = TOURNAMENT_REGISTRATION
 
     action = AdminAction(
         action="tournament_reset",
@@ -1225,6 +1528,11 @@ def reset_tournament():
     methods=["POST"]
 )
 def founder_player_status(player_id):
+
+    access = founder_required()
+    if access:
+        return access
+
 
     player = Player.query.get_or_404(player_id)
 
@@ -1296,6 +1604,11 @@ def founder_player_status(player_id):
 )
 def founder_restore_player(player_id):
 
+    access = founder_required()
+    if access:
+        return access
+
+
     player = Player.query.get_or_404(player_id)
 
     old_status = player.application_status
@@ -1332,6 +1645,11 @@ def founder_restore_player(player_id):
     methods=["POST"]
 )
 def founder_player_stars(player_id):
+
+    access = founder_required()
+    if access:
+        return access
+
 
     player = Player.query.get_or_404(player_id)
 
@@ -1402,6 +1720,10 @@ def founder_player_stars(player_id):
 )
 def founder_public_announcement():
 
+    access = founder_required()
+    if access:
+        return access
+
     tournament = Tournament.query.order_by(
         Tournament.id.desc()
     ).first()
@@ -1468,6 +1790,11 @@ def founder_public_announcement():
     methods=["POST"]
 )
 def founder_live_match_control(match_id):
+
+    access = founder_required()
+    if access:
+        return access
+
     match = Match.query.get_or_404(match_id)
 
     action_type = request.form.get("action", "").strip()
@@ -1479,7 +1806,7 @@ def founder_live_match_control(match_id):
     old_live = bool(match.is_live)
 
     if action_type == "start":
-        if match.status == "finished":
+        if match.status == MATCH_FINISHED:
             return "A finished match cannot be started again.", 409
 
         other_live_matches = Match.query.filter(
@@ -1491,7 +1818,17 @@ def founder_live_match_control(match_id):
             other_match.is_live = False
 
         match.is_live = True
-        match.status = "live"
+        match.status = MATCH_LIVE
+
+        tournament = db.session.get(Tournament,
+            match.tournament_id
+        )
+
+        if (
+            tournament
+            and tournament.status == TOURNAMENT_DRAW_RELEASED
+        ):
+            tournament.status = TOURNAMENT_IN_PROGRESS
 
         if not match.started_at:
             match.started_at = datetime.utcnow()
@@ -1499,11 +1836,11 @@ def founder_live_match_control(match_id):
     elif action_type == "stop":
         match.is_live = False
 
-        if match.status == "live":
-            match.status = "scheduled"
+        if match.status == MATCH_LIVE:
+            match.status = MATCH_SCHEDULED
 
     elif action_type == "finish":
-        if match.status == "finished":
+        if match.status == MATCH_FINISHED:
             return "This match is already finished.", 409
 
         try:
@@ -1535,7 +1872,7 @@ def founder_live_match_control(match_id):
             loser_id = match.player1_id
 
         match.is_live = False
-        match.status = "finished"
+        match.status = MATCH_FINISHED
         match.finished_at = datetime.utcnow()
 
         from models import PlayerStatistic
@@ -1581,7 +1918,7 @@ def founder_live_match_control(match_id):
                     stats.goals or 0
                 ) + player2_score
 
-        tournament = Tournament.query.get(
+        tournament = db.session.get(Tournament,
             match.tournament_id
         )
 
@@ -1591,11 +1928,38 @@ def founder_live_match_control(match_id):
                 match
             )
 
+            # Final completion establishes the official champion.
             if (
-                match.round_name == "Final"
+                match.round_name == FINAL
                 and next_match is None
             ):
-                tournament.status = "completed"
+                champion = Player.query.get(match.winner_id)
+                runner_up = Player.query.get(loser_id)
+
+                if champion:
+                    champion.application_status = "champion"
+
+                if runner_up:
+                    runner_up.application_status = "runner_up"
+
+                # Prevent duplicate championship records.
+                existing_record = Record.query.filter_by(
+                    tournament_id=tournament.id,
+                    record_type="Tournament Champion"
+                ).first()
+
+                if not existing_record and champion:
+                    champion_record = Record(
+                        record_type="Tournament Champion",
+                        record_value=1,
+                        player_id=champion.id,
+                        tournament_id=tournament.id,
+                        achieved_at=datetime.utcnow(),
+                        is_current=True
+                    )
+                    db.session.add(champion_record)
+
+                tournament.status = TOURNAMENT_COMPLETED
 
     action_labels = {
         "start": "started live match",

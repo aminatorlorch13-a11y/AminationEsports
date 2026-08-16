@@ -1,6 +1,11 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
+from constants import (
+    DEFAULT_MAX_PLAYERS,
+    TOURNAMENT_REGISTRATION,
+    MATCH_SCHEDULED,
+)
 db = SQLAlchemy()
 
 
@@ -24,6 +29,30 @@ class Player(db.Model):
         db.String(100),
         nullable=False,
         unique=True
+    )
+
+    # Player account authentication
+    email = db.Column(
+        db.String(255),
+        nullable=True,
+        unique=True
+    )
+
+    password_hash = db.Column(
+        db.String(255),
+        nullable=True
+    )
+
+    # Password recovery
+    reset_token = db.Column(
+        db.String(255),
+        nullable=True,
+        unique=True
+    )
+
+    reset_token_expires = db.Column(
+        db.DateTime,
+        nullable=True
     )
 
     country = db.Column(
@@ -106,12 +135,12 @@ class Tournament(db.Model):
 
     status = db.Column(
         db.String(30),
-        default="registration"
+        default=TOURNAMENT_REGISTRATION
     )
 
     max_players = db.Column(
         db.Integer,
-        default=16
+        default=DEFAULT_MAX_PLAYERS
     )
 
     entry_fee = db.Column(
@@ -176,7 +205,7 @@ class Match(db.Model):
 
     status = db.Column(
         db.String(30),
-        default="scheduled"
+        default=MATCH_SCHEDULED
     )
 
     round_name = db.Column(

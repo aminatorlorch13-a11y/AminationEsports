@@ -3,44 +3,567 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amination Esports — Tournament Rules</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <title>Rules & Terms | Amination Esports</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+    <style>
+        .rules-page {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .rules-page h1 {
+            margin-bottom: 10px;
+        }
+
+        .rules-intro {
+            opacity: 0.85;
+            line-height: 1.7;
+            margin-bottom: 30px;
+        }
+
+        .rules-section {
+            margin-bottom: 28px;
+            padding: 22px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .rules-section h2 {
+            margin-top: 0;
+            margin-bottom: 14px;
+        }
+
+        .rules-section ol,
+        .rules-section ul {
+            padding-left: 24px;
+            line-height: 1.8;
+        }
+
+        .rules-section li {
+            margin-bottom: 9px;
+        }
+
+        .important-rule {
+            font-weight: 600;
+        }
+
+        .rules-note {
+            padding: 18px;
+            border-left: 4px solid #d4af37;
+            background: rgba(212, 175, 55, 0.08);
+            line-height: 1.7;
+            margin-bottom: 28px;
+        }
+
+        .rules-date {
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+    </style>
 </head>
 
 <body>
 
-<header class="navbar">
-    <div class="logo">
-        AMINATION <span>ESPORTS</span>
-    </div>
+    <main class="container">
 
-    <nav>
-        <a href="/">Home</a>
-        <a href="/tournament">Tournament</a>
-        <a href="/live">Live</a>
-        <a href="/standings">Standings</a>
-        <a href="/players">Players</a>
-        <a href="/matches">Matches</a>
-        <a href="/terms">Rules</a>
-    </nav>
-</header>
+        <div class="rules-page">
 
-<main class="terms-page">
+            <section class="card">
 
-    <!-- Put the agreement content here -->
+                <h1>Amination Esports Rules & Terms</h1>
 
-</main>
+                <p class="rules-intro">
+                    Welcome to Amination Esports. These rules are designed
+                    to keep our tournaments fair, competitive, safe and
+                    enjoyable for every player.
+                </p>
 
-<footer>
-    <p>
-        © 2026 Amination Esports —
-        From Imagination to Reality.
-    </p>
-</footer>
+                <p class="rules-date">
+                    Rules version: 1.0
+                </p>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>1. Player Eligibility</h2>
+
+                <ol>
+                    <li>
+                        Players must provide accurate information when
+                        registering for an Amination Esports tournament.
+                    </li>
+
+                    <li>
+                        Each player must use their own registered FC Mobile
+                        account and squad.
+                    </li>
+
+                    <li>
+                        Players must not register multiple accounts in an
+                        attempt to gain an unfair advantage.
+                    </li>
+
+                    <li>
+                        Amination Esports may reject, suspend or remove an
+                        application where information appears to be false,
+                        misleading or fraudulent.
+                    </li>
+
+                    <li>
+                        Players are responsible for keeping their account
+                        credentials private.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>2. Fair Play</h2>
+
+                <ol>
+                    <li class="important-rule">
+                        Every player must play fairly and honestly.
+                    </li>
+
+                    <li>
+                        Cheating, exploiting glitches, manipulating results,
+                        match fixing or deliberately abusing game mechanics
+                        is prohibited.
+                    </li>
+
+                    <li>
+                        Players must not intentionally disconnect or abandon
+                        a match in order to manipulate the result.
+                    </li>
+
+                    <li>
+                        Players must not collude with another player to
+                        manipulate tournament standings or results.
+                    </li>
+
+                    <li>
+                        Any attempt to deceive Amination Esports staff may
+                        result in disqualification.
+                    </li>
+
+                    <li>
+                        Players are expected to respect opponents, staff,
+                        moderators and other members of the community.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>3. Match Rules</h2>
+
+                <ol>
+                    <li>
+                        Players must be available for their scheduled matches.
+                    </li>
+
+                    <li>
+                        Players should arrive or be ready before their
+                        scheduled match time.
+                    </li>
+
+                    <li>
+                        Players must follow instructions provided by
+                        Amination Esports staff or moderators.
+                    </li>
+
+                    <li>
+                        Match results must be reported accurately.
+                    </li>
+
+                    <li>
+                        Players may be required to provide screenshots,
+                        recordings or other evidence of a match result.
+                    </li>
+
+                    <li>
+                        If a match is interrupted by a technical problem,
+                        the players must notify Amination Esports staff as
+                        soon as possible.
+                    </li>
+
+                    <li>
+                        Amination Esports may decide whether a match should
+                        be replayed, continued, recorded as a result or
+                        otherwise resolved after reviewing the circumstances.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>4. Reporting Problems</h2>
+
+                <ol>
+                    <li>
+                        Players have the right to report problems,
+                        disputes, suspected cheating or unfair treatment
+                        to Amination Esports.
+                    </li>
+
+                    <li>
+                        Reports should contain as much useful information
+                        as possible.
+                    </li>
+
+                    <li>
+                        Screenshots, recordings, match information and
+                        other evidence may be requested.
+                    </li>
+
+                    <li>
+                        Players must not submit deliberately false reports
+                        against another player.
+                    </li>
+
+                    <li>
+                        Amination Esports staff will review reported issues
+                        and may request information from the players involved.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>5. Tournament Administration</h2>
+
+                <ol>
+                    <li>
+                        Amination Esports reserves the right to manage
+                        tournament schedules, draws, matches and standings.
+                    </li>
+
+                    <li>
+                        Tournament draws may be randomised or generated
+                        according to the tournament format.
+                    </li>
+
+                    <li>
+                        Amination Esports may postpone, reschedule, pause,
+                        restart or cancel a tournament where necessary.
+                    </li>
+
+                    <li>
+                        Staff decisions may be made to protect the fairness
+                        and integrity of the competition.
+                    </li>
+
+                    <li>
+                        Players must follow reasonable instructions from
+                        authorised Amination Esports staff.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>6. Entry Fees & Refunds</h2>
+
+                <ol>
+                    <li>
+                        Some future Amination Esports tournaments may require
+                        an entry fee.
+                    </li>
+
+                    <li>
+                        Any applicable entry fee will be communicated before
+                        registration is completed.
+                    </li>
+
+                    <li class="important-rule">
+                        Entry fees are generally non-refundable after a
+                        player's participation has been confirmed.
+                    </li>
+
+                    <li>
+                        A refund may be considered where there is a legitimate
+                        and reasonable reason, at the discretion of Amination
+                        Esports.
+                    </li>
+
+                    <li>
+                        A refund or correction may also be considered where
+                        an error by Amination Esports staff directly caused
+                        the problem.
+                    </li>
+
+                    <li>
+                        Refund decisions may require the player to provide
+                        information or evidence relating to the request.
+                    </li>
+
+                    <li>
+                        Nothing in this section is intended to remove any
+                        consumer rights that cannot legally be excluded.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>7. Disqualification & Suspensions</h2>
+
+                <ol>
+                    <li>
+                        A player may be warned, suspended or disqualified
+                        for violating tournament rules.
+                    </li>
+
+                    <li>
+                        Serious cheating, fraud, harassment, match fixing
+                        or deliberate manipulation may result in immediate
+                        disqualification.
+                    </li>
+
+                    <li>
+                        Amination Esports may remove a player from a
+                        tournament where continued participation would
+                        compromise the fairness or safety of the competition.
+                    </li>
+
+                    <li>
+                        Where appropriate, previous tournament results,
+                        records or awards may be reviewed if serious
+                        misconduct is discovered.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>8. Technical Problems</h2>
+
+                <ol>
+                    <li>
+                        Amination Esports cannot guarantee that the website,
+                        tournament platform, internet connection, FC Mobile
+                        services or other third-party services will always
+                        operate without interruption.
+                    </li>
+
+                    <li>
+                        Players are responsible for having a suitable device,
+                        internet connection and access to the game.
+                    </li>
+
+                    <li>
+                        Technical problems should be reported immediately.
+                    </li>
+
+                    <li>
+                        Where possible, Amination Esports will investigate
+                        technical problems and determine a fair resolution.
+                    </li>
+
+                    <li>
+                        Amination Esports may not be responsible for failures
+                        caused by third-party services, internet providers,
+                        device failures or circumstances outside its
+                        reasonable control.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>9. Liability</h2>
+
+                <div class="rules-note">
+                    Amination Esports aims to provide a fair and enjoyable
+                    esports experience. However, participation in tournaments
+                    involves circumstances that may be outside the control of
+                    Amination Esports.
+                </div>
+
+                <ol>
+                    <li>
+                        Players participate in Amination Esports tournaments
+                        at their own responsibility.
+                    </li>
+
+                    <li>
+                        To the maximum extent permitted by applicable law,
+                        Amination Esports is not responsible for losses,
+                        interruptions or problems caused by circumstances
+                        outside its reasonable control.
+                    </li>
+
+                    <li>
+                        This may include internet failures, device failures,
+                        third-party platform outages, game-server problems,
+                        power interruptions or other technical problems.
+                    </li>
+
+                    <li>
+                        Amination Esports does not guarantee uninterrupted
+                        access to the website or tournament services.
+                    </li>
+
+                    <li>
+                        Nothing in these rules is intended to exclude or limit
+                        liability where such exclusion or limitation would be
+                        unlawful.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>10. Respect & Community Conduct</h2>
+
+                <ol>
+                    <li>
+                        Players must treat opponents and staff respectfully.
+                    </li>
+
+                    <li>
+                        Harassment, threats, bullying, hate speech and
+                        abusive behaviour are not permitted.
+                    </li>
+
+                    <li>
+                        Players must not deliberately disrupt tournament
+                        operations.
+                    </li>
+
+                    <li>
+                        Disagreements should be reported to Amination Esports
+                        staff instead of becoming personal conflicts.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>11. Evidence & Match Verification</h2>
+
+                <ol>
+                    <li>
+                        Amination Esports may request evidence to verify
+                        tournament results.
+                    </li>
+
+                    <li>
+                        Players must cooperate reasonably with verification
+                        requests.
+                    </li>
+
+                    <li>
+                        Providing deliberately falsified evidence may result
+                        in disqualification.
+                    </li>
+
+                    <li>
+                        Amination Esports may use available match information
+                        and evidence when resolving disputes.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>12. Changes to These Rules</h2>
+
+                <ol>
+                    <li>
+                        Amination Esports may update these rules when
+                        necessary.
+                    </li>
+
+                    <li>
+                        Important rule changes will be communicated to
+                        players where reasonably possible.
+                    </li>
+
+                    <li>
+                        Players participating in future tournaments may be
+                        required to accept the current version of the rules.
+                    </li>
+                </ol>
+
+            </section>
+
+
+            <section class="rules-section">
+
+                <h2>13. Final Statement</h2>
+
+                <p>
+                    By participating in an Amination Esports tournament,
+                    players agree to follow these rules, compete fairly,
+                    respect other participants and cooperate with reasonable
+                    tournament administration.
+                </p>
+
+                <p>
+                    If you experience a problem, dispute or situation that
+                    you believe requires attention, contact Amination Esports
+                    staff rather than attempting to resolve the issue through
+                    unfair play or confrontation with another player.
+                </p>
+
+                <p class="important-rule">
+                    Our goal is simple: fair competition, respect,
+                    transparency and a great esports experience.
+                </p>
+
+            </section>
+
+
+            <section class="card">
+
+                <p>
+                    <strong>Amination Esports</strong><br>
+                    From Imagination to Reality.
+                </p>
+
+                <p>
+                    <a href="{{ url_for('home') }}">
+                        Return to Amination Esports
+                    </a>
+                </p>
+
+            </section>
+
+        </div>
+
+    </main>
 
 </body>
 </html>
-
-@app.route("/terms")
-def terms():
-    return render_template("terms.html")

@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Local database
+instance/*.db
+
+# Local backups
+backups/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Termux / editor files
+*.swp
+*.swo

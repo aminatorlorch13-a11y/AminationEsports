@@ -32,6 +32,7 @@
         <a href="/players">Players</a>
         <a href="/matches">Matches</a>
         <a href="/terms">Rules</a>
+        <a href="/login">Login</a>
 
     </nav>
 
@@ -107,6 +108,35 @@
             required
         >
 
+
+        <label for="email">
+            Email Address
+        </label>
+
+        <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="you@example.com"
+            required
+        >
+
+        <label for="password">
+            Password
+        </label>
+
+        <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Create a password (minimum 8 characters)"
+            minlength="8"
+            required
+        >
+
+        <p class="form-help">
+            Your email and password will be used to log in to your player profile.
+        </p>
 
         <div class="rules-box">
 
