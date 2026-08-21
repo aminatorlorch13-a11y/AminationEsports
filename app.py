@@ -2054,6 +2054,42 @@ def production_diagnostic():
             "error": str(e)
         }, 500
 
+# TEMPORARY PRODUCTION TOURNAMENT REPAIR
+# Creates the tournament only when production has no tournament.
+# Founder authentication is required.
+@app.route("/admin/repair-tournament", methods=["POST"])
+def repair_tournament():
+    access = founder_required()
+    if access:
+        return access
+
+    existing = Tournament.query.order_by(
+        Tournament.id.desc()
+    ).first()
+
+    if existing:
+        return (
+            f"Tournament already exists: "
+            f"{existing.name} | max_players={existing.max_players} | "
+            f"status={existing.status}"
+        )
+
+    tournament = Tournament(
+        name="Amination FC Season 1",
+        status=TOURNAMENT_REGISTRATION,
+        max_players=16
+    )
+
+    db.session.add(tournament)
+    db.session.commit()
+
+    return (
+        f"Created tournament: {tournament.name} | "
+        f"id={tournament.id} | max_players={tournament.max_players} | "
+        f"status={tournament.status}"
+    )
+
+
 if __name__ == "__main__":
 
     app.run(
