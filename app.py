@@ -2057,7 +2057,7 @@ def production_diagnostic():
 # TEMPORARY PRODUCTION TOURNAMENT REPAIR
 # Creates the tournament only when production has no tournament.
 # Founder authentication is required.
-@app.route("/admin/repair-tournament", methods=["POST"])
+@app.route("/admin/repair-tournament", methods=["GET", "POST"])
 def repair_tournament():
     access = founder_required()
     if access:
