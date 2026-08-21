@@ -2001,6 +2001,59 @@ with app.app_context():
 # START SERVER
 # ============================================================
 
+@app.route("/production-diagnostic", methods=["GET"])
+def production_diagnostic():
+
+    from sqlalchemy import text
+
+    try:
+        player_count = Player.query.count()
+
+        approved_count = Player.query.filter_by(
+            active=True,
+            application_status="approved"
+        ).count()
+
+        tournament_count = Tournament.query.count()
+
+        tournament = Tournament.query.order_by(
+            Tournament.id.desc()
+        ).first()
+
+        if tournament:
+            tournament_info = {
+                "id": tournament.id,
+                "name": tournament.name,
+                "status": tournament.status,
+                "max_players": tournament.max_players
+            }
+        else:
+            tournament_info = None
+
+        try:
+            from models import Match
+            match_count = Match.query.count()
+        except Exception:
+            match_count = "unable to check"
+
+        return {
+            "diagnostic": "READ ONLY",
+            "database": "production",
+            "players": player_count,
+            "approved_active_players": approved_count,
+            "tournaments": tournament_count,
+            "latest_tournament": tournament_info,
+            "matches": match_count
+        }, 200
+
+    except Exception as e:
+        return {
+            "diagnostic": "READ ONLY",
+            "database_check": "FAILED",
+            "error_type": type(e).__name__,
+            "error": str(e)
+        }, 500
+
 if __name__ == "__main__":
 
     app.run(
