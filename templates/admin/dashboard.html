@@ -1328,6 +1328,78 @@
                                 {% endif %}
                             </strong>
                         </p>
+
+<!-- MATCH SCHEDULING -->
+
+<div style="
+    margin-top:15px;
+    padding:15px;
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:10px;
+">
+
+    <h4>
+        📅 MATCH SCHEDULE
+    </h4>
+
+    {% if match.scheduled_time %}
+        <p>
+            Current time:
+            <strong>
+                {{ match.scheduled_time.strftime('%A, %d %B %Y at %H:%M') }}
+            </strong>
+        </p>
+    {% else %}
+        <p>
+            <strong>Not scheduled yet.</strong>
+        </p>
+    {% endif %}
+
+    <form
+        method="POST"
+        action="{{ url_for(
+            'founder_schedule_match',
+            match_id=match.id
+        ) }}"
+    >
+
+        <label>
+            <strong>
+                Set date and time
+            </strong>
+        </label>
+
+        <input
+            type="datetime-local"
+            name="scheduled_time"
+            {% if match.scheduled_time %}
+                value="{{ match.scheduled_time.strftime('%Y-%m-%dT%H:%M') }}"
+            {% endif %}
+            required
+            style="
+                width:100%;
+                box-sizing:border-box;
+                margin-top:8px;
+                margin-bottom:10px;
+            "
+        >
+
+        <button
+            type="submit"
+            class="button"
+            style="
+                border:none;
+                cursor:pointer;
+                width:100%;
+            "
+        >
+            📅 SAVE MATCH TIME
+        </button>
+
+    </form>
+
+</div>
+
                           <!-- START LIVE MATCH -->
 
                           <form

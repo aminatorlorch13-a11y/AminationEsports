@@ -1779,6 +1779,42 @@ def founder_public_announcement():
         url_for("admin_dashboard")
     )
 
+# ============================================================
+# FOUNDER — MATCH SCHEDULING
+# ============================================================
+
+@app.route(
+    "/admin/founder/match/<int:match_id>/schedule",
+    methods=["POST"]
+)
+def founder_schedule_match(match_id):
+
+    access = founder_required()
+    if access:
+        return access
+
+    match = Match.query.get_or_404(match_id)
+
+    scheduled_time = request.form.get(
+        "scheduled_time",
+        ""
+    ).strip()
+
+    if not scheduled_time:
+        return "A match date and time are required.", 400
+
+    try:
+        match.scheduled_time = datetime.fromisoformat(
+            scheduled_time
+        )
+    except ValueError:
+        return "Invalid match date/time.", 400
+
+    db.session.commit()
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
 
 
 # ============================================================
