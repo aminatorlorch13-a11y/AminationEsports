@@ -1795,27 +1795,17 @@ def founder_substitute_match_player(match_id):
 
     match = Match.query.get_or_404(match_id)
 
-    # Never alter a match that has already started or finished.
     if match.is_live:
         return "A live match cannot be substituted.", 409
 
     if match.status != MATCH_SCHEDULED:
-        return (
-            "Only scheduled matches can have players substituted."
-        ), 409
+        return "Only scheduled matches can be substituted.", 409
 
     if match.winner_id:
         return "A match with a winner cannot be changed.", 409
 
-    player_to_replace = request.form.get(
-        "player_to_replace",
-        ""
-    ).strip()
-
-    replacement_player = request.form.get(
-        "replacement_player",
-        ""
-    ).strip()
+    player_to_replace = request.form.get("player_to_replace", "").strip()
+    replacement_player = request.form.get("replacement_player", "").strip()
 
     try:
         player_to_replace = int(player_to_replace)
@@ -1826,16 +1816,10 @@ def founder_substitute_match_player(match_id):
     if player_to_replace == replacement_player:
         return "The replacement player must be different.", 400
 
-    if player_to_replace not in [
-        match.player1_id,
-        match.player2_id
-    ]:
+    if player_to_replace not in [match.player1_id, match.player2_id]:
         return "The selected player is not part of this match.", 400
 
-    if replacement_player in [
-        match.player1_id,
-        match.player2_id
-    ]:
+    if replacement_player in [match.player1_id, match.player2_id]:
         return "That player is already in this match.", 400
 
     replacement = Player.query.filter_by(
@@ -1845,63 +1829,57 @@ def founder_substitute_match_player(match_id):
     ).first()
 
     if not replacement:
-        return (
-            "The replacement player is not an approved active player."
-        ), 400
+        return "The replacement player is not an approved active player.", 400
 
-    # Prevent a player from being placed into two active matches.
-    conflicting_match = Match.query.filter(
+    # If the replacement player is already in another scheduled match,
+    # swap the two players instead of rejecting the operation.
+    replacement_match = Match.query.filter(
         Match.id != match.id,
-        Match.status.in_([
-            MATCH_SCHEDULED,
-            MATCH_IN_PROGRESS,
-            MATCH_LIVE
-        ]),
+        Match.status == MATCH_SCHEDULED,
+        Match.is_live.is_(False),
+        Match.winner_id.is_(None),
         or_(
             Match.player1_id == replacement_player,
             Match.player2_id == replacement_player
         )
     ).first()
 
-    if conflicting_match:
-        return (
-            "That player is already assigned to another active match."
-        ), 409
-
-    old_player_id = player_to_replace
+    if replacement_match:
+        if replacement_match.player1_id == replacement_player:
+            replacement_match.player1_id = player_to_replace
+        else:
+            replacement_match.player2_id = player_to_replace
 
     if match.player1_id == player_to_replace:
         match.player1_id = replacement_player
     else:
         match.player2_id = replacement_player
 
-    # Keep the match itself intact:
-    # ID, scheduled time, round, scores and status remain unchanged.
+    old_player = Player.query.get(player_to_replace)
+    old_name = old_player.name if old_player else f"Player #{player_to_replace}"
 
-    old_player = Player.query.get(old_player_id)
-
-    old_name = (
-        old_player.name
-        if old_player
-        else f"Player #{old_player_id}"
-    )
+    if replacement_match:
+        notes = (
+            f"Founder swapped {old_name} with {replacement.name}. "
+            f"Match #{match.id} now contains {replacement.name}; "
+            f"Match #{replacement_match.id} now contains {old_name}."
+        )
+    else:
+        notes = (
+            f"Founder substituted {old_name} with "
+            f"{replacement.name} in Match #{match.id}."
+        )
 
     action = AdminAction(
         action="match_player_substituted",
-        notes=(
-            f"Founder substituted {old_name} with "
-            f"{replacement.name} in Match #{match.id} "
-            f"({match.round_name})."
-        ),
+        notes=notes,
         created_at=datetime.utcnow()
     )
 
     db.session.add(action)
     db.session.commit()
 
-    return redirect(
-        url_for("admin_dashboard")
-    )
+    return redirect(url_for("admin_dashboard"))
 
 # ============================================================
 # FOUNDER — MATCH SCHEDULING
