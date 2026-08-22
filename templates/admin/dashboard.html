@@ -1400,6 +1400,128 @@
 
 </div>
 
+<!-- MATCH PLAYER SUBSTITUTION -->
+
+<div style="
+    margin-top:15px;
+    padding:15px;
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:10px;
+">
+
+    <h4>
+        🔄 SUBSTITUTE PLAYER
+    </h4>
+
+    <p>
+        Founder-only control. This changes one player in this
+        scheduled match without changing the match time or match ID.
+    </p>
+
+    <form
+        method="POST"
+        action="{{ url_for(
+            'founder_substitute_match_player',
+            match_id=match.id
+        ) }}"
+    >
+
+        <label>
+            <strong>
+                Player to replace
+            </strong>
+        </label>
+
+        <select
+            name="player_to_replace"
+            required
+            style="
+                width:100%;
+                box-sizing:border-box;
+                margin-top:8px;
+                margin-bottom:10px;
+            "
+        >
+
+            <option value="">
+                Select player to replace
+            </option>
+
+            {% if players_by_id.get(match.player1_id) %}
+                <option value="{{ match.player1_id }}">
+                    {{ players_by_id[match.player1_id].name }}
+                </option>
+            {% endif %}
+
+            {% if players_by_id.get(match.player2_id) %}
+                <option value="{{ match.player2_id }}">
+                    {{ players_by_id[match.player2_id].name }}
+                </option>
+            {% endif %}
+
+        </select>
+
+
+        <label>
+            <strong>
+                Replacement player
+            </strong>
+        </label>
+
+        <select
+            name="replacement_player"
+            required
+            style="
+                width:100%;
+                box-sizing:border-box;
+                margin-top:8px;
+                margin-bottom:10px;
+            "
+        >
+
+            <option value="">
+                Select replacement player
+            </option>
+
+            {% for candidate in players %}
+
+                {% if
+                    candidate.active
+                    and candidate.application_status == "approved"
+                    and candidate.id != match.player1_id
+                    and candidate.id != match.player2_id
+                %}
+
+                    <option value="{{ candidate.id }}">
+                        {{ candidate.name }}
+                    </option>
+
+                {% endif %}
+
+            {% endfor %}
+
+        </select>
+
+
+        <button
+            type="submit"
+            class="button"
+            style="
+                border:none;
+                cursor:pointer;
+                width:100%;
+            "
+            onclick="return confirm(
+                'Substitute this player in the scheduled match?'
+            );"
+        >
+            🔄 SUBSTITUTE PLAYER
+        </button>
+
+    </form>
+
+</div>
+
                           <!-- START LIVE MATCH -->
 
                           <form

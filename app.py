@@ -1780,6 +1780,130 @@ def founder_public_announcement():
     )
 
 # ============================================================
+# FOUNDER — MATCH PLAYER SUBSTITUTION
+# ============================================================
+
+@app.route(
+    "/admin/founder/match/<int:match_id>/substitute",
+    methods=["POST"]
+)
+def founder_substitute_match_player(match_id):
+
+    access = founder_required()
+    if access:
+        return access
+
+    match = Match.query.get_or_404(match_id)
+
+    # Never alter a match that has already started or finished.
+    if match.is_live:
+        return "A live match cannot be substituted.", 409
+
+    if match.status != MATCH_SCHEDULED:
+        return (
+            "Only scheduled matches can have players substituted."
+        ), 409
+
+    if match.winner_id:
+        return "A match with a winner cannot be changed.", 409
+
+    player_to_replace = request.form.get(
+        "player_to_replace",
+        ""
+    ).strip()
+
+    replacement_player = request.form.get(
+        "replacement_player",
+        ""
+    ).strip()
+
+    try:
+        player_to_replace = int(player_to_replace)
+        replacement_player = int(replacement_player)
+    except (TypeError, ValueError):
+        return "Invalid player selection.", 400
+
+    if player_to_replace == replacement_player:
+        return "The replacement player must be different.", 400
+
+    if player_to_replace not in [
+        match.player1_id,
+        match.player2_id
+    ]:
+        return "The selected player is not part of this match.", 400
+
+    if replacement_player in [
+        match.player1_id,
+        match.player2_id
+    ]:
+        return "That player is already in this match.", 400
+
+    replacement = Player.query.filter_by(
+        id=replacement_player,
+        active=True,
+        application_status="approved"
+    ).first()
+
+    if not replacement:
+        return (
+            "The replacement player is not an approved active player."
+        ), 400
+
+    # Prevent a player from being placed into two active matches.
+    conflicting_match = Match.query.filter(
+        Match.id != match.id,
+        Match.status.in_([
+            MATCH_SCHEDULED,
+            MATCH_IN_PROGRESS,
+            MATCH_LIVE
+        ]),
+        or_(
+            Match.player1_id == replacement_player,
+            Match.player2_id == replacement_player
+        )
+    ).first()
+
+    if conflicting_match:
+        return (
+            "That player is already assigned to another active match."
+        ), 409
+
+    old_player_id = player_to_replace
+
+    if match.player1_id == player_to_replace:
+        match.player1_id = replacement_player
+    else:
+        match.player2_id = replacement_player
+
+    # Keep the match itself intact:
+    # ID, scheduled time, round, scores and status remain unchanged.
+
+    old_player = Player.query.get(old_player_id)
+
+    old_name = (
+        old_player.name
+        if old_player
+        else f"Player #{old_player_id}"
+    )
+
+    action = AdminAction(
+        action="match_player_substituted",
+        notes=(
+            f"Founder substituted {old_name} with "
+            f"{replacement.name} in Match #{match.id} "
+            f"({match.round_name})."
+        ),
+        created_at=datetime.utcnow()
+    )
+
+    db.session.add(action)
+    db.session.commit()
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+# ============================================================
 # FOUNDER — MATCH SCHEDULING
 # ============================================================
 
