@@ -63,34 +63,53 @@ def founder_required():
 
 
 
+
 # ============================================================
-# TOURNAMENT HELPERS
+# TOURNAMENT HELPERS — V2 BRACKET ENGINE
 # ============================================================
+
+def tournament_bracket_capacity(player_count):
+    try:
+        player_count = int(player_count or 0)
+    except (TypeError, ValueError):
+        player_count = 0
+
+    if player_count <= 2:
+        return 2
+    if player_count <= 4:
+        return 4
+    if player_count <= 8:
+        return 8
+    if player_count <= 16:
+        return 16
+    if player_count <= 32:
+        return 32
+
+    raise ValueError(
+        "AminationEsports supports a maximum of 32 players."
+    )
+
 
 def tournament_rounds(player_count):
-    """
-    Return the correct bracket rounds for the number of players.
+    capacity = tournament_bracket_capacity(player_count)
 
-    16 players:
-        Round 1
-        Quarter-finals
-        Semi-finals
-        Final
+    if capacity == 2:
+        return [FINAL]
 
-    8 players:
-        Quarter-finals
-        Semi-finals
-        Final
+    if capacity == 4:
+        return [
+            SEMI_FINAL,
+            FINAL
+        ]
 
-    4 players:
-        Semi-finals
-        Final
+    if capacity == 8:
+        return [
+            QUARTER_FINAL,
+            SEMI_FINAL,
+            FINAL
+        ]
 
-    2 players:
-        Final
-    """
-
-    if player_count >= 16:
+    if capacity == 16:
         return [
             ROUND_1,
             QUARTER_FINAL,
@@ -98,28 +117,18 @@ def tournament_rounds(player_count):
             FINAL
         ]
 
-    if player_count >= 8:
-        return [
-            QUARTER_FINAL,
-            SEMI_FINAL,
-            FINAL
-        ]
-
-    if player_count >= 4:
-        return [
-            SEMI_FINAL,
-            FINAL
-        ]
-
     return [
+        ROUND_1,
+        "Round 2",
+        QUARTER_FINAL,
+        SEMI_FINAL,
         FINAL
     ]
 
 
 def next_round_name(current_round, rounds):
-    """
-    Find the next round after the current round.
-    """
+    if not current_round or not rounds:
+        return None
 
     if current_round not in rounds:
         return None
@@ -132,24 +141,143 @@ def next_round_name(current_round, rounds):
     return rounds[index + 1]
 
 
-def get_player_match(player_id):
-    """
-    Return the player's current active tournament match.
+def calculate_bye_count(player_count):
+    capacity = tournament_bracket_capacity(player_count)
 
-    Active matches are preferred over completed matches.
-    If there is no active match, the most recent match is returned.
-    """
+    try:
+        player_count = int(player_count or 0)
+    except (TypeError, ValueError):
+        player_count = 0
+
+    return max(capacity - player_count, 0)
+
+
+def calculate_bye_positions(player_count):
+    capacity = tournament_bracket_capacity(player_count)
+    bye_count = calculate_bye_count(player_count)
+
+    if bye_count <= 0:
+        return []
+
+    positions = []
+
+    for index in range(bye_count):
+        position = int(
+            round(
+                ((index + 0.5) * capacity / bye_count) - 0.5
+            )
+        )
+
+        position = max(
+            0,
+            min(position, capacity - 1)
+        )
+
+        if position not in positions:
+            positions.append(position)
+
+    if len(positions) < bye_count:
+        for position in range(capacity):
+            if position not in positions:
+                positions.append(position)
+
+            if len(positions) >= bye_count:
+                break
+
+    return sorted(positions)
+
+
+def build_round_one_slots(players):
+    players = list(players or [])
+    player_count = len(players)
+
+    if player_count < 2:
+        return []
+
+    capacity = tournament_bracket_capacity(player_count)
+
+    bye_positions = set(
+        calculate_bye_positions(player_count)
+    )
+
+    slots = []
+    player_index = 0
+
+    for position in range(capacity):
+
+        if position in bye_positions:
+            slots.append(
+                {
+                    "position": position + 1,
+                    "player": None,
+                    "is_bye": True
+                }
+            )
+        else:
+            slots.append(
+                {
+                    "position": position + 1,
+                    "player": players[player_index],
+                    "is_bye": False
+                }
+            )
+
+            player_index += 1
+
+    return slots
+
+
+def build_round_one_pairings(players):
+    slots = build_round_one_slots(players)
+    pairings = []
+
+    for index in range(0, len(slots), 2):
+
+        player1_slot = slots[index]
+        player2_slot = slots[index + 1]
+
+        pairings.append(
+            {
+                "match_number": index // 2 + 1,
+                "bracket_position": index // 2 + 1,
+
+                "player1": player1_slot["player"],
+                "player2": player2_slot["player"],
+
+                "player1_is_bye":
+                    player1_slot["is_bye"],
+
+                "player2_is_bye":
+                    player2_slot["is_bye"],
+
+                "is_bye":
+                    (
+                        player1_slot["is_bye"]
+                        or
+                        player2_slot["is_bye"]
+                    )
+            }
+        )
+
+    return pairings
+
+
+def get_player_match(player_id):
+    if not player_id:
+        return None
 
     active_match = Match.query.filter(
         or_(
             Match.player1_id == player_id,
             Match.player2_id == player_id
         ),
-        Match.status.in_([
-            MATCH_SCHEDULED,
-            MATCH_IN_PROGRESS,
-            MATCH_LIVE
-        ])
+        Match.status.in_(
+            [
+                MATCH_SCHEDULED,
+                MATCH_IN_PROGRESS,
+                MATCH_LIVE
+            ]
+        )
     ).order_by(
         Match.id.desc()
     ).first()
@@ -167,77 +295,52 @@ def get_player_match(player_id):
     ).first()
 
 
+def _set_next_match_player(next_match, winner_id, source_match):
+    if not next_match or not winner_id:
+        return False
+
+    current_position = source_match.bracket_position
+
+    if current_position is None:
+        return False
+
+    if (int(current_position) - 1) % 2 == 0:
+
+        next_match.player1_id = winner_id
+        next_match.source_match1_id = source_match.id
+
+    else:
+
+        next_match.player2_id = winner_id
+        next_match.source_match2_id = source_match.id
+
+    return True
+
+
 def create_next_round_match(tournament, finished_match):
     """
-    Create the next-round match when both feeder matches
-    have completed and both winners are known.
+    Create or update the next-round match for a completed feeder.
+
+    V2 bracket behavior:
+    - A next-round match may contain one known player and one TBD slot.
+    - The next-round match is created as soon as either feeder produces
+      a winner.
+    - The unresolved feeder remains NULL until that match is completed.
+    - Repeated calls update the existing next-round match instead of
+      creating duplicates.
     """
+
+    if not tournament:
+        return None
+
+    if not finished_match:
+        return None
 
     if not finished_match.winner_id:
         return None
 
-    # Get all matches belonging to this round.
-    round_matches = Match.query.filter_by(
-        tournament_id=tournament.id,
-        round_name=finished_match.round_name
-    ).order_by(
-        Match.id.asc()
-    ).all()
-
-    # Find the completed match's position.
-    current_index = next(
-        (
-            index
-            for index, current_match in enumerate(round_matches)
-            if current_match.id == finished_match.id
-        ),
-        None
-    )
-
-    if current_index is None:
-        return None
-
-    # Pair matches like:
-    # Match 1 + Match 2 -> next round
-    # Match 3 + Match 4 -> next round
-    # etc.
-    if current_index % 2 == 0:
-        sibling_index = current_index + 1
-    else:
-        sibling_index = current_index - 1
-
-    if sibling_index < 0 or sibling_index >= len(round_matches):
-        return None
-
-    sibling_match = round_matches[sibling_index]
-
-    # Both feeder matches must have winners.
-    if not sibling_match.winner_id:
-        return None
-
-    # Determine the tournament's original player count.
-    # The first generated round contains half the players.
-    all_matches = Match.query.filter_by(
-        tournament_id=tournament.id
-    ).order_by(
-        Match.id.asc()
-    ).all()
-
-    if not all_matches:
-        return None
-
-    first_round_name = all_matches[0].round_name
-
-    first_round_matches = [
-        current_match
-        for current_match in all_matches
-        if current_match.round_name == first_round_name
-    ]
-
-    original_player_count = len(first_round_matches) * 2
-
     rounds = tournament_rounds(
-        original_player_count
+        tournament.max_players
     )
 
     next_round = next_round_name(
@@ -245,46 +348,253 @@ def create_next_round_match(tournament, finished_match):
         rounds
     )
 
-    # The Final has no next round.
     if not next_round:
         return None
 
-    winner_a = finished_match.winner_id
-    winner_b = sibling_match.winner_id
+    current_position = finished_match.bracket_position
 
-    # Prevent duplicate advancement.
-    existing_matches = Match.query.filter_by(
+    if current_position is None:
+        return None
+
+    current_position = int(current_position)
+
+    # Determine which position in the next round this match feeds.
+    next_position = (
+        ((current_position - 1) // 2) + 1
+    )
+
+    next_round_number = (
+        rounds.index(next_round) + 1
+    )
+
+    # ------------------------------------------------------------
+    # Find the paired feeder.
+    #
+    # The other feeder does NOT need to be finished yet.
+    # Its winner can remain TBD / NULL.
+    # ------------------------------------------------------------
+
+    other_position = (
+        current_position - 1
+        if current_position % 2 == 0
+        else current_position + 1
+    )
+
+    other_match = Match.query.filter_by(
         tournament_id=tournament.id,
-        round_name=next_round
-    ).all()
+        round_name=finished_match.round_name,
+        bracket_position=other_position
+    ).first()
 
-    for existing_match in existing_matches:
+    # ------------------------------------------------------------
+    # Determine feeder order.
+    #
+    # Odd source position -> Player 1
+    # Even source position -> Player 2
+    # ------------------------------------------------------------
 
-        if {
-            existing_match.player1_id,
-            existing_match.player2_id
-        } == {
-            winner_a,
-            winner_b
-        }:
-            return existing_match
+    if current_position % 2 == 1:
+        source_match1 = finished_match
+        source_match2 = other_match
+    else:
+        source_match1 = other_match
+        source_match2 = finished_match
 
-    # Create the next-round match.
+    # ------------------------------------------------------------
+    # Determine known winners.
+    #
+    # Either side may still be TBD.
+    # ------------------------------------------------------------
+
+    player1_id = (
+        source_match1.winner_id
+        if source_match1 is not None
+        else None
+    )
+
+    player2_id = (
+        source_match2.winner_id
+        if source_match2 is not None
+        else None
+    )
+
+    # At least the finished feeder must provide a winner.
+    if not player1_id and not player2_id:
+        return None
+
+    # ------------------------------------------------------------
+    # Look for an existing next-round match.
+    #
+    # This is important for idempotency.
+    # ------------------------------------------------------------
+
+    next_match = Match.query.filter_by(
+        tournament_id=tournament.id,
+        round_name=next_round,
+        bracket_position=next_position
+    ).first()
+
+    if next_match is not None:
+
+        # Update only the feeder slot that now has a winner.
+        if player1_id:
+            next_match.player1_id = player1_id
+
+        if player2_id:
+            next_match.player2_id = player2_id
+
+        if source_match1 is not None:
+            next_match.source_match1_id = source_match1.id
+
+        if source_match2 is not None:
+            next_match.source_match2_id = source_match2.id
+
+        db.session.flush()
+
+        return next_match
+
+    # ------------------------------------------------------------
+    # Create next-round match.
+    #
+    # One player may be known while the other remains TBD.
+    # This is now valid because player1_id/player2_id are nullable
+    # in the V2 database schema.
+    # ------------------------------------------------------------
+
     next_match = Match(
         tournament_id=tournament.id,
-        player1_id=winner_a,
-        player2_id=winner_b,
+
+        player1_id=player1_id,
+        player2_id=player2_id,
+
         player1_score=0,
         player2_score=0,
+
         status=MATCH_SCHEDULED,
+
         round_name=next_round,
+        round_number=next_round_number,
+
+        match_number=next_position,
+        bracket_position=next_position,
+
+        source_match1_id=(
+            source_match1.id
+            if source_match1 is not None
+            else None
+        ),
+
+        source_match2_id=(
+            source_match2.id
+            if source_match2 is not None
+            else None
+        ),
+
+        is_bye=False,
+        bye_reason=None,
+
+        is_forfeit=False,
+        forfeit_player_id=None,
+        forfeit_reason=None,
+
+        winner_id=None,
+        loser_id=None,
+
         is_live=False
     )
 
     db.session.add(next_match)
+    db.session.flush()
 
     return next_match
 
+
+def advance_bye_match(tournament, match):
+    if not tournament:
+        return None
+
+    if not match:
+        return None
+
+    if not match.is_bye:
+        return None
+
+    # A finished match is immutable.
+    # Never resolve or advance the same BYE twice.
+    if match.status == MATCH_FINISHED:
+        return None
+
+    player1 = match.player1_id
+    player2 = match.player2_id
+
+    if player1 and not player2:
+        winner_id = player1
+
+    elif player2 and not player1:
+        winner_id = player2
+
+    else:
+        return None
+
+    match.winner_id = winner_id
+    match.loser_id = None
+
+    match.status = MATCH_FINISHED
+    match.finished_at = datetime.utcnow()
+    match.is_live = False
+
+    return create_next_round_match(
+        tournament,
+        match
+    )
+
+
+def resolve_forfeit_match(
+    tournament,
+    match,
+    forfeiting_player_id,
+    reason=None
+):
+    if not tournament:
+        return None
+
+    if not match:
+        return None
+
+    # A finished match is immutable.
+    # Never overwrite an existing final result.
+    if match.status == MATCH_FINISHED:
+        return None
+
+    if forfeiting_player_id not in (
+        match.player1_id,
+        match.player2_id
+    ):
+        return None
+
+    if forfeiting_player_id == match.player1_id:
+        winner_id = match.player2_id
+    else:
+        winner_id = match.player1_id
+
+    if not winner_id:
+        return None
+
+    match.is_forfeit = True
+    match.forfeit_player_id = forfeiting_player_id
+    match.forfeit_reason = reason
+
+    match.winner_id = winner_id
+    match.loser_id = forfeiting_player_id
+
+    match.status = MATCH_FINISHED
+    match.finished_at = datetime.utcnow()
+    match.is_live = False
+
+    return create_next_round_match(
+        tournament,
+        match
+    )
 
 # ============================================================
 # PUBLIC PAGES
@@ -1277,6 +1587,11 @@ def founder_tournament_settings():
         ""
     ).strip()
 
+    entry_fee_raw = request.form.get(
+        "entry_fee",
+        ""
+    ).strip()
+
     competition_day = request.form.get(
         "competition_day",
         ""
@@ -1297,6 +1612,17 @@ def founder_tournament_settings():
 
     max_players = int(max_players_raw)
 
+    if not entry_fee_raw:
+        return "Entry fee is required.", 400
+
+    if not entry_fee_raw.isdigit():
+        return "Entry fee must be a whole number.", 400
+
+    entry_fee = int(entry_fee_raw)
+
+    if entry_fee < 0:
+        return "Entry fee cannot be negative.", 400
+
     if max_players not in [2, 4, 8, 16]:
         return (
             "Maximum players must be 2, 4, 8 or 16."
@@ -1311,18 +1637,21 @@ def founder_tournament_settings():
     old_values = (
         f"name={tournament.name}, "
         f"max_players={tournament.max_players}, "
+        f"entry_fee={tournament.entry_fee}, "
         f"competition_day={tournament.competition_day}, "
         f"final_day={tournament.final_day}"
     )
 
     tournament.name = name
     tournament.max_players = max_players
+    tournament.entry_fee = entry_fee
     tournament.competition_day = competition_day
     tournament.final_day = final_day
 
     new_values = (
         f"name={tournament.name}, "
         f"max_players={tournament.max_players}, "
+        f"entry_fee={tournament.entry_fee}, "
         f"competition_day={tournament.competition_day}, "
         f"final_day={tournament.final_day}"
     )
@@ -1354,8 +1683,15 @@ def founder_tournament_settings():
     methods=["POST"]
 )
 def draw_tournament():
+    """
+    Release the official V2 tournament draw.
+
+    Supports 2 through 32 approved players.
+    Non-power-of-two player counts receive BYEs.
+    """
 
     access = founder_required()
+
     if access:
         return access
 
@@ -1392,67 +1728,160 @@ def draw_tournament():
         Player.id.asc()
     ).all()
 
-    if len(approved_players) < 2:
+    player_count = len(approved_players)
+
+    if player_count < 2:
         return (
-            "At least two approved active players "
-            "are required."
+            "At least two approved active players are required."
         ), 400
 
-    if len(approved_players) > tournament.max_players:
+    if player_count > tournament.max_players:
         return (
             "There are more approved players than "
             "the tournament player limit."
         ), 400
 
-    if len(approved_players) not in [2, 4, 8, 16]:
+    if player_count > 32:
         return (
-            "The official draw currently requires "
-            "2, 4, 8 or 16 approved players."
+            "AminationEsports currently supports "
+            "a maximum of 32 players."
         ), 400
 
-    random.shuffle(
+    try:
+        capacity = tournament_bracket_capacity(player_count)
+        rounds = tournament_rounds(player_count)
+    except ValueError as exc:
+        return str(exc), 400
+
+    random.shuffle(approved_players)
+
+    pairings = build_round_one_pairings(
         approved_players
     )
 
-    if len(approved_players) == 16:
-        round_name = ROUND_1
-    elif len(approved_players) == 8:
-        round_name = QUARTER_FINAL
-    elif len(approved_players) == 4:
-        round_name = SEMI_FINAL
-    else:
-        round_name = FINAL
+    first_round = rounds[0]
 
-    for index in range(
-        0,
-        len(approved_players),
-        2
-    ):
+    for pairing in pairings:
 
-        player1 = approved_players[index]
-        player2 = approved_players[index + 1]
+        player1 = pairing["player1"]
+        player2 = pairing["player2"]
+
+        player1_id = (
+            player1.id
+            if player1 is not None
+            else None
+        )
+
+        player2_id = (
+            player2.id
+            if player2 is not None
+            else None
+        )
+
+        is_bye = bool(pairing["is_bye"])
+
+        bye_reason = None
+
+        if is_bye:
+            bye_reason = (
+                "Automatic BYE: "
+                + str(player_count)
+                + " players entered a "
+                + str(capacity)
+                + "-slot bracket."
+            )
 
         match = Match(
             tournament_id=tournament.id,
-            player1_id=player1.id,
-            player2_id=player2.id,
+
+            player1_id=player1_id,
+            player2_id=player2_id,
+
             player1_score=0,
             player2_score=0,
-            status=MATCH_SCHEDULED,
-            round_name=round_name,
+
+            status=(
+                MATCH_FINISHED
+                if is_bye
+                else MATCH_SCHEDULED
+            ),
+
+            round_name=first_round,
+            round_number=1,
+
+            match_number=pairing["match_number"],
+            bracket_position=pairing["bracket_position"],
+
+            source_match1_id=None,
+            source_match2_id=None,
+
+            is_bye=is_bye,
+            bye_reason=bye_reason,
+
+            is_forfeit=False,
+            forfeit_player_id=None,
+            forfeit_reason=None,
+
+            winner_id=None,
+            loser_id=None,
+
             is_live=False
         )
 
+        if is_bye:
+
+            if player1_id and not player2_id:
+                match.winner_id = player1_id
+
+            elif player2_id and not player1_id:
+                match.winner_id = player2_id
+
+            else:
+                return (
+                    "Invalid BYE pairing generated."
+                ), 500
+
+            match.finished_at = datetime.utcnow()
+
         db.session.add(match)
+
+    db.session.flush()
+
+    first_round_matches = Match.query.filter_by(
+        tournament_id=tournament.id,
+        round_name=first_round
+    ).order_by(
+        Match.bracket_position.asc()
+    ).all()
+
+    for match in first_round_matches:
+
+        if not match.is_bye:
+            continue
+
+        if not match.winner_id:
+            continue
+
+        create_next_round_match(
+            tournament,
+            match
+        )
 
     tournament.status = TOURNAMENT_DRAW_RELEASED
 
     action = AdminAction(
         action="tournament_draw_released",
         notes=(
-            f"Founder released the official draw for "
-            f"{tournament.name} with "
-            f"{len(approved_players)} players."
+            "Founder released the official V2 draw "
+            "for "
+            + tournament.name
+            + " with "
+            + str(player_count)
+            + " players in a "
+            + str(capacity)
+            + "-slot bracket. BYEs: "
+            + str(calculate_bye_count(player_count))
+            + "."
         ),
         created_at=datetime.utcnow()
     )
@@ -1934,19 +2363,42 @@ def founder_live_match_control(match_id):
         return access
 
     match = Match.query.get_or_404(match_id)
-
     action_type = request.form.get("action", "").strip()
 
-    if action_type not in ["start", "stop", "finish"]:
+    if action_type not in ["start", "stop", "update", "update_score", "finish"]:
         return "Invalid live match action.", 400
 
-    old_status = match.status
-    old_live = bool(match.is_live)
+    # ========================================================
+    # BYE PROTECTION
+    # ========================================================
+
+    if match.is_bye and action_type in ["start", "update", "finish"]:
+        return (
+            "A BYE match is automatically resolved and "
+            "does not require gameplay."
+        ), 409
+
+    # ========================================================
+    # START
+    # ========================================================
 
     if action_type == "start":
-        if match.status == MATCH_FINISHED:
-            return "A finished match cannot be started again.", 409
 
+        if not match.player1_id or not match.player2_id:
+            return (
+                "This match is waiting for both players "
+                "to advance into the bracket."
+            ), 409
+
+        if match.status == MATCH_FINISHED:
+            return (
+                "A finished match cannot be started again."
+            ), 409
+
+        if match.status == MATCH_LIVE and match.is_live:
+            return "This match is already live.", 409
+
+        # Only one match can be live at a time.
         other_live_matches = Match.query.filter(
             Match.is_live.is_(True),
             Match.id != match.id
@@ -1955,10 +2407,14 @@ def founder_live_match_control(match_id):
         for other_match in other_live_matches:
             other_match.is_live = False
 
+            if other_match.status == MATCH_LIVE:
+                other_match.status = MATCH_SCHEDULED
+
         match.is_live = True
         match.status = MATCH_LIVE
 
-        tournament = db.session.get(Tournament,
+        tournament = db.session.get(
+            Tournament,
             match.tournament_id
         )
 
@@ -1971,15 +2427,36 @@ def founder_live_match_control(match_id):
         if not match.started_at:
             match.started_at = datetime.utcnow()
 
+    # ========================================================
+    # STOP
+    # ========================================================
+
     elif action_type == "stop":
+
+        if match.status == MATCH_FINISHED:
+            return (
+                "A finished match cannot be stopped."
+            ), 409
+
         match.is_live = False
 
         if match.status == MATCH_LIVE:
             match.status = MATCH_SCHEDULED
 
-    elif action_type == "finish":
-        if match.status == MATCH_FINISHED:
-            return "This match is already finished.", 409
+    # ========================================================
+    # LIVE SCORE UPDATE
+    # ========================================================
+
+    elif action_type in ["update", "update_score"]:
+
+        if (
+            match.status != MATCH_LIVE
+            or not match.is_live
+        ):
+            return (
+                "Score updates are only allowed "
+                "while the match is live."
+            ), 409
 
         try:
             player1_score = int(
@@ -1989,7 +2466,48 @@ def founder_live_match_control(match_id):
                 request.form.get("player2_score", "")
             )
         except (TypeError, ValueError):
-            return "Both player scores must be valid whole numbers.", 400
+            return (
+                "Both player scores must be valid whole numbers."
+            ), 400
+
+        if player1_score < 0 or player2_score < 0:
+            return "Scores cannot be negative.", 400
+
+        # Live update only.
+        # Winner and loser remain unset.
+        match.player1_score = player1_score
+        match.player2_score = player2_score
+
+    # ========================================================
+    # FINISH
+    # ========================================================
+
+    elif action_type == "finish":
+
+        if match.status == MATCH_FINISHED:
+            return (
+                "This match is already finished."
+            ), 409
+
+        if (
+            match.status != MATCH_LIVE
+            or not match.is_live
+        ):
+            return (
+                "Only a live match can be finished."
+            ), 409
+
+        try:
+            player1_score = int(
+                request.form.get("player1_score", "")
+            )
+            player2_score = int(
+                request.form.get("player2_score", "")
+            )
+        except (TypeError, ValueError):
+            return (
+                "Both player scores must be valid whole numbers."
+            ), 400
 
         if player1_score < 0 or player2_score < 0:
             return "Scores cannot be negative.", 400
@@ -2004,14 +2522,38 @@ def founder_live_match_control(match_id):
 
         if player1_score > player2_score:
             match.winner_id = match.player1_id
-            loser_id = match.player2_id
+            match.loser_id = match.player2_id
         else:
             match.winner_id = match.player2_id
-            loser_id = match.player1_id
+            match.loser_id = match.player1_id
 
         match.is_live = False
         match.status = MATCH_FINISHED
         match.finished_at = datetime.utcnow()
+
+        # ====================================================
+        # TOURNAMENT COMPLETION — FINAL
+        # ====================================================
+        tournament = db.session.get(
+            Tournament,
+            match.tournament_id
+        )
+
+        if (
+            tournament
+            and match.round_number == 4
+            and match.round_name == "Final"
+            and match.winner_id
+            and match.loser_id
+        ):
+            tournament.status = TOURNAMENT_COMPLETED
+            tournament.completed_at = datetime.utcnow()
+            tournament.champion_id = match.winner_id
+            tournament.runner_up_id = match.loser_id
+
+        # ====================================================
+        # PLAYER STATISTICS
+        # ====================================================
 
         from models import PlayerStatistic
 
@@ -2038,106 +2580,48 @@ def founder_live_match_control(match_id):
                 )
                 db.session.add(stats)
 
-            stats.matches_played = (
-                stats.matches_played or 0
-            ) + 1
+            stats.matches_played += 1
 
-            if player_id == match.winner_id:
-                stats.wins = (stats.wins or 0) + 1
-            elif player_id == loser_id:
-                stats.losses = (stats.losses or 0) + 1
+        winner_stats = PlayerStatistic.query.filter_by(
+            player_id=match.winner_id
+        ).first()
 
-            if player_id == match.player1_id:
-                stats.goals = (
-                    stats.goals or 0
-                ) + player1_score
+        loser_stats = PlayerStatistic.query.filter_by(
+            player_id=match.loser_id
+        ).first()
+
+        if winner_stats:
+            winner_stats.wins += 1
+
+            if match.winner_id == match.player1_id:
+                winner_stats.goals += match.player1_score
             else:
-                stats.goals = (
-                    stats.goals or 0
-                ) + player2_score
+                winner_stats.goals += match.player2_score
 
-        tournament = db.session.get(Tournament,
-            match.tournament_id
-        )
+        if loser_stats:
+            loser_stats.losses += 1
 
-        if tournament:
-            next_match = create_next_round_match(
-                tournament,
-                match
-            )
+            if match.loser_id == match.player1_id:
+                loser_stats.goals += match.player1_score
+            else:
+                loser_stats.goals += match.player2_score
 
-            # Final completion establishes the official champion.
-            if (
-                match.round_name == FINAL
-                and next_match is None
-            ):
-                champion = Player.query.get(match.winner_id)
-                runner_up = Player.query.get(loser_id)
+    # ========================================================
+    # SAVE
+    # ========================================================
 
-                if champion:
-                    champion.application_status = "champion"
-
-                if runner_up:
-                    runner_up.application_status = "runner_up"
-
-                # Prevent duplicate championship records.
-                existing_record = Record.query.filter_by(
-                    tournament_id=tournament.id,
-                    record_type="Tournament Champion"
-                ).first()
-
-                if not existing_record and champion:
-                    champion_record = Record(
-                        record_type="Tournament Champion",
-                        record_value=1,
-                        player_id=champion.id,
-                        tournament_id=tournament.id,
-                        achieved_at=datetime.utcnow(),
-                        is_current=True
-                    )
-                    db.session.add(champion_record)
-
-                tournament.status = TOURNAMENT_COMPLETED
-
-    action_labels = {
-        "start": "started live match",
-        "stop": "stopped live match",
-        "finish": "finished match"
-    }
-
-    action = AdminAction(
-        action="founder_live_match_control",
-        notes=(
-            f"Founder {action_labels[action_type]}. "
-            f"Match ID: {match.id}. "
-            f"Previous status: {old_status}. "
-            f"New status: {match.status}. "
-            f"Previous live state: {old_live}. "
-            f"New live state: {bool(match.is_live)}."
-        ),
-        created_at=datetime.utcnow()
-    )
-
-    db.session.add(action)
     db.session.commit()
+
+    # Score updates return directly.
+    if action_type in ["update", "update_score"]:
+        return (
+            f"Live score updated: "
+            f"{match.player1_score} - {match.player2_score}"
+        ), 200
 
     return redirect(
         url_for("admin_dashboard")
     )
-
-
-# ============================================================
-# DATABASE
-# ============================================================
-
-with app.app_context():
-
-    db.create_all()
-
-
-# ============================================================
-# START SERVER
-# ============================================================
 
 @app.route("/production-diagnostic", methods=["GET"])
 def production_diagnostic():

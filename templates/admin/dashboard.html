@@ -438,7 +438,26 @@
                             "
                         >
 
-                        <label>
+                                                <label>
+                            Entry Fee (ZAR)
+                        </label>
+
+                        <input
+                            type="number"
+                            name="entry_fee"
+                            value="{{ tournament.entry_fee }}"
+                            min="0"
+                            step="1"
+                            required
+                            style="
+                                width:100%;
+                                box-sizing:border-box;
+                                padding:10px;
+                                margin:8px 0 12px;
+                                border-radius:8px;
+                            "
+                        >
+<label>
                             Final Day
                         </label>
 
@@ -1029,6 +1048,139 @@
                 </div>
 
 
+                <!-- ================================= -->
+                <!-- TOURNAMENT COMPLETION SUMMARY -->
+                <!-- ================================= -->
+
+                {% if tournament.status == "completed" %}
+                <div class="activity-card" style="
+                    border:2px solid #d4af37;
+                    border-radius:16px;
+                    background:linear-gradient(
+                        135deg,
+                        rgba(212,175,55,0.16),
+                        rgba(255,255,255,0.04)
+                    );
+                    box-shadow:0 8px 30px rgba(0,0,0,0.18);
+                    padding:22px;
+                    margin-bottom:20px;
+                ">
+
+                    <div style="
+                        text-align:center;
+                        margin-bottom:18px;
+                    ">
+                        <div style="
+                            font-size:38px;
+                            line-height:1;
+                            margin-bottom:6px;
+                        ">
+                            🏆
+                        </div>
+
+                        <h3 style="
+                            margin:0;
+                            font-size:24px;
+                        ">
+                            TOURNAMENT COMPLETED
+                        </h3>
+
+                        <div style="
+                            margin-top:6px;
+                            font-size:12px;
+                            font-weight:bold;
+                            letter-spacing:1px;
+                            opacity:0.7;
+                        ">
+                            OFFICIAL FINAL RESULT
+                        </div>
+                    </div>
+
+                    <p>
+                        <strong>{{ tournament.name }}</strong>
+                        has officially been completed.
+                    </p>
+
+                    <div style="
+                        display:grid;
+                        grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+                        gap:12px;
+                        margin-top:15px;
+                    ">
+
+                        <div class="control-card">
+                            <strong>🏆 Champion</strong><br>
+
+                            {% if tournament.champion_id and player_map.get(tournament.champion_id) %}
+                                {{ player_map[tournament.champion_id].name }}
+                            {% else %}
+                                Not recorded
+                            {% endif %}
+                        </div>
+
+                        <div class="control-card">
+                            <strong>🥈 Runner-up</strong><br>
+
+                            {% if tournament.runner_up_id and player_map.get(tournament.runner_up_id) %}
+                                {{ player_map[tournament.runner_up_id].name }}
+                            {% else %}
+                                Not recorded
+                            {% endif %}
+                        </div>
+
+                        <div class="control-card">
+                            <strong>📅 Completed</strong><br>
+
+                            {% if tournament.completed_at %}
+                                {{ tournament.completed_at }}
+                            {% else %}
+                                Completion time not recorded
+                            {% endif %}
+                        </div>
+
+                    </div>
+
+                    {% set final_match = namespace(match=None) %}
+
+                    {% for tournament_match in tournament_matches %}
+                        {% if tournament_match.round_name == "Final" %}
+                            {% set final_match.match = tournament_match %}
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if final_match.match %}
+                    <div class="control-card" style="margin-top:15px;">
+
+                        <strong>⚽ Final Result</strong><br>
+
+                        {% if final_match.match.player1_id and player_map.get(final_match.match.player1_id) %}
+                            {{ player_map[final_match.match.player1_id].name }}
+                        {% else %}
+                            Player 1
+                        {% endif %}
+
+                        <strong>
+                            {{ final_match.match.player1_score }}
+                            -
+                            {{ final_match.match.player2_score }}
+                        </strong>
+
+                        {% if final_match.match.player2_id and player_map.get(final_match.match.player2_id) %}
+                            {{ player_map[final_match.match.player2_id].name }}
+                        {% else %}
+                            Player 2
+                        {% endif %}
+
+                    </div>
+                    {% endif %}
+
+                    <p style="margin-top:15px;">
+                        ✅ Champion and runner-up have been permanently recorded.
+                    </p>
+
+                </div>
+                {% endif %}
+
                 <!-- TOURNAMENT SETTINGS -->
 
                 <div class="activity-card">
@@ -1134,7 +1286,26 @@
                             "
                         >
 
-                        <label>
+                                                <label>
+                            Entry Fee (ZAR)
+                        </label>
+
+                        <input
+                            type="number"
+                            name="entry_fee"
+                            value="{{ tournament.entry_fee }}"
+                            min="0"
+                            step="1"
+                            required
+                            style="
+                                width:100%;
+                                box-sizing:border-box;
+                                padding:10px;
+                                margin:8px 0;
+                                border-radius:8px;
+                            "
+                        >
+<label>
                             Final day
                         </label>
 
