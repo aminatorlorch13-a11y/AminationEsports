@@ -2761,6 +2761,56 @@ def diagnostic_match_schema():
         ]
     }
 
+# ============================================================
+# STEP 8R.70 — PRODUCTION SCHEMA DIFF
+# ============================================================
+
+@app.route("/admin/diagnostic/schema-diff")
+def diagnostic_schema_diff():
+    access = founder_required()
+    if access:
+        return access
+
+    from sqlalchemy import inspect
+
+    inspector = inspect(db.engine)
+
+    result = {
+        "database": str(db.engine.url).split("@")[-1],
+        "tables": {}
+    }
+
+    for table_name in sorted(db.metadata.tables.keys()):
+        expected_table = db.metadata.tables[table_name]
+
+        try:
+            actual_columns = {
+                column["name"]
+                for column in inspector.get_columns(table_name)
+            }
+        except Exception as e:
+            result["tables"][table_name] = {
+                "error": type(e).__name__ + ": " + str(e)
+            }
+            continue
+
+        expected_columns = {
+            column.name
+            for column in expected_table.columns
+        }
+
+        missing = sorted(expected_columns - actual_columns)
+        extra = sorted(actual_columns - expected_columns)
+
+        result["tables"][table_name] = {
+            "missing_columns": missing,
+            "extra_columns": extra,
+            "expected_column_count": len(expected_columns),
+            "actual_column_count": len(actual_columns)
+        }
+
+    return result
+
 if __name__ == "__main__":
 
     app.run(
