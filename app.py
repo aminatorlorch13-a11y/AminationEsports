@@ -3021,6 +3021,58 @@ def diagnostic_player_schema_diff():
     }
 
 
+# ============================================================
+# STEP 8R.75 — PRODUCTION PLAYER MIGRATION
+# ============================================================
+
+@app.route("/admin/migrate/player-v2", methods=["GET", "POST"])
+def migrate_player_v2():
+    access = founder_required()
+    if access:
+        return access
+
+    from sqlalchemy import inspect, text as sql_text
+
+    inspector = inspect(db.engine)
+
+    existing_columns = {
+        column["name"]
+        for column in inspector.get_columns("player")
+    }
+
+    if "team_name" in existing_columns:
+        return {
+            "status": "SUCCESS",
+            "table": "player",
+            "added_columns": [],
+            "already_existing_columns": ["team_name"]
+        }
+
+    try:
+        with db.engine.begin() as connection:
+            connection.execute(
+                sql_text(
+                    "ALTER TABLE player "
+                    "ADD COLUMN team_name VARCHAR(255)"
+                )
+            )
+
+        return {
+            "status": "SUCCESS",
+            "table": "player",
+            "added_columns": ["team_name"],
+            "already_existing_columns": []
+        }
+
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "table": "player",
+            "exception_type": type(e).__name__,
+            "exception": str(e)
+        }, 500
+
+
 if __name__ == "__main__":
 
     app.run(
