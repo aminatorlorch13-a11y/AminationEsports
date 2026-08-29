@@ -2928,6 +2928,55 @@ def diagnostic_match_query():
         }, 500
 
 
+# ============================================================
+# STEP 8R.73 — TOURNAMENT TEMPLATE DIAGNOSTIC
+# TEMPORARY — REMOVE AFTER DIAGNOSIS
+# ============================================================
+
+@app.route("/diagnostic/tournament-template")
+def diagnostic_tournament_template():
+    import traceback
+
+    try:
+        matches = Match.query.order_by(
+            Match.id.asc()
+        ).all()
+
+        players = {
+            player.id: player
+            for player in Player.query.all()
+        }
+
+        latest_notice = AdminAction.query.filter_by(
+            action="public_notice"
+        ).order_by(
+            AdminAction.created_at.desc()
+        ).first()
+
+        rendered = render_template(
+            "tournament.html",
+            matches=matches,
+            players=players,
+            latest_notice=latest_notice
+        )
+
+        return {
+            "status": "SUCCESS",
+            "rendered_length": len(rendered),
+            "match_count": len(matches),
+            "player_count": len(players),
+            "has_latest_notice": latest_notice is not None
+        }
+
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "exception_type": type(e).__name__,
+            "exception": str(e),
+            "traceback": traceback.format_exc()
+        }, 500
+
+
 if __name__ == "__main__":
 
     app.run(
