@@ -2882,6 +2882,52 @@ def migrate_match_v2():
             "error": str(e)
         }, 500
 
+# ============================================================
+# STEP 8R.72 — MATCH QUERY DIAGNOSTIC
+# TEMPORARY — REMOVE AFTER DIAGNOSIS
+# ============================================================
+
+@app.route("/diagnostic/match-query")
+def diagnostic_match_query():
+    import traceback
+
+    try:
+        matches = Match.query.order_by(
+            Match.id.asc()
+        ).all()
+
+        return {
+            "status": "SUCCESS",
+            "match_count": len(matches),
+            "matches": [
+                {
+                    "id": match.id,
+                    "tournament_id": match.tournament_id,
+                    "player1_id": match.player1_id,
+                    "player2_id": match.player2_id,
+                    "round_name": match.round_name,
+                    "round_number": match.round_number,
+                    "match_number": match.match_number,
+                    "bracket_position": match.bracket_position,
+                    "is_bye": match.is_bye,
+                    "is_forfeit": match.is_forfeit,
+                    "winner_id": match.winner_id,
+                    "loser_id": match.loser_id,
+                    "is_live": match.is_live
+                }
+                for match in matches
+            ]
+        }
+
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "exception_type": type(e).__name__,
+            "exception": str(e),
+            "traceback": traceback.format_exc()
+        }, 500
+
+
 if __name__ == "__main__":
 
     app.run(
