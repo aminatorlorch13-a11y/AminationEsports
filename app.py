@@ -2732,6 +2732,35 @@ def temporary_internal_error_logger(error):
         500
     )
 
+
+# ============================================================
+# STEP 8R.69 — PRODUCTION SCHEMA DIAGNOSTIC
+# ============================================================
+
+@app.route("/admin/diagnostic/match-schema")
+def diagnostic_match_schema():
+    access = founder_required()
+    if access:
+        return access
+
+    from sqlalchemy import inspect
+
+    inspector = inspect(db.engine)
+
+    columns = inspector.get_columns("match")
+
+    return {
+        "table": "match",
+        "columns": [
+            {
+                "name": column["name"],
+                "type": str(column["type"]),
+                "nullable": column["nullable"]
+            }
+            for column in columns
+        ]
+    }
+
 if __name__ == "__main__":
 
     app.run(
