@@ -2811,6 +2811,77 @@ def diagnostic_schema_diff():
 
     return result
 
+# ============================================================
+# STEP 8R.71 — PRODUCTION MATCH MIGRATION
+# ============================================================
+
+@app.route("/admin/migrate/match-v2", methods=["GET", "POST"])
+def migrate_match_v2():
+    access = founder_required()
+    if access:
+        return access
+
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(db.engine)
+
+    existing_columns = {
+        column["name"]
+        for column in inspector.get_columns("match")
+    }
+
+    migrations = [
+        ("round_number", "INTEGER"),
+        ("match_number", "INTEGER"),
+        ("bracket_position", "INTEGER"),
+        ("source_match1_id", "INTEGER"),
+        ("source_match2_id", "INTEGER"),
+        ("is_bye", "BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("bye_reason", "VARCHAR(255)"),
+        ("is_forfeit", "BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("forfeit_player_id", "INTEGER"),
+        ("forfeit_reason", "TEXT"),
+        ("loser_id", "INTEGER"),
+        ("live_minute", "INTEGER NOT NULL DEFAULT 0"),
+        ("live_period", "VARCHAR(30)"),
+        ("live_message", "VARCHAR(255)")
+    ]
+
+    added = []
+    skipped = []
+
+    try:
+        for column_name, column_definition in migrations:
+            if column_name in existing_columns:
+                skipped.append(column_name)
+                continue
+
+            statement = text(
+                f'ALTER TABLE "match" '
+                f'ADD COLUMN "{column_name}" {column_definition}'
+            )
+
+            db.session.execute(statement)
+            added.append(column_name)
+
+        db.session.commit()
+
+        return {
+            "status": "SUCCESS",
+            "table": "match",
+            "added_columns": added,
+            "already_existing_columns": skipped
+        }
+
+    except Exception as e:
+        db.session.rollback()
+
+        return {
+            "status": "FAILED",
+            "error_type": type(e).__name__,
+            "error": str(e)
+        }, 500
+
 if __name__ == "__main__":
 
     app.run(
