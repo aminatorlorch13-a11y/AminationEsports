@@ -2712,6 +2712,26 @@ def repair_tournament():
     )
 
 
+
+# ============================================================
+# STEP 8R.67 — TEMPORARY ERROR LOGGER
+# ============================================================
+
+@app.errorhandler(500)
+def temporary_internal_error_logger(error):
+    import traceback
+
+    print("\n" + "=" * 70, flush=True)
+    print("STEP 8R.67 — PRODUCTION 500 TRACEBACK", flush=True)
+    print("=" * 70, flush=True)
+    traceback.print_exc()
+    print("=" * 70, flush=True)
+
+    return (
+        "Internal Server Error",
+        500
+    )
+
 if __name__ == "__main__":
 
     app.run(
