@@ -288,6 +288,7 @@ def validate_payment_status(status: str) -> str:
 PAYMENT_STATE_TRANSITIONS = {
     "initiated": frozenset({
         "pending",
+        "received",
         "rejected",
     }),
 
@@ -509,15 +510,15 @@ def record_payment_received(
             f"transaction status is {current_status!r}."
         )
 
-    transaction.received_amount = float(received)
+    transaction.received_amount = received
 
-    if classification == "overpaid":
-        transaction.status = "received"
-
-    elif classification in {"exact", "underpaid"}:
-        transaction.status = "received"
-
-    transaction.updated_at = datetime.utcnow()
+    if current_status != "received":
+        transition_payment_status(
+            transaction,
+            "received",
+        )
+    else:
+        transaction.updated_at = datetime.utcnow()
 
     return transaction
 

@@ -30,10 +30,28 @@ from models import (
     Player,
     Match,
     Tournament,
+    TournamentParticipant,
+    PaymentTransaction,
     Record,
     AdminAction,
     FounderMessage
 )
+
+from payment_service import (
+    create_payment_transaction,
+    persist_payment_transaction,
+    record_payment_received,
+    verify_payment_transaction,
+    find_transaction_by_provider_id,
+    ensure_transaction_not_duplicated,
+    transition_payment_status,
+)
+
+from payfast_service import (
+    build_checkout_for_transaction,
+    validate_complete_payfast_itn,
+)
+
 
 
 app = Flask(__name__)
@@ -41,6 +59,10 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
+
+# Secure PayFast payment routes.
+from payment_routes import register_payment_routes
+register_payment_routes(app)
 
 
 # ============================================================
@@ -946,6 +968,39 @@ def register():
                 "This FC Mobile username is already registered."
             ), 409
 
+        # --------------------------------------------------------
+        # Tournament registration
+        # --------------------------------------------------------
+        # Registration belongs to the current tournament.
+        # Do not create an orphan player account if no tournament exists.
+        tournament = Tournament.query.filter_by(
+            status=TOURNAMENT_REGISTRATION
+        ).order_by(
+            Tournament.id.desc()
+        ).first()
+
+        if not tournament:
+            return (
+                "Registration is currently unavailable because "
+                "there is no tournament open for registration."
+            ), 503
+
+        # Prevent duplicate participation in the same tournament.
+        existing_participant = TournamentParticipant.query.filter_by(
+            tournament_id=tournament.id
+        ).join(
+            Player,
+            TournamentParticipant.player_id == Player.id
+        ).filter(
+            Player.fc_username == fc_username
+        ).first()
+
+        if existing_participant:
+            return (
+                "This FC Mobile username is already registered "
+                "for this tournament."
+            ), 409
+
         player = Player(
             name=name,
             fc_username=fc_username,
@@ -955,15 +1010,58 @@ def register():
             password_hash=generate_password_hash(password),
             application_status="pending",
             terms_accepted=True,
-            terms_version="1.0",
+            terms_version="1.1",
             terms_accepted_at=datetime.utcnow(),
             active=True
         )
 
-        db.session.add(
-            player
+        db.session.add(player)
+
+        # Flush so player.id exists before creating the participant.
+        # Both records remain inside the same database transaction.
+        db.session.flush()
+
+        payment_required = bool(tournament.payment_enabled)
+
+        participant = TournamentParticipant(
+            tournament_id=tournament.id,
+            player_id=player.id,
+            team_name=player.team_name,
+            status="registered",
+            availability_status="unknown",
+
+            payment_status=(
+                "unpaid"
+                if payment_required
+                else "not_required"
+            ),
+
+            payment_required_amount=(
+                float(tournament.entry_fee)
+                if payment_required
+                else 0
+            ),
+
+            payment_received_amount=0,
+            founder_payment_verified=False,
+
+            overpayment_amount=0,
+            overpayment_reviewed=False,
+
+            payment_reversed=False,
+
+            refund_requested=False,
+            refund_approved=False,
+            refund_amount=0,
+            refund_completed=False,
+
+            registered_at=datetime.utcnow()
         )
 
+        db.session.add(participant)
+
+        # Player account and tournament participation are committed together.
+        # If either operation fails, the transaction can roll back.
         db.session.commit()
 
         return redirect(
@@ -990,6 +1088,25 @@ def registration_success(player_id):
     player = Player.query.get_or_404(
         player_id
     )
+
+    tournament = (
+        Tournament.query
+        .order_by(Tournament.id.desc())
+        .first()
+    )
+
+    if (
+        tournament
+        and tournament.payment_enabled
+        and float(tournament.entry_fee or 0) > 0
+        and tournament.status == TOURNAMENT_REGISTRATION
+    ):
+        return redirect(
+            url_for(
+                "start_payment",
+                player_id=player.id,
+            )
+        )
 
     return render_template(
         "registration_success.html",
@@ -1986,6 +2103,21 @@ def founder_player_status(player_id):
         return "Invalid player status.", 400
 
     old_status = player.application_status
+
+    # Do not allow more than 16 approved players.
+    # A player already approved does not consume another slot.
+    if new_status == "approved" and old_status != "approved":
+        approved_count = Player.query.filter_by(
+            application_status="approved",
+            active=True
+        ).count()
+
+        if approved_count >= 16:
+            return (
+                "The tournament already has 16 approved players. "
+                "Use the waitlist until a place becomes available."
+            ), 400
+
 
     player.application_status = new_status
 
