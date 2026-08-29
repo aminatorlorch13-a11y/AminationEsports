@@ -2977,6 +2977,50 @@ def diagnostic_tournament_template():
         }, 500
 
 
+# ============================================================
+# STEP 8R.74 — PLAYER SCHEMA DIFF
+# TEMPORARY — REMOVE AFTER DIAGNOSIS
+# ============================================================
+
+@app.route("/diagnostic/player-schema-diff")
+def diagnostic_player_schema_diff():
+    from sqlalchemy import inspect
+
+    inspector = inspect(db.engine)
+
+    expected_columns = {
+        column.name
+        for column in Player.__table__.columns
+    }
+
+    try:
+        actual_columns = {
+            column["name"]
+            for column in inspector.get_columns("player")
+        }
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "exception_type": type(e).__name__,
+            "exception": str(e)
+        }, 500
+
+    return {
+        "status": "SUCCESS",
+        "table": "player",
+        "missing_columns": sorted(
+            expected_columns - actual_columns
+        ),
+        "extra_columns": sorted(
+            actual_columns - expected_columns
+        ),
+        "expected_column_count": len(expected_columns),
+        "actual_column_count": len(actual_columns),
+        "expected_columns": sorted(expected_columns),
+        "actual_columns": sorted(actual_columns)
+    }
+
+
 if __name__ == "__main__":
 
     app.run(
