@@ -43,3 +43,5 @@ backups/
 *.swp
 *.swo
 *~
+# VERIFIED local checkpoints
+*.VERIFIED

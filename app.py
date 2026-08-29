@@ -2532,16 +2532,28 @@ def founder_live_match_control(match_id):
         match.finished_at = datetime.utcnow()
 
         # ====================================================
-        # TOURNAMENT COMPLETION — FINAL
+        # GET TOURNAMENT
         # ====================================================
         tournament = db.session.get(
             Tournament,
             match.tournament_id
         )
 
+        # ====================================================
+        # ADVANCE WINNER TO NEXT ROUND
+        # ====================================================
+        if tournament:
+            create_next_round_match(
+                tournament,
+                match
+            )
+
+        # ====================================================
+        # TOURNAMENT COMPLETION — FINAL
+        # ====================================================
+
         if (
             tournament
-            and match.round_number == 4
             and match.round_name == "Final"
             and match.winner_id
             and match.loser_id
