@@ -41,6 +41,12 @@ with app.app_context():
         "completed_at": (
             "TIMESTAMP"
         ),
+        "champion_id": (
+            "INTEGER"
+        ),
+        "runner_up_id": (
+            "INTEGER"
+        ),
     }
 
     existing = {
