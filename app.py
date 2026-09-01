@@ -64,58 +64,6 @@ db.init_app(app)
 from payment_routes import register_payment_routes
 
 
-# ============================================================
-# TEMPORARY PAYFAST PRODUCTION DIAGNOSTIC
-# Safe: never exposes secret values.
-# ============================================================
-
-@app.route("/payment/diagnostic")
-def payment_diagnostic():
-    import os
-
-    checks = {}
-
-    checks["PAYFAST_MODE"] = (
-        os.getenv("PAYFAST_MODE", "sandbox").strip().lower()
-    )
-
-    for key in (
-        "PAYFAST_PUBLIC_BASE_URL",
-        "PAYFAST_MERCHANT_ID",
-        "PAYFAST_MERCHANT_KEY",
-        "PAYFAST_PASSPHRASE",
-        "DATABASE_URL",
-    ):
-        checks[key] = "SET" if os.getenv(key, "").strip() else "NOT SET"
-
-    try:
-        from payfast_service import (
-            get_public_base_url,
-            get_payfast_process_url,
-            get_payfast_merchant_id,
-            get_payfast_merchant_key,
-            get_payfast_passphrase,
-        )
-
-        checks["public_url_function"] = get_public_base_url()
-        checks["process_url_function"] = get_payfast_process_url()
-
-        get_payfast_merchant_id()
-        checks["merchant_id_function"] = "OK"
-
-        get_payfast_merchant_key()
-        checks["merchant_key_function"] = "OK"
-
-        get_payfast_passphrase()
-        checks["passphrase_function"] = "OK"
-
-    except Exception as exc:
-        checks["FUNCTION_ERROR"] = (
-            f"{type(exc).__name__}: {exc}"
-        )
-
-    return checks
-
 register_payment_routes(app)
 
 
