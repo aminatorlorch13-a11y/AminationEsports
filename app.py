@@ -2993,10 +2993,9 @@ def temporary_internal_error_logger(error):
 def migrate_player_legal_fields():
     """Apply the Player legal/eligibility schema to PostgreSQL."""
 
-    access = founder_required()
-    if access:
-        return access
-
+    # TEMPORARY: founder dashboard is currently unavailable because
+    # production is missing the Player legal schema. The migration
+    # remains protected by the dedicated MIGRATION_KEY.
     configured_key = app.config.get("MIGRATION_KEY", "")
 
     if not configured_key:
