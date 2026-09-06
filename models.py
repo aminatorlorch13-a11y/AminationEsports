@@ -120,6 +120,28 @@ class Player(db.Model):
         nullable=True
     )
 
+    # Date of birth is used only to determine age eligibility.
+    date_of_birth = db.Column(
+        db.Date,
+        nullable=True
+    )
+
+    # Younger participant / competent-person consent state
+    #
+    # not_required
+    # required_pending
+    # confirmed
+    competent_person_consent_status = db.Column(
+        db.String(30),
+        default="unknown",
+        nullable=False
+    )
+
+    competent_person_consent_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
     # Championship stars
     championship_stars = db.Column(
         db.Integer,

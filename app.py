@@ -71,6 +71,45 @@ register_payment_routes(app)
 # FOUNDER AUTHENTICATION
 # ============================================================
 
+def calculate_age(date_of_birth, today=None):
+    """Return the participant's age in completed years."""
+    if date_of_birth is None:
+        raise ValueError("Date of birth is required.")
+
+    if today is None:
+        today = datetime.utcnow().date()
+
+    age = today.year - date_of_birth.year
+
+    if (today.month, today.day) < (
+        date_of_birth.month,
+        date_of_birth.day,
+    ):
+        age -= 1
+
+    return age
+
+
+def player_is_tournament_eligible(player):
+    """
+    Return True when the player's age/competent-person consent
+    requirements have been satisfied for tournament participation.
+
+    Allowed states:
+    - not_required: participant is 18 or older
+    - confirmed: required competent-person consent has been confirmed
+
+    Blocked states:
+    - unknown: legacy/incomplete age verification
+    - required_pending: required consent has not yet been confirmed
+    """
+
+    return player.competent_person_consent_status in {
+        "not_required",
+        "confirmed",
+    }
+
+
 def founder_required():
     """
     Protect founder/admin routes.
@@ -906,6 +945,11 @@ def register():
             ""
         ).strip()
 
+        date_of_birth_raw = request.form.get(
+            "date_of_birth",
+            ""
+        ).strip()
+
         squad_ovr = request.form.get(
             "squad_ovr",
             ""
@@ -930,6 +974,36 @@ def register():
             return (
                 "Please complete all required fields."
             ), 400
+
+        if not date_of_birth_raw:
+            return "Date of birth is required.", 400
+
+        try:
+            date_of_birth = datetime.strptime(
+                date_of_birth_raw,
+                "%Y-%m-%d"
+            ).date()
+        except ValueError:
+            return "Please enter a valid date of birth.", 400
+
+        today = datetime.utcnow().date()
+
+        if date_of_birth > today:
+            return "Date of birth cannot be in the future.", 400
+
+        age = calculate_age(
+            date_of_birth,
+            today
+        )
+
+        if age < 0 or age > 120:
+            return "Please enter a valid date of birth.", 400
+
+        competent_person_consent_status = (
+            "not_required"
+            if age >= 18
+            else "required_pending"
+        )
 
         if not email or not password:
             return "Email and password are required.", 400
@@ -1014,6 +1088,10 @@ def register():
             name=name,
             fc_username=fc_username,
             country=country,
+            date_of_birth=date_of_birth,
+            competent_person_consent_status=(
+                competent_person_consent_status
+            ),
             squad_ovr=squad_ovr,
             email=email,
             password_hash=generate_password_hash(password),
@@ -1853,6 +1931,27 @@ def draw_tournament():
     ).order_by(
         Player.id.asc()
     ).all()
+
+
+    ineligible_players = [
+        player
+        for player in approved_players
+        if not player_is_tournament_eligible(player)
+    ]
+
+    if ineligible_players:
+        names = ", ".join(
+            player.name
+            for player in ineligible_players
+        )
+
+        return (
+            "Cannot release the tournament draw. "
+            "The following approved players have incomplete "
+            "age/consent verification: "
+            + names
+            + "."
+        ), 409
 
     player_count = len(approved_players)
 
