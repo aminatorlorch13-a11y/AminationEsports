@@ -765,6 +765,13 @@ def terms():
 
 
 # ============================================================
+@app.route("/privacy")
+def privacy():
+    return render_template(
+        "privacy.html"
+    )
+
+
 # PLAYER AUTHENTICATION
 # ============================================================
 
@@ -1012,7 +1019,7 @@ def register():
             password_hash=generate_password_hash(password),
             application_status="pending",
             terms_accepted=True,
-            terms_version="1.1",
+            terms_version="2.0",
             terms_accepted_at=datetime.utcnow(),
             active=True
         )
