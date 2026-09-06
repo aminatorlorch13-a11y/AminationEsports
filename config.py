@@ -71,3 +71,8 @@ class Config:
         "FOUNDER_PASSWORD",
         ""
     )
+
+    MIGRATION_KEY = os.environ.get(
+        "MIGRATION_KEY",
+        ""
+    )

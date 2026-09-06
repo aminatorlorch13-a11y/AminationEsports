@@ -4,7 +4,7 @@ import random
 import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from sqlalchemy import or_
+from sqlalchemy import inspect, or_, text
 
 from config import Config
 from constants import (
@@ -2986,6 +2986,154 @@ def temporary_internal_error_logger(error):
 
 
 # ============================================================
+# TEMPORARY — PRODUCTION PLAYER LEGAL MIGRATION
+# ============================================================
+
+@app.route("/admin/migrate/player-legal-fields", methods=["POST"])
+def migrate_player_legal_fields():
+    """Apply the Player legal/eligibility schema to PostgreSQL."""
+
+    access = founder_required()
+    if access:
+        return access
+
+    configured_key = app.config.get("MIGRATION_KEY", "")
+
+    if not configured_key:
+        return {
+            "success": False,
+            "error": "Migration key is not configured."
+        }, 503
+
+    supplied_key = request.headers.get(
+        "X-Migration-Key",
+        ""
+    )
+
+    if supplied_key != configured_key:
+        return {
+            "success": False,
+            "error": "Invalid migration key."
+        }, 403
+
+    backend = db.engine.url.get_backend_name()
+
+    if backend != "postgresql":
+        return {
+            "success": False,
+            "error": (
+                "Migration refused. "
+                "This migration must run against PostgreSQL."
+            )
+        }, 500
+
+    inspector = inspect(db.engine)
+
+    existing = {
+        column["name"]
+        for column in inspector.get_columns("player")
+    }
+
+    migrations = {
+        "date_of_birth": "DATE",
+        "competent_person_consent_status": (
+            "VARCHAR(30) NOT NULL DEFAULT 'unknown'"
+        ),
+        "competent_person_consent_at": "TIMESTAMP",
+    }
+
+    added = []
+    already_exists = []
+
+    try:
+        for name, sql_type in migrations.items():
+            if name in existing:
+                already_exists.append(name)
+                continue
+
+            db.session.execute(
+                text(
+                    f'ALTER TABLE player '
+                    f'ADD COLUMN "{name}" {sql_type}'
+                )
+            )
+
+            added.append(name)
+
+        db.session.commit()
+
+    except Exception:
+        db.session.rollback()
+        raise
+
+    return {
+        "success": True,
+        "database": backend,
+        "added": added,
+        "already_exists": already_exists,
+    }
+
+
+# ============================================================
+
+# ============================================================
+# TEMPORARY — PRODUCTION PLAYER LEGAL SCHEMA CHECK
+# ============================================================
+
+@app.route("/admin/migrate/player-legal-fields/check", methods=["GET"])
+def check_player_legal_schema():
+
+    configured_key = app.config.get("MIGRATION_KEY", "")
+
+    if not configured_key:
+        return {
+            "success": False,
+            "error": "Migration key is not configured."
+        }, 503
+
+    supplied_key = request.headers.get(
+        "X-Migration-Key",
+        ""
+    )
+
+    if supplied_key != configured_key:
+        return {
+            "success": False,
+            "error": "Invalid migration key."
+        }, 403
+
+    backend = db.engine.url.get_backend_name()
+
+    if backend != "postgresql":
+        return {
+            "success": False,
+            "error": "Database is not PostgreSQL."
+        }, 500
+
+    inspector = inspect(db.engine)
+
+    existing = {
+        column["name"]
+        for column in inspector.get_columns("player")
+    }
+
+    required = [
+        "date_of_birth",
+        "competent_person_consent_status",
+        "competent_person_consent_at",
+    ]
+
+    return {
+        "success": True,
+        "database": backend,
+        "player_table_exists": inspector.has_table("player"),
+        "required_columns": {
+            name: name in existing
+            for name in required
+        },
+    }
+
+
 # STEP 8R.69 — PRODUCTION SCHEMA DIAGNOSTIC
 # ============================================================
 
