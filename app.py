@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 import random
 import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -34,7 +35,8 @@ from models import (
     PaymentTransaction,
     Record,
     AdminAction,
-    FounderMessage
+    FounderMessage,
+    Highlight
 )
 
 from payment_service import (
@@ -2377,6 +2379,189 @@ def founder_player_stars(player_id):
         url_for("admin_dashboard")
     )
 
+
+
+# ============================================================
+# FOUNDER — CREATE HIGHLIGHT
+# ============================================================
+
+@app.route(
+    "/admin/founder/highlights/create",
+    methods=["POST"]
+)
+def founder_create_highlight():
+    access = founder_required()
+    if access:
+        return access
+
+    title = request.form.get(
+        "title",
+        ""
+    ).strip()
+
+    player_id_raw = request.form.get(
+        "player_id",
+        ""
+    ).strip()
+
+    tournament_id_raw = request.form.get(
+        "tournament_id",
+        ""
+    ).strip()
+
+    description = request.form.get(
+        "description",
+        ""
+    ).strip()
+
+    video_url = request.form.get(
+        "video_url",
+        ""
+    ).strip()
+
+    if not title:
+        flash(
+            "Highlight title is required.",
+            "error"
+        )
+        return redirect(url_for("admin_dashboard"))
+
+    if len(title) > 150:
+        flash(
+            "Highlight title is too long.",
+            "error"
+        )
+        return redirect(url_for("admin_dashboard"))
+
+    if not video_url:
+        flash(
+            "Video URL is required.",
+            "error"
+        )
+        return redirect(url_for("admin_dashboard"))
+
+    if len(video_url) > 1000:
+        flash(
+            "Video URL is too long.",
+            "error"
+        )
+        return redirect(url_for("admin_dashboard"))
+
+    parsed_url = urlparse(video_url)
+
+    if parsed_url.scheme not in ("http", "https"):
+        flash(
+            "Video URL must use HTTP or HTTPS.",
+            "error"
+        )
+        return redirect(url_for("admin_dashboard"))
+
+    if not parsed_url.netloc:
+        flash(
+            "Please enter a valid video URL.",
+            "error"
+        )
+        return redirect(url_for("admin_dashboard"))
+
+    if len(description) > 5000:
+        flash(
+            "Highlight description is too long.",
+            "error"
+        )
+        return redirect(url_for("admin_dashboard"))
+
+    player = None
+    tournament = None
+
+    if player_id_raw:
+        if not player_id_raw.isdigit():
+            flash(
+                "Invalid featured player.",
+                "error"
+            )
+            return redirect(url_for("admin_dashboard"))
+
+        player = db.session.get(
+            Player,
+            int(player_id_raw)
+        )
+
+        if player is None:
+            flash(
+                "Selected featured player does not exist.",
+                "error"
+            )
+            return redirect(url_for("admin_dashboard"))
+
+    if tournament_id_raw:
+        if not tournament_id_raw.isdigit():
+            flash(
+                "Invalid tournament selection.",
+                "error"
+            )
+            return redirect(url_for("admin_dashboard"))
+
+        tournament = db.session.get(
+            Tournament,
+            int(tournament_id_raw)
+        )
+
+        if tournament is None:
+            flash(
+                "Selected tournament does not exist.",
+                "error"
+            )
+            return redirect(url_for("admin_dashboard"))
+
+    now = datetime.utcnow()
+
+    highlight = Highlight(
+        title=title,
+        player_id=player.id if player else None,
+        tournament_id=tournament.id if tournament else None,
+        description=description or None,
+        video_url=video_url,
+        is_published=True,
+        published_at=now,
+        created_at=now
+    )
+
+    db.session.add(highlight)
+
+    try:
+        db.session.flush()
+
+        action = AdminAction(
+            action="highlight_published",
+            notes=(
+                f"Founder published highlight "
+                f"#{highlight.id}: {title}"
+            ),
+            created_at=now
+        )
+
+        db.session.add(action)
+        db.session.commit()
+
+    except Exception:
+        db.session.rollback()
+
+        flash(
+            "The highlight could not be published. "
+            "No changes were saved.",
+            "error"
+        )
+
+        return redirect(url_for("admin_dashboard"))
+
+    flash(
+        f'Highlight "{title}" published successfully.',
+        "success"
+    )
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
 
 
 # ============================================================

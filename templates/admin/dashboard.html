@@ -361,10 +361,133 @@
             <button
                 type="button"
                 class="button highlights-create-button"
-                onclick="alert('Highlight creation will be enabled in the next milestone.');"
+                onclick="document.getElementById('highlight-create-form').scrollIntoView({ behavior: 'smooth' });"
             >
                 ＋ CREATE NEW HIGHLIGHT
             </button>
+
+        </div>
+
+        <div
+            id="highlight-create-form"
+            class="highlights-create-card"
+        >
+
+            <div class="highlights-form-header">
+
+                <span class="highlights-eyebrow">
+                    PUBLISH CLIP
+                </span>
+
+                <h3>
+                    Create Official Highlight
+                </h3>
+
+                <p>
+                    Add a hosted FC Mobile clip to the
+                    Amination Esports highlights library.
+                </p>
+
+            </div>
+
+            <form
+                method="POST"
+                action="{{ url_for('founder_create_highlight') }}"
+            >
+
+                <label for="highlight-title">
+                    Highlight Title
+                </label>
+
+                <input
+                    id="highlight-title"
+                    type="text"
+                    name="title"
+                    maxlength="150"
+                    required
+                    placeholder="Example: Last-Minute Winner"
+                >
+
+                <label for="highlight-player">
+                    Featured Player
+                </label>
+
+                <select
+                    id="highlight-player"
+                    name="player_id"
+                >
+
+                    <option value="">
+                        No specific player
+                    </option>
+
+                    {% for player in players %}
+                        <option value="{{ player.id }}">
+                            {{ player.name }}
+                        </option>
+                    {% endfor %}
+
+                </select>
+
+                <label for="highlight-tournament">
+                    Tournament
+                </label>
+
+                <select
+                    id="highlight-tournament"
+                    name="tournament_id"
+                >
+
+                    <option value="">
+                        No tournament
+                    </option>
+
+                    {% if tournament %}
+                        <option value="{{ tournament.id }}">
+                            {{ tournament.name }}
+                        </option>
+                    {% endif %}
+
+                </select>
+
+                <label for="highlight-description">
+                    Description
+                </label>
+
+                <textarea
+                    id="highlight-description"
+                    name="description"
+                    maxlength="5000"
+                    placeholder="Describe the moment..."
+                ></textarea>
+
+                <label for="highlight-video-url">
+                    Video URL
+                </label>
+
+                <input
+                    id="highlight-video-url"
+                    type="url"
+                    name="video_url"
+                    maxlength="1000"
+                    required
+                    placeholder="https://..."
+                >
+
+                <p class="highlights-form-note">
+                    Use a publicly accessible HTTP or HTTPS
+                    video URL. Direct phone uploads will be
+                    added through external video storage later.
+                </p>
+
+                <button
+                    type="submit"
+                    class="button primary highlights-publish-button"
+                >
+                    🚀 PUBLISH HIGHLIGHT
+                </button>
+
+            </form>
 
         </div>
 
