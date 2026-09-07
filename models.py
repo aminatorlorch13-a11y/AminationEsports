@@ -1222,6 +1222,17 @@ class Highlight(db.Model):
         nullable=True
     )
 
+    # Optional relationships used by public/admin highlight views.
+    player = db.relationship(
+        "Player",
+        foreign_keys=[player_id]
+    )
+
+    tournament = db.relationship(
+        "Tournament",
+        foreign_keys=[tournament_id]
+    )
+
     # Optional founder description/caption.
     description = db.Column(
         db.Text,

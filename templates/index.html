@@ -203,6 +203,114 @@
             color: #777;
         }
 
+        .highlights-section {
+            max-width: 1100px;
+            margin: 0 auto 80px;
+            padding: 0 25px;
+        }
+
+        .highlights-header {
+            margin-bottom: 28px;
+        }
+
+        .highlights-eyebrow {
+            color: #e2b936;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .highlights-header h2 {
+            margin: 8px 0 10px;
+            font-size: clamp(30px, 5vw, 48px);
+        }
+
+        .highlights-header p {
+            max-width: 700px;
+            color: #999;
+            line-height: 1.6;
+        }
+
+        .highlights-grid {
+            display: grid;
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(280px, 1fr)
+            );
+            gap: 22px;
+        }
+
+        .highlight-card {
+            overflow: hidden;
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 16px;
+        }
+
+        .highlight-card video {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            background: #000;
+        }
+
+        .highlight-card-content {
+            padding: 22px;
+        }
+
+        .highlight-card-content h3 {
+            margin: 0 0 10px;
+            font-size: 21px;
+        }
+
+        .highlight-meta {
+            color: #e2b936;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .highlight-description {
+            color: #999;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .highlights-empty {
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 16px;
+            padding: 45px 30px;
+            text-align: center;
+        }
+
+        .highlights-empty-icon {
+            font-size: 46px;
+            margin-bottom: 15px;
+        }
+
+        .highlights-empty h3 {
+            margin: 0 0 10px;
+        }
+
+        .highlights-empty p {
+            color: #999;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        @media (max-width: 600px) {
+            .highlights-section {
+                padding: 0 18px;
+            }
+
+            .highlights-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+
     </style>
 
 </head>
@@ -327,6 +435,110 @@
         </a>
 
     </div>
+
+</section>
+
+
+
+<section class="highlights-section">
+
+    <div class="highlights-header">
+
+        <span class="highlights-eyebrow">
+            AMINATION MEDIA
+        </span>
+
+        <h2>
+            🎬 OFFICIAL HIGHLIGHTS
+        </h2>
+
+        <p>
+            Watch the best goals, skills, moments and
+            tournament action from Amination Esports.
+        </p>
+
+    </div>
+
+    {% if highlights %}
+
+        <div class="highlights-grid">
+
+            {% for highlight in highlights %}
+
+                <article class="highlight-card">
+
+                    <video
+                        controls
+                        preload="metadata"
+                        playsinline
+                        src="{{ highlight.video_url }}"
+                    >
+                        Your browser does not support
+                        HTML5 video.
+                    </video>
+
+                    <div class="highlight-card-content">
+
+                        <h3>
+                            {{ highlight.title }}
+                        </h3>
+
+                        {% if highlight.player or highlight.tournament %}
+
+                            <div class="highlight-meta">
+
+                                {% if highlight.player %}
+                                    👤 {{ highlight.player.name }}
+                                {% endif %}
+
+                                {% if highlight.player and highlight.tournament %}
+                                    &nbsp; • &nbsp;
+                                {% endif %}
+
+                                {% if highlight.tournament %}
+                                    🏆 {{ highlight.tournament.name }}
+                                {% endif %}
+
+                            </div>
+
+                        {% endif %}
+
+                        {% if highlight.description %}
+
+                            <p class="highlight-description">
+                                {{ highlight.description }}
+                            </p>
+
+                        {% endif %}
+
+                    </div>
+
+                </article>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="highlights-empty">
+
+            <div class="highlights-empty-icon">
+                ▶
+            </div>
+
+            <h3>
+                The Highlights Library Is Coming Alive
+            </h3>
+
+            <p>
+                Official Amination Esports match highlights
+                will appear here after they are published.
+            </p>
+
+        </div>
+
+    {% endif %}
 
 </section>
 

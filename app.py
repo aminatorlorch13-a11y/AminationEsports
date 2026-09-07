@@ -668,8 +668,19 @@ def resolve_forfeit_match(
 @app.route("/")
 def home():
 
+    highlights = (
+        Highlight.query
+        .filter_by(is_published=True)
+        .order_by(
+            Highlight.published_at.desc(),
+            Highlight.id.desc()
+        )
+        .all()
+    )
+
     return render_template(
-        "index.html"
+        "index.html",
+        highlights=highlights
     )
 
 
