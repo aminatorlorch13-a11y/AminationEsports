@@ -1192,6 +1192,69 @@ class PaymentTransaction(db.Model):
 
 
 # ============================================================
+# HIGHLIGHTS
+# ============================================================
+
+class Highlight(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    # Public title for the highlight.
+    title = db.Column(
+        db.String(150),
+        nullable=False
+    )
+
+    # Optional player featured in the highlight.
+    player_id = db.Column(
+        db.Integer,
+        db.ForeignKey("player.id"),
+        nullable=True
+    )
+
+    # Optional tournament associated with the highlight.
+    tournament_id = db.Column(
+        db.Integer,
+        db.ForeignKey("tournament.id"),
+        nullable=True
+    )
+
+    # Optional founder description/caption.
+    description = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    # External video-storage URL.
+    # Videos must not be stored on the Render filesystem.
+    video_url = db.Column(
+        db.String(1000),
+        nullable=False
+    )
+
+    # Only published highlights appear publicly.
+    is_published = db.Column(
+        db.Boolean,
+        default=False,
+        nullable=False
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )
+
+    published_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+
+# ============================================================
 # FOUNDER ACTION HISTORY
 # ============================================================
 
