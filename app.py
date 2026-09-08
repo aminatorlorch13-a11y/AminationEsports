@@ -3433,24 +3433,9 @@ def check_player_legal_schema():
 def migrate_analytics_schema():
     """Create the website analytics table in PostgreSQL."""
 
-    configured_key = app.config.get("MIGRATION_KEY", "")
-
-    if not configured_key:
-        return {
-            "success": False,
-            "error": "Migration key is not configured."
-        }, 503
-
-    supplied_key = request.headers.get(
-        "X-Migration-Key",
-        ""
-    )
-
-    if supplied_key != configured_key:
-        return {
-            "success": False,
-            "error": "Invalid migration key."
-        }, 403
+    access = founder_required()
+    if access:
+        return access
 
     backend = db.engine.url.get_backend_name()
 
