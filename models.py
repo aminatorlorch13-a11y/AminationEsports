@@ -1354,3 +1354,57 @@ class FounderMessage(db.Model):
         db.DateTime,
         nullable=True
     )
+
+# ============================================================
+# WEBSITE ANALYTICS
+# ============================================================
+
+class AnalyticsEvent(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    # Random anonymous visitor identifier.
+    # Do not store IP addresses, names, emails, or device fingerprints.
+    visitor_id = db.Column(
+        db.String(64),
+        nullable=False,
+        index=True
+    )
+
+    # Event category, for example:
+    # page_view, highlight_view
+    event_type = db.Column(
+        db.String(50),
+        nullable=False,
+        index=True
+    )
+
+    # Optional highlighted video associated with the event.
+    highlight_id = db.Column(
+        db.Integer,
+        db.ForeignKey("highlight.id"),
+        nullable=True,
+        index=True
+    )
+
+    # Requested public path, when applicable.
+    path = db.Column(
+        db.String(500),
+        nullable=True
+    )
+
+    # UTC event timestamp.
+    occurred_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+        index=True
+    )
+
+    highlight = db.relationship(
+        "Highlight",
+        foreign_keys=[highlight_id]
+    )
