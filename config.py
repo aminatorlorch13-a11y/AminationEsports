@@ -87,10 +87,6 @@ class Config:
         ""
     )
 
-    MIGRATION_KEY = os.environ.get(
-        "MIGRATION_KEY",
-        ""
-    )
 
     CLOUDINARY_CLOUD_NAME = os.environ.get(
         "CLOUDINARY_CLOUD_NAME",
