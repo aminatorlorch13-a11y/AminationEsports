@@ -3429,6 +3429,34 @@ def check_player_legal_schema():
 # TEMPORARY — PRODUCTION ANALYTICS SCHEMA MIGRATION
 # ============================================================
 
+@app.route("/admin/migrate/analytics-schema", methods=["GET"])
+def analytics_schema_migration_page():
+    """Show a founder-only confirmation page for the analytics migration."""
+
+    access = founder_required()
+    if access:
+        return access
+
+    return """
+    <!doctype html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>AminationEsports Analytics Migration</title>
+    </head>
+    <body>
+        <h1>Analytics Database Migration</h1>
+        <p>This will create the production analytics_event table if it does not already exist.</p>
+        <form method="post" action="/admin/migrate/analytics-schema">
+            <button type="submit">
+                Run Analytics Migration
+            </button>
+        </form>
+    </body>
+    </html>
+    """
+
 @app.route("/admin/migrate/analytics-schema", methods=["POST"])
 def migrate_analytics_schema():
     """Create the website analytics table in PostgreSQL."""
