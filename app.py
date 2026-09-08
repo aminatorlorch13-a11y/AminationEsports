@@ -784,6 +784,130 @@ def record_analytics_visit(response):
     return response
 
 
+# ============================================================
+# HIGHLIGHT VIEW ANALYTICS
+# ============================================================
+
+@app.route("/analytics/highlight-view", methods=["POST"])
+def record_highlight_view():
+    """Record an anonymous view of a published highlight."""
+
+    visitor_id = request.cookies.get(
+        "amination_visitor_id",
+        ""
+    ).strip()
+
+    if not visitor_id or len(visitor_id) > 64:
+        return {
+            "success": False,
+            "error": "Visitor identifier is required."
+        }, 400
+
+    if not request.is_json:
+        return {
+            "success": False,
+            "error": "JSON request required."
+        }, 415
+
+    payload = request.get_json(silent=True)
+
+    if not isinstance(payload, dict):
+        return {
+            "success": False,
+            "error": "Invalid request body."
+        }, 400
+
+    highlight_id_raw = payload.get("highlight_id")
+
+    if isinstance(highlight_id_raw, bool):
+        return {
+            "success": False,
+            "error": "Invalid highlight ID."
+        }, 400
+
+    try:
+        highlight_id = int(highlight_id_raw)
+    except (TypeError, ValueError):
+        return {
+            "success": False,
+            "error": "Invalid highlight ID."
+        }, 400
+
+    if highlight_id <= 0:
+        return {
+            "success": False,
+            "error": "Invalid highlight ID."
+        }, 400
+
+    highlight = db.session.get(
+        Highlight,
+        highlight_id
+    )
+
+    if highlight is None or not highlight.is_published:
+        return {
+            "success": False,
+            "error": "Highlight not found."
+        }, 404
+
+    try:
+        now = datetime.utcnow()
+
+        recent_view = (
+            AnalyticsEvent.query
+            .filter_by(
+                visitor_id=visitor_id,
+                event_type="highlight_view",
+                highlight_id=highlight_id
+            )
+            .order_by(
+                AnalyticsEvent.occurred_at.desc()
+            )
+            .first()
+        )
+
+        should_record = (
+            recent_view is None
+            or (
+                now - recent_view.occurred_at
+            ).total_seconds() >= 1800
+        )
+
+        if not should_record:
+            return {
+                "success": True,
+                "recorded": False
+            }
+
+        analytics_event = AnalyticsEvent(
+            visitor_id=visitor_id,
+            event_type="highlight_view",
+            highlight_id=highlight_id,
+            path="/",
+            occurred_at=now
+        )
+
+        db.session.add(analytics_event)
+        db.session.commit()
+
+        return {
+            "success": True,
+            "recorded": True
+        }
+
+    except Exception:
+        db.session.rollback()
+
+        app.logger.exception(
+            "Highlight view analytics recording failed."
+        )
+
+        return {
+            "success": False,
+            "error": "Analytics event could not be recorded."
+        }, 500
+
+
 # PUBLIC PAGES
 # ============================================================
 
