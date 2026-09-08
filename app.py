@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
@@ -42,7 +42,8 @@ from models import (
     Record,
     AdminAction,
     FounderMessage,
-    Highlight
+    Highlight,
+    AnalyticsEvent
 )
 
 from payment_service import (
@@ -668,6 +669,121 @@ def resolve_forfeit_match(
     )
 
 # ============================================================
+# ============================================================
+# PRIVACY-CONSCIOUS WEBSITE ANALYTICS
+# ============================================================
+
+ANALYTICS_PUBLIC_ENDPOINTS = {
+    "home",
+    "tournament",
+    "live",
+    "standings",
+    "players",
+    "player_profile",
+    "matches",
+    "terms",
+    "privacy",
+}
+
+
+def get_analytics_visitor_id():
+    """Return the anonymous visitor ID for the current request."""
+
+    visitor_id = request.cookies.get(
+        "amination_visitor_id",
+        ""
+    ).strip()
+
+    if visitor_id and len(visitor_id) <= 64:
+        return visitor_id
+
+    return secrets.token_urlsafe(32)
+
+
+@app.before_request
+def prepare_analytics_visit():
+    """Prepare anonymous visitor tracking for public pages."""
+
+    if request.method != "GET":
+        return
+
+    if request.endpoint not in ANALYTICS_PUBLIC_ENDPOINTS:
+        return
+
+    visitor_id = get_analytics_visitor_id()
+
+    g.analytics_visitor_id = visitor_id
+    g.analytics_track_visit = True
+
+
+@app.after_request
+def record_analytics_visit(response):
+    """Record a privacy-conscious public website visit."""
+
+    if not getattr(g, "analytics_track_visit", False):
+        return response
+
+    visitor_id = getattr(
+        g,
+        "analytics_visitor_id",
+        ""
+    )
+
+    if not visitor_id:
+        return response
+
+    try:
+        now = datetime.utcnow()
+
+        recent_visit = (
+            AnalyticsEvent.query
+            .filter_by(
+                visitor_id=visitor_id,
+                event_type="visit"
+            )
+            .order_by(
+                AnalyticsEvent.occurred_at.desc()
+            )
+            .first()
+        )
+
+        should_record = (
+            recent_visit is None
+            or (
+                now - recent_visit.occurred_at
+            ).total_seconds() >= 1800
+        )
+
+        if should_record:
+            analytics_event = AnalyticsEvent(
+                visitor_id=visitor_id,
+                event_type="visit",
+                path=request.path,
+                occurred_at=now
+            )
+
+            db.session.add(analytics_event)
+            db.session.commit()
+
+    except Exception:
+        db.session.rollback()
+        app.logger.exception(
+            "Website analytics visit recording failed."
+        )
+
+    if request.cookies.get("amination_visitor_id") != visitor_id:
+        response.set_cookie(
+            "amination_visitor_id",
+            visitor_id,
+            max_age=31536000,
+            httponly=True,
+            samesite="Lax",
+            secure=request.is_secure
+        )
+
+    return response
+
+
 # PUBLIC PAGES
 # ============================================================
 
