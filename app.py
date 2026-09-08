@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from datetime import datetime, timedelta
+from pathlib import Path
 from urllib.parse import urlparse
 import random
 import secrets
@@ -8,6 +9,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import inspect, or_, text
 
 from config import Config
+from highlight_storage import (
+    delete_highlight_video,
+    upload_highlight_video,
+    validate_highlight_upload,
+)
 from constants import (
     SUPPORTED_PLAYER_COUNTS,
     DEFAULT_MAX_PLAYERS,
@@ -2395,6 +2401,96 @@ def founder_player_stars(player_id):
 # ============================================================
 # FOUNDER — CREATE HIGHLIGHT
 # ============================================================
+# ============================================================
+# FOUNDER — UPLOAD HIGHLIGHT VIDEO
+# ============================================================
+
+@app.route(
+    "/admin/founder/highlights/upload",
+    methods=["POST"]
+)
+def founder_upload_highlight_video():
+    access = founder_required()
+    if access:
+        return access
+
+    uploaded_file = request.files.get("video")
+
+    if uploaded_file is None:
+        return {
+            "success": False,
+            "error": "Video file is required."
+        }, 400
+
+    if not uploaded_file.filename:
+        return {
+            "success": False,
+            "error": "Uploaded video file has no filename."
+        }, 400
+
+    filename = uploaded_file.filename.strip()
+    extension = Path(filename).suffix.lower()
+
+    if extension not in Config.ALLOWED_HIGHLIGHT_VIDEO_EXTENSIONS:
+        return {
+            "success": False,
+            "error": "Unsupported video file type."
+        }, 400
+
+    try:
+        upload_result = upload_highlight_video(
+            uploaded_file
+        )
+
+    except Exception:
+        app.logger.exception(
+            "Founder highlight video upload failed."
+        )
+
+        return {
+            "success": False,
+            "error": "Video upload failed."
+        }, 502
+
+    is_valid, validation_error = validate_highlight_upload(
+        upload_result
+    )
+
+    if not is_valid:
+        public_id = (
+            upload_result.get("public_id")
+            if isinstance(upload_result, dict)
+            else None
+        )
+
+        if public_id:
+            try:
+                delete_highlight_video(public_id)
+
+            except Exception:
+                app.logger.exception(
+                    "Failed to clean up invalid highlight video "
+                    "from Cloudinary."
+                )
+
+        app.logger.warning(
+            "Rejected uploaded highlight video: %s",
+            validation_error
+        )
+
+        return {
+            "success": False,
+            "error": "Uploaded video failed validation."
+        }, 400
+
+    secure_url = upload_result["secure_url"]
+
+    return {
+        "success": True,
+        "video_url": secure_url
+    }, 201
+
+
 
 @app.route(
     "/admin/founder/highlights/create",

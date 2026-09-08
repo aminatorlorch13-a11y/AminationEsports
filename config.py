@@ -52,6 +52,21 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # Maximum HTTP request size for uploads.
+    # 100 MB is large enough for high-quality FC Mobile
+    # highlight clips while preventing unexpectedly large
+    # requests from reaching the application.
+    MAX_CONTENT_LENGTH = 100 * 1024 * 1024
+
+    # File extensions accepted for Amination Esports highlights.
+    # Actual video/container validation is performed separately.
+    ALLOWED_HIGHLIGHT_VIDEO_EXTENSIONS = {
+        ".mp4",
+        ".mov",
+        ".webm",
+        ".m4v",
+    }
+
     SECRET_KEY = os.environ.get(
         "SECRET_KEY",
         "amination-development-key"
