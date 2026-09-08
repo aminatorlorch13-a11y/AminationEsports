@@ -6,7 +6,7 @@ import random
 import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from sqlalchemy import inspect, or_, text
+from sqlalchemy import func, inspect, or_, text
 
 from config import Config
 from highlight_storage import (
@@ -1555,6 +1555,444 @@ def admin_logout():
 
 
 # ============================================================
+# WEBSITE ANALYTICS OVERVIEW
+# ============================================================
+
+ANALYTICS_RANGE_DAYS = {
+    "today": 1,
+    "7d": 7,
+    "30d": 30,
+}
+
+
+def get_analytics_period(range_key):
+    """Return the UTC period boundaries for an analytics range."""
+
+    if range_key == "all":
+        return None, None
+
+    if range_key not in ANALYTICS_RANGE_DAYS:
+        range_key = "7d"
+
+    now = datetime.utcnow()
+
+    if range_key == "today":
+        start = datetime(
+            now.year,
+            now.month,
+            now.day
+        )
+    else:
+        start = now - timedelta(
+            days=ANALYTICS_RANGE_DAYS[range_key]
+        )
+
+    return start, now
+
+
+def get_website_analytics(range_key="7d"):
+    """Build an aggregate, privacy-conscious website analytics snapshot."""
+
+    if range_key not in {"today", "7d", "30d", "all"}:
+        range_key = "7d"
+
+    start, end = get_analytics_period(range_key)
+
+    visit_query = AnalyticsEvent.query.filter(
+        AnalyticsEvent.event_type == "visit"
+    )
+
+    highlight_query = AnalyticsEvent.query.filter(
+        AnalyticsEvent.event_type == "highlight_view"
+    )
+
+    player_query = Player.query
+
+    registration_query = TournamentParticipant.query
+
+    if start is not None:
+        visit_query = visit_query.filter(
+            AnalyticsEvent.occurred_at >= start,
+            AnalyticsEvent.occurred_at < end
+        )
+
+        highlight_query = highlight_query.filter(
+            AnalyticsEvent.occurred_at >= start,
+            AnalyticsEvent.occurred_at < end
+        )
+
+        player_query = player_query.filter(
+            Player.registered_at >= start,
+            Player.registered_at < end
+        )
+
+        registration_query = registration_query.filter(
+            TournamentParticipant.registered_at >= start,
+            TournamentParticipant.registered_at < end
+        )
+
+    total_visitors = (
+        visit_query
+        .with_entities(
+            func.count(
+                func.distinct(
+                    AnalyticsEvent.visitor_id
+                )
+            )
+        )
+        .scalar()
+        or 0
+    )
+
+    first_visit_subquery = (
+        db.session.query(
+            AnalyticsEvent.visitor_id,
+            func.min(
+                AnalyticsEvent.occurred_at
+            ).label("first_visit")
+        )
+        .filter(
+            AnalyticsEvent.event_type == "visit"
+        )
+        .group_by(
+            AnalyticsEvent.visitor_id
+        )
+        .subquery()
+    )
+
+    if start is None:
+        visitor_visit_counts = (
+            db.session.query(
+                AnalyticsEvent.visitor_id
+            )
+            .filter(
+                AnalyticsEvent.event_type == "visit"
+            )
+            .group_by(
+                AnalyticsEvent.visitor_id
+            )
+            .subquery()
+        )
+
+        visitor_count_rows = (
+            db.session.query(
+                AnalyticsEvent.visitor_id,
+                func.count(AnalyticsEvent.id).label(
+                    "visit_count"
+                )
+            )
+            .filter(
+                AnalyticsEvent.event_type == "visit"
+            )
+            .group_by(
+                AnalyticsEvent.visitor_id
+            )
+            .subquery()
+        )
+
+        new_visitors = (
+            db.session.query(
+                func.count(
+                    visitor_count_rows.c.visitor_id
+                )
+            )
+            .filter(
+                visitor_count_rows.c.visit_count == 1
+            )
+            .scalar()
+            or 0
+        )
+
+        returning_visitors = (
+            db.session.query(
+                func.count(
+                    visitor_count_rows.c.visitor_id
+                )
+            )
+            .filter(
+                visitor_count_rows.c.visit_count > 1
+            )
+            .scalar()
+            or 0
+        )
+    else:
+        new_visitors = (
+            db.session.query(
+                func.count(
+                    first_visit_subquery.c.visitor_id
+                )
+            )
+            .filter(
+                first_visit_subquery.c.first_visit >= start,
+                first_visit_subquery.c.first_visit < end
+            )
+            .scalar()
+            or 0
+        )
+
+        returning_visitors = (
+            total_visitors - new_visitors
+        )
+
+    registered_players = player_query.count()
+
+    tournament_registrations = (
+        registration_query.count()
+    )
+
+    highlight_views = highlight_query.count()
+
+    return {
+        "range": range_key,
+        "start": start,
+        "end": end,
+        "total_visitors": int(total_visitors),
+        "new_visitors": int(new_visitors),
+        "returning_visitors": int(returning_visitors),
+        "registered_players": int(registered_players),
+        "tournament_registrations": int(
+            tournament_registrations
+        ),
+        "highlight_views": int(highlight_views),
+    }
+
+
+
+def get_analytics_trend(range_key="7d"):
+    """Return aggregate visitor and highlight-view trend data."""
+
+    if range_key not in {"today", "7d", "30d", "all"}:
+        range_key = "7d"
+
+    now = datetime.utcnow()
+
+    if range_key == "today":
+        start = datetime(
+            now.year,
+            now.month,
+            now.day
+        )
+
+        bucket_type = "hour"
+        bucket_count = now.hour + 1
+
+    elif range_key == "7d":
+        today_start = datetime(
+            now.year,
+            now.month,
+            now.day
+        )
+
+        start = today_start - timedelta(days=6)
+
+        bucket_type = "day"
+        bucket_count = 7
+
+    elif range_key == "30d":
+        today_start = datetime(
+            now.year,
+            now.month,
+            now.day
+        )
+
+        start = today_start - timedelta(days=29)
+
+        bucket_type = "day"
+        bucket_count = 30
+
+    else:
+        start = None
+
+        bucket_type = "month"
+
+        first_visit = (
+            db.session.query(
+                func.min(AnalyticsEvent.occurred_at)
+            )
+            .filter(
+                AnalyticsEvent.event_type == "visit"
+            )
+            .scalar()
+        )
+
+        if first_visit is None:
+            bucket_count = 1
+        else:
+            bucket_count = (
+                (now.year - first_visit.year) * 12
+                + now.month
+                - first_visit.month
+                + 1
+            )
+
+    events_query = AnalyticsEvent.query.filter(
+        AnalyticsEvent.event_type.in_(
+            ["visit", "highlight_view"]
+        )
+    )
+
+    if start is not None:
+        events_query = events_query.filter(
+            AnalyticsEvent.occurred_at >= start,
+            AnalyticsEvent.occurred_at <= now
+        )
+
+    events = events_query.order_by(
+        AnalyticsEvent.occurred_at.asc()
+    ).all()
+
+    buckets = {}
+
+    for event in events:
+        timestamp = event.occurred_at
+
+        if bucket_type == "hour":
+            key = timestamp.strftime("%Y-%m-%d-%H")
+        elif bucket_type == "day":
+            key = timestamp.strftime("%Y-%m-%d")
+        else:
+            key = timestamp.strftime("%Y-%m")
+
+        if key not in buckets:
+            buckets[key] = {
+                "visitors": set(),
+                "highlight_views": 0,
+            }
+
+        if event.event_type == "visit":
+            buckets[key]["visitors"].add(
+                event.visitor_id
+            )
+        elif event.event_type == "highlight_view":
+            buckets[key]["highlight_views"] += 1
+
+    labels = []
+    visitors = []
+    highlight_views = []
+
+    if bucket_type == "hour":
+        current = start
+
+        for _ in range(bucket_count):
+            key = current.strftime("%Y-%m-%d-%H")
+
+            labels.append(
+                current.strftime("%H:%M")
+            )
+
+            bucket = buckets.get(
+                key,
+                {
+                    "visitors": set(),
+                    "highlight_views": 0,
+                }
+            )
+
+            visitors.append(
+                len(bucket["visitors"])
+            )
+
+            highlight_views.append(
+                bucket["highlight_views"]
+            )
+
+            current += timedelta(hours=1)
+
+    elif bucket_type == "day":
+        current = start.replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0
+        )
+
+        for _ in range(bucket_count):
+            key = current.strftime("%Y-%m-%d")
+
+            labels.append(
+                current.strftime("%d %b")
+            )
+
+            bucket = buckets.get(
+                key,
+                {
+                    "visitors": set(),
+                    "highlight_views": 0,
+                }
+            )
+
+            visitors.append(
+                len(bucket["visitors"])
+            )
+
+            highlight_views.append(
+                bucket["highlight_views"]
+            )
+
+            current += timedelta(days=1)
+
+    else:
+        if events:
+            first_month = datetime(
+                events[0].occurred_at.year,
+                events[0].occurred_at.month,
+                1
+            )
+        else:
+            first_month = datetime(
+                now.year,
+                now.month,
+                1
+            )
+
+        current = first_month
+
+        for _ in range(bucket_count):
+            key = current.strftime("%Y-%m")
+
+            labels.append(
+                current.strftime("%b %Y")
+            )
+
+            bucket = buckets.get(
+                key,
+                {
+                    "visitors": set(),
+                    "highlight_views": 0,
+                }
+            )
+
+            visitors.append(
+                len(bucket["visitors"])
+            )
+
+            highlight_views.append(
+                bucket["highlight_views"]
+            )
+
+            if current.month == 12:
+                current = datetime(
+                    current.year + 1,
+                    1,
+                    1
+                )
+            else:
+                current = datetime(
+                    current.year,
+                    current.month + 1,
+                    1
+                )
+
+    return {
+        "bucket": bucket_type,
+        "labels": labels,
+        "visitors": visitors,
+        "highlight_views": highlight_views,
+    }
+
+
+
+# ============================================================
 # FOUNDER DASHBOARD
 # ============================================================
 
@@ -1564,6 +2002,27 @@ def admin_dashboard():
     access = founder_required()
     if access:
         return access
+
+    analytics_range = request.args.get(
+        "analytics",
+        "7d"
+    ).strip().lower()
+
+    if analytics_range not in {
+        "today",
+        "7d",
+        "30d",
+        "all"
+    }:
+        analytics_range = "7d"
+
+    analytics = get_website_analytics(
+        analytics_range
+    )
+
+    analytics_trend = get_analytics_trend(
+        analytics_range
+    )
 
     players = Player.query.order_by(
         Player.registered_at.desc()
@@ -1641,7 +2100,9 @@ def admin_dashboard():
         actions=actions,
         tournament=tournament,
         tournament_matches=tournament_matches,
-        matches=tournament_matches
+        matches=tournament_matches,
+        analytics=analytics,
+        analytics_trend=analytics_trend
     )
 
 

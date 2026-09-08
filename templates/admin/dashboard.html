@@ -308,6 +308,227 @@
 
 
     <!-- ================================= -->
+    <!-- WEBSITE ANALYTICS -->
+    <!-- ================================= -->
+
+    <section
+        id="website-analytics"
+        class="admin-section"
+    >
+
+        <div class="section-header">
+            <div>
+                <h2>Website Analytics</h2>
+                <p>
+                    Privacy-conscious aggregate website activity.
+                </p>
+            </div>
+
+            <div class="analytics-range-selector">
+
+                <a
+                    href="{{ url_for('admin_dashboard', analytics='today') }}"
+                    class="{% if analytics.range == 'today' %}active{% endif %}"
+                >
+                    Today
+                </a>
+
+                <a
+                    href="{{ url_for('admin_dashboard', analytics='7d') }}"
+                    class="{% if analytics.range == '7d' %}active{% endif %}"
+                >
+                    7 Days
+                </a>
+
+                <a
+                    href="{{ url_for('admin_dashboard', analytics='30d') }}"
+                    class="{% if analytics.range == '30d' %}active{% endif %}"
+                >
+                    30 Days
+                </a>
+
+                <a
+                    href="{{ url_for('admin_dashboard', analytics='all') }}"
+                    class="{% if analytics.range == 'all' %}active{% endif %}"
+                >
+                    All Time
+                </a>
+
+            </div>
+        </div>
+
+        <div class="analytics-trend-card">
+
+            <div class="analytics-trend-header">
+                <div>
+                    <h3>Activity Trend</h3>
+                    <p>
+                        Daily visitor activity and highlight views
+                        for the selected period.
+                    </p>
+                </div>
+            </div>
+
+            <div
+                class="analytics-chart"
+                data-analytics-chart
+                aria-label="Website activity trend chart"
+            >
+                <svg
+                    class="analytics-chart-svg"
+                    viewBox="0 0 800 300"
+                    role="img"
+                    aria-labelledby="analytics-chart-title"
+                >
+                    <title id="analytics-chart-title">
+                        Website activity trend
+                    </title>
+
+                    <g
+                        class="analytics-chart-grid"
+                        aria-hidden="true"
+                    >
+                        <line
+                            x1="60"
+                            y1="40"
+                            x2="760"
+                            y2="40"
+                        />
+                        <line
+                            x1="60"
+                            y1="110"
+                            x2="760"
+                            y2="110"
+                        />
+                        <line
+                            x1="60"
+                            y1="180"
+                            x2="760"
+                            y2="180"
+                        />
+                        <line
+                            x1="60"
+                            y1="250"
+                            x2="760"
+                            y2="250"
+                        />
+                    </g>
+
+                    <g
+                        class="analytics-chart-labels"
+                        data-chart-labels
+                    ></g>
+
+                    <polyline
+                        class="analytics-chart-line visitors-line"
+                        data-chart-visitors
+                        points=""
+                    />
+
+                    <polyline
+                        class="analytics-chart-line highlights-line"
+                        data-chart-highlights
+                        points=""
+                    />
+
+                    <g
+                        class="analytics-chart-points"
+                        data-chart-points-visitors
+                    ></g>
+
+                    <g
+                        class="analytics-chart-points"
+                        data-chart-points-highlights
+                    ></g>
+                </svg>
+
+                <div class="analytics-chart-legend">
+                    <span>
+                        <i class="legend-marker visitors-marker"></i>
+                        Visitors
+                    </span>
+
+                    <span>
+                        <i class="legend-marker highlights-marker"></i>
+                        Highlight Views
+                    </span>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="stats-grid analytics-stats-grid">
+
+            <div class="stat-card">
+                <span class="stat-label">
+                    Total Visitors
+                </span>
+
+                <strong class="stat-value">
+                    {{ analytics.total_visitors }}
+                </strong>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-label">
+                    New Visitors
+                </span>
+
+                <strong class="stat-value">
+                    {{ analytics.new_visitors }}
+                </strong>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-label">
+                    Returning Visitors
+                </span>
+
+                <strong class="stat-value">
+                    {{ analytics.returning_visitors }}
+                </strong>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-label">
+                    Registered Players
+                </span>
+
+                <strong class="stat-value">
+                    {{ analytics.registered_players }}
+                </strong>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-label">
+                    Tournament Registrations
+                </span>
+
+                <strong class="stat-value">
+                    {{ analytics.tournament_registrations }}
+                </strong>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-label">
+                    Highlight Views
+                </span>
+
+                <strong class="stat-value">
+                    {{ analytics.highlight_views }}
+                </strong>
+            </div>
+
+        </div>
+
+    </section>
+
+    <script>
+        window.AminationAnalyticsTrend =
+            {{ analytics_trend | tojson }};
+    </script>
+
+    <!-- ================================= -->
     <!-- HIGHLIGHTS STUDIO -->
     <!-- ================================= -->
 

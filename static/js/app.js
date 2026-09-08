@@ -204,3 +204,241 @@
         );
     });
 })();
+
+
+/* ========================================= */
+/* WEBSITE ANALYTICS TREND CHART */
+/* ========================================= */
+
+const analyticsChart =
+    document.querySelector(
+        "[data-analytics-chart]"
+    );
+
+const analyticsTrend =
+    window.AminationAnalyticsTrend;
+
+if (
+    analyticsChart &&
+    analyticsTrend &&
+    Array.isArray(analyticsTrend.labels) &&
+    Array.isArray(analyticsTrend.visitors) &&
+    Array.isArray(analyticsTrend.highlight_views)
+) {
+    const visitorsLine =
+        analyticsChart.querySelector(
+            "[data-chart-visitors]"
+        );
+
+    const highlightsLine =
+        analyticsChart.querySelector(
+            "[data-chart-highlights]"
+        );
+
+    const labelsGroup =
+        analyticsChart.querySelector(
+            "[data-chart-labels]"
+        );
+
+    const visitorPointsGroup =
+        analyticsChart.querySelector(
+            "[data-chart-points-visitors]"
+        );
+
+    const highlightPointsGroup =
+        analyticsChart.querySelector(
+            "[data-chart-points-highlights]"
+        );
+
+    const labels = analyticsTrend.labels;
+    const visitors = analyticsTrend.visitors;
+    const highlightViews =
+        analyticsTrend.highlight_views;
+
+    const pointCount = labels.length;
+
+    if (
+        pointCount > 0 &&
+        visitors.length === pointCount &&
+        highlightViews.length === pointCount
+    ) {
+        const chartLeft = 60;
+        const chartRight = 760;
+        const chartTop = 40;
+        const chartBottom = 250;
+
+        const chartWidth =
+            chartRight - chartLeft;
+
+        const chartHeight =
+            chartBottom - chartTop;
+
+        const maximumValue = Math.max(
+            1,
+            ...visitors.map(
+                (value) =>
+                    Number.isFinite(Number(value))
+                        ? Number(value)
+                        : 0
+            ),
+            ...highlightViews.map(
+                (value) =>
+                    Number.isFinite(Number(value))
+                        ? Number(value)
+                        : 0
+            )
+        );
+
+        const xPosition = (index) => {
+            if (pointCount === 1) {
+                return chartLeft + (
+                    chartWidth / 2
+                );
+            }
+
+            return (
+                chartLeft
+                + (
+                    index
+                    / (pointCount - 1)
+                ) * chartWidth
+            );
+        };
+
+        const yPosition = (value) => {
+            const numericValue =
+                Number.isFinite(Number(value))
+                    ? Number(value)
+                    : 0;
+
+            return (
+                chartBottom
+                - (
+                    numericValue
+                    / maximumValue
+                ) * chartHeight
+            );
+        };
+
+        const createPolylinePoints =
+            (values) => {
+                return values
+                    .map(
+                        (value, index) =>
+                            `${xPosition(index)},${yPosition(value)}`
+                    )
+                    .join(" ");
+            };
+
+        visitorsLine.setAttribute(
+            "points",
+            createPolylinePoints(visitors)
+        );
+
+        highlightsLine.setAttribute(
+            "points",
+            createPolylinePoints(
+                highlightViews
+            )
+        );
+
+        const createSvgElement =
+            (tagName) => {
+                return document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    tagName
+                );
+            };
+
+        const labelStep = Math.max(
+            1,
+            Math.ceil(pointCount / 7)
+        );
+
+        labels.forEach(
+            (label, index) => {
+                if (
+                    index % labelStep !== 0 &&
+                    index !== pointCount - 1
+                ) {
+                    return;
+                }
+
+                const text =
+                    createSvgElement("text");
+
+                text.setAttribute(
+                    "x",
+                    xPosition(index)
+                );
+
+                text.setAttribute(
+                    "y",
+                    "278"
+                );
+
+                text.setAttribute(
+                    "text-anchor",
+                    "middle"
+                );
+
+                text.textContent = String(
+                    label
+                );
+
+                labelsGroup.appendChild(text);
+            }
+        );
+
+        const addPoints =
+            (values, group) => {
+                values.forEach(
+                    (value, index) => {
+                        const circle =
+                            createSvgElement(
+                                "circle"
+                            );
+
+                        circle.setAttribute(
+                            "cx",
+                            xPosition(index)
+                        );
+
+                        circle.setAttribute(
+                            "cy",
+                            yPosition(value)
+                        );
+
+                        circle.setAttribute(
+                            "r",
+                            "3"
+                        );
+
+                        circle.setAttribute(
+                            "data-value",
+                            String(value)
+                        );
+
+                        circle.setAttribute(
+                            "data-label",
+                            String(labels[index])
+                        );
+
+                        group.appendChild(
+                            circle
+                        );
+                    }
+                );
+            };
+
+        addPoints(
+            visitors,
+            visitorPointsGroup
+        );
+
+        addPoints(
+            highlightViews,
+            highlightPointsGroup
+        );
+    }
+}
