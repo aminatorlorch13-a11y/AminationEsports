@@ -461,6 +461,35 @@
                     placeholder="Describe the moment..."
                 ></textarea>
 
+                <label for="highlight-video-file">
+                    Upload Video
+                </label>
+
+                <div class="highlight-upload-row">
+                    <input
+                        id="highlight-video-file"
+                        type="file"
+                        accept="video/mp4,video/quicktime,video/webm,video/x-m4v"
+                    >
+
+                    <button
+                        id="highlight-upload-button"
+                        type="button"
+                        class="button"
+                    >
+                        📱 UPLOAD VIDEO
+                    </button>
+                </div>
+
+                <p
+                    id="highlight-upload-status"
+                    class="highlights-form-note"
+                    aria-live="polite"
+                >
+                    Choose an FC Mobile video from your phone,
+                    then upload it before publishing.
+                </p>
+
                 <label for="highlight-video-url">
                     Video URL
                 </label>
@@ -470,14 +499,12 @@
                     type="url"
                     name="video_url"
                     maxlength="1000"
-                    required
-                    placeholder="https://..."
+                    placeholder="Uploaded video URL will appear here..."
                 >
 
                 <p class="highlights-form-note">
-                    Use a publicly accessible HTTP or HTTPS
-                    video URL. Direct phone uploads will be
-                    added through external video storage later.
+                    Your uploaded video is stored securely before
+                    you publish the highlight.
                 </p>
 
                 <button
@@ -2630,6 +2657,7 @@
 </footer>
 
 
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 
 </html>
