@@ -2493,6 +2493,72 @@ def founder_tournament_control():
 # ============================================================
 
 @app.route(
+    "/admin/tournament/capacity",
+    methods=["POST"]
+)
+def founder_tournament_capacity():
+    access = founder_required()
+    if access:
+        return access
+
+    tournament = Tournament.query.order_by(
+        Tournament.id.desc()
+    ).first()
+
+    if not tournament:
+        return "No tournament exists.", 404
+
+    max_players_raw = request.form.get(
+        "max_players",
+        ""
+    ).strip()
+
+    if not max_players_raw.isdigit():
+        return (
+            "Maximum players must be a whole number."
+        ), 400
+
+    max_players = int(max_players_raw)
+
+    if max_players not in SUPPORTED_PLAYER_COUNTS:
+        supported = ", ".join(
+            str(size) for size in SUPPORTED_PLAYER_COUNTS
+        )
+        return (
+            f"Maximum players must be {supported}."
+        ), 400
+
+    if max_players < tournament.max_players:
+        return (
+            "Tournament capacity cannot be reduced."
+        ), 400
+
+    if max_players == tournament.max_players:
+        return redirect(
+            url_for("admin_dashboard")
+        )
+
+    old_capacity = tournament.max_players
+    tournament.max_players = max_players
+
+    action = AdminAction(
+        action="tournament_capacity_updated",
+        notes=(
+            "Founder increased tournament capacity. "
+            f"Previous: {old_capacity}. "
+            f"New: {max_players}."
+        )
+    )
+
+    db.session.add(action)
+    db.session.commit()
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
+@app.route(
     "/admin/tournament/settings",
     methods=["POST"]
 )

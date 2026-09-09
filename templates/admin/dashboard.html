@@ -833,23 +833,11 @@
 
                 {% if tournament.max_players < 32 %}
                 <form method="POST"
-                      action="{{ url_for("founder_tournament_settings") }}"
+                      action="{{ url_for("founder_tournament_capacity") }}"
                       style="margin-top:15px;">
-
-                    <input type="hidden" name="name"
-                           value="{{ tournament.name }}">
 
                     <input type="hidden" name="max_players"
                            value="32">
-
-                    <input type="hidden" name="competition_day"
-                           value="{{ tournament.competition_day }}">
-
-                    <input type="hidden" name="entry_fee"
-                           value="{{ tournament.entry_fee }}">
-
-                    <input type="hidden" name="final_day"
-                           value="{{ tournament.final_day }}">
 
                     <button type="submit"
                             class="button"
