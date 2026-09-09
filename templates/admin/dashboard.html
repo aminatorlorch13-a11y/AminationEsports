@@ -811,6 +811,65 @@
 
 
             <!-- ================================= -->
+            <!-- TOURNAMENT CAPACITY CONTROL -->
+
+            {% if tournament %}
+            <div class="control-card" style="margin-bottom:25px;">
+
+                <h3>👥 TOURNAMENT CAPACITY</h3>
+
+                <p>
+                    <strong>Current capacity:</strong>
+                    {{ tournament.max_players }} players
+                    <br>
+                    <strong>Approved:</strong>
+                    {{ approved_count }}/{{ tournament.max_players }}
+                </p>
+
+                <p>
+                    Capacity is controlled by the Founder and
+                    <strong>never increases automatically.</strong>
+                </p>
+
+                {% if tournament.max_players < 32 %}
+                <form method="POST"
+                      action="{{ url_for("founder_tournament_settings") }}"
+                      style="margin-top:15px;">
+
+                    <input type="hidden" name="name"
+                           value="{{ tournament.name }}">
+
+                    <input type="hidden" name="max_players"
+                           value="32">
+
+                    <input type="hidden" name="competition_day"
+                           value="{{ tournament.competition_day }}">
+
+                    <input type="hidden" name="entry_fee"
+                           value="{{ tournament.entry_fee }}">
+
+                    <input type="hidden" name="final_day"
+                           value="{{ tournament.final_day }}">
+
+                    <button type="submit"
+                            class="button"
+                            style="border:none;cursor:pointer;width:100%;"
+                            onclick="return confirm(
+                                'Increase tournament capacity to 32 players?'
+                            );">
+                        ⬆️ INCREASE CAPACITY TO 32 PLAYERS
+                    </button>
+
+                </form>
+                {% else %}
+                <p>
+                    ✅ <strong>Maximum current capacity: 32 players.</strong>
+                </p>
+                {% endif %}
+
+            </div>
+            {% endif %}
+
             <!-- FOUNDER TOURNAMENT SETTINGS -->
             <!-- ================================= -->
 
