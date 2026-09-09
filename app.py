@@ -2147,6 +2147,13 @@ def change_player_status(player_id):
 
     old_status = player.application_status
 
+    tournament = Tournament.query.order_by(
+        Tournament.id.desc()
+    ).first()
+
+    if not tournament:
+        return "No tournament exists.", 404
+
     if new_status == "approved":
 
         approved_count = Player.query.filter_by(
@@ -2155,12 +2162,12 @@ def change_player_status(player_id):
 
         if (
             old_status != "approved"
-            and approved_count >= 16
+            and approved_count >= tournament.max_players
         ):
 
             return (
-                "The tournament already has "
-                "16 approved players. "
+                "The tournament has reached "
+                f"{tournament.max_players} approved players. "
                 "Use the waitlist until a place "
                 "becomes available."
             ), 400
@@ -2548,9 +2555,12 @@ def founder_tournament_settings():
     if entry_fee < 0:
         return "Entry fee cannot be negative.", 400
 
-    if max_players not in [2, 4, 8, 16]:
+    if max_players not in SUPPORTED_PLAYER_COUNTS:
+        supported = ", ".join(
+            str(size) for size in SUPPORTED_PLAYER_COUNTS
+        )
         return (
-            "Maximum players must be 2, 4, 8 or 16."
+            f"Maximum players must be {supported}."
         ), 400
 
     if not competition_day:
@@ -2933,7 +2943,15 @@ def founder_player_status(player_id):
 
     old_status = player.application_status
 
-    # Do not allow more than 16 approved players.
+    tournament = Tournament.query.order_by(
+        Tournament.id.desc()
+    ).first()
+
+    if not tournament:
+        return "No tournament exists.", 404
+
+    # Do not allow more approved players than the
+    # current tournament capacity.
     # A player already approved does not consume another slot.
     if new_status == "approved" and old_status != "approved":
         approved_count = Player.query.filter_by(
@@ -2941,10 +2959,12 @@ def founder_player_status(player_id):
             active=True
         ).count()
 
-        if approved_count >= 16:
+        if approved_count >= tournament.max_players:
             return (
-                "The tournament already has 16 approved players. "
-                "Use the waitlist until a place becomes available."
+                "The tournament has reached "
+                f"{tournament.max_players} approved players. "
+                "Use the waitlist until a place "
+                "becomes available."
             ), 400
 
 
@@ -3945,7 +3965,7 @@ def repair_tournament():
     tournament = Tournament(
         name="Amination FC Season 1",
         status=TOURNAMENT_REGISTRATION,
-        max_players=16
+        max_players=32
     )
 
     db.session.add(tournament)

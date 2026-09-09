@@ -231,7 +231,7 @@
                 </small>
 
                 <h2>
-                    {{ approved_count }}/16
+                    {{ approved_count }}/{{ tournament.max_players }}
                 </h2>
 
             </div>
@@ -907,6 +907,15 @@
                                 {% endif %}
                             >
                                 16 Players
+                            </option>
+
+                            <option
+                                value="32"
+                                {% if tournament.max_players == 32 %}
+                                    selected
+                                {% endif %}
+                            >
+                                32 Players
                             </option>
 
                         </select>
@@ -1756,6 +1765,15 @@
                                 {% endif %}
                             >
                                 16
+                            </option>
+
+                            <option
+                                value="32"
+                                {% if tournament.max_players == 32 %}
+                                    selected
+                                {% endif %}
+                            >
+                                32
                             </option>
 
                         </select>

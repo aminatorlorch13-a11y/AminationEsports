@@ -6,9 +6,9 @@
 # Tournament sizes
 # ------------------------------------------------------------
 
-SUPPORTED_PLAYER_COUNTS = (2, 4, 8, 16)
+SUPPORTED_PLAYER_COUNTS = (2, 4, 8, 16, 32)
 
-DEFAULT_MAX_PLAYERS = 16
+DEFAULT_MAX_PLAYERS = 32
 
 
 # ------------------------------------------------------------
