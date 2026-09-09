@@ -65,6 +65,17 @@ from payfast_service import (
 
 app = Flask(__name__)
 
+# TEMPORARY FOUNDER DASHBOARD DIAGNOSTIC
+@app.errorhandler(500)
+def temporary_server_error(error):
+    app.logger.exception(
+        "FOUNDER_DIAG: unhandled 500 error: %s",
+        error
+    )
+    return "Internal Server Error", 500
+
+
+
 app.config.from_object(Config)
 
 db.init_app(app)
