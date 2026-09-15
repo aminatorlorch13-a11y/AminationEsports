@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 import random
 import secrets
+import traceback
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from sqlalchemy import func, inspect, or_, text
@@ -1362,54 +1363,67 @@ def register():
             active=True
         )
 
-        db.session.add(player)
+        try:
+            db.session.add(player)
 
-        # Flush so player.id exists before creating the participant.
-        # Both records remain inside the same database transaction.
-        db.session.flush()
+            # Flush so player.id exists before creating the participant.
+            # Both records remain inside the same database transaction.
+            db.session.flush()
 
-        payment_required = bool(tournament.payment_enabled)
+            payment_required = bool(tournament.payment_enabled)
 
-        participant = TournamentParticipant(
-            tournament_id=tournament.id,
-            player_id=player.id,
-            team_name=player.team_name,
-            status="registered",
-            availability_status="unknown",
+            participant = TournamentParticipant(
+                tournament_id=tournament.id,
+                player_id=player.id,
+                team_name=player.team_name,
+                status="registered",
+                availability_status="unknown",
 
-            payment_status=(
-                "unpaid"
-                if payment_required
-                else "not_required"
-            ),
+                payment_status=(
+                    "unpaid"
+                    if payment_required
+                    else "not_required"
+                ),
 
-            payment_required_amount=(
-                float(tournament.entry_fee)
-                if payment_required
-                else 0
-            ),
+                payment_required_amount=(
+                    float(tournament.entry_fee)
+                    if payment_required
+                    else 0
+                ),
 
-            payment_received_amount=0,
-            founder_payment_verified=False,
+                payment_received_amount=0,
+                founder_payment_verified=False,
 
-            overpayment_amount=0,
-            overpayment_reviewed=False,
+                overpayment_amount=0,
+                overpayment_reviewed=False,
 
-            payment_reversed=False,
+                payment_reversed=False,
 
-            refund_requested=False,
-            refund_approved=False,
-            refund_amount=0,
-            refund_completed=False,
+                refund_requested=False,
+                refund_approved=False,
+                refund_amount=0,
+                refund_completed=False,
 
-            registered_at=datetime.utcnow()
-        )
+                registered_at=datetime.utcnow()
+            )
 
-        db.session.add(participant)
+            db.session.add(participant)
 
-        # Player account and tournament participation are committed together.
-        # If either operation fails, the transaction can roll back.
-        db.session.commit()
+            # Player account and tournament participation are committed together.
+            # If either operation fails, the transaction can roll back.
+            db.session.commit()
+
+        except Exception:
+            db.session.rollback()
+
+            print("REGISTRATION DATABASE ERROR")
+            traceback.print_exc()
+
+            return (
+                "We couldn't complete your registration right now. "
+                "Please try again. If the problem continues, "
+                "please contact Amination Esports."
+            ), 500
 
         return redirect(
             url_for(
