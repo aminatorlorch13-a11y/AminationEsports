@@ -6,7 +6,12 @@
 # Tournament sizes
 # ------------------------------------------------------------
 
-SUPPORTED_PLAYER_COUNTS = (2, 4, 8, 16, 32)
+# Founder-controlled tournament capacities.
+#
+# The bracket engine itself is capacity-agnostic and can calculate
+# any power-of-two bracket. This tuple is intentionally no longer
+# used as an artificial application-wide ceiling.
+SUPPORTED_PLAYER_COUNTS = ()
 
 DEFAULT_MAX_PLAYERS = 32
 

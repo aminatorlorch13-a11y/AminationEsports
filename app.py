@@ -16,7 +16,6 @@ from highlight_storage import (
     validate_highlight_upload,
 )
 from constants import (
-    SUPPORTED_PLAYER_COUNTS,
     DEFAULT_MAX_PLAYERS,
     TOURNAMENT_REGISTRATION,
     TOURNAMENT_DRAW_RELEASED,
@@ -143,6 +142,23 @@ def founder_required():
 # ============================================================
 
 def tournament_bracket_capacity(player_count):
+    """
+    Return the smallest power-of-two bracket capacity that can
+    contain the requested number of players.
+
+    The tournament engine deliberately has no artificial
+    32-player ceiling. Founder-controlled tournament capacity
+    is handled separately from the mathematical bracket engine.
+
+    Examples:
+        2   -> 2
+        3   -> 4
+        17  -> 32
+        33  -> 64
+        100 -> 128
+        513 -> 1024
+    """
+
     try:
         player_count = int(player_count or 0)
     except (TypeError, ValueError):
@@ -150,21 +166,36 @@ def tournament_bracket_capacity(player_count):
 
     if player_count <= 2:
         return 2
-    if player_count <= 4:
-        return 4
-    if player_count <= 8:
-        return 8
-    if player_count <= 16:
-        return 16
-    if player_count <= 32:
-        return 32
 
-    raise ValueError(
-        "AminationEsports supports a maximum of 32 players."
-    )
+    capacity = 2
+
+    while capacity < player_count:
+        capacity *= 2
+
+    return capacity
 
 
 def tournament_rounds(player_count):
+    """
+    Build the round sequence dynamically from the bracket capacity.
+
+    The final three stages are always:
+        Quarter-Final
+        Semi-Final
+        Final
+
+    Smaller brackets naturally omit the earlier stages.
+
+    Examples:
+        2   -> Final
+        4   -> Semi-Final, Final
+        8   -> Quarter-Final, Semi-Final, Final
+        16  -> Round 1, Quarter-Final, Semi-Final, Final
+        32  -> Round 1, Round 2, Quarter-Final, Semi-Final, Final
+        64  -> Round 1, Round 2, Round 3, Quarter-Final,
+               Semi-Final, Final
+    """
+
     capacity = tournament_bracket_capacity(player_count)
 
     if capacity == 2:
@@ -183,21 +214,28 @@ def tournament_rounds(player_count):
             FINAL
         ]
 
-    if capacity == 16:
-        return [
-            ROUND_1,
-            QUARTER_FINAL,
-            SEMI_FINAL,
-            FINAL
-        ]
+    # A 16-slot bracket needs one preliminary round before
+    # reaching the Quarter-Final. Larger brackets add one
+    # additional numbered round for every doubling.
+    preliminary_round_count = (
+        capacity.bit_length() - 4
+    )
 
-    return [
-        ROUND_1,
-        "Round 2",
+    rounds = [
+        f"Round {number}"
+        for number in range(
+            1,
+            preliminary_round_count + 1
+        )
+    ]
+
+    rounds.extend([
         QUARTER_FINAL,
         SEMI_FINAL,
         FINAL
-    ]
+    ])
+
+    return rounds
 
 
 def next_round_name(current_round, rounds):
@@ -226,9 +264,16 @@ def calculate_bye_count(player_count):
     return max(capacity - player_count, 0)
 
 
-def calculate_bye_positions(player_count):
-    capacity = tournament_bracket_capacity(player_count)
-    bye_count = calculate_bye_count(player_count)
+def calculate_bye_positions(player_count, capacity=None):
+    if capacity is None:
+        capacity = tournament_bracket_capacity(player_count)
+
+    try:
+        capacity = int(capacity)
+    except (TypeError, ValueError):
+        capacity = tournament_bracket_capacity(player_count)
+
+    bye_count = max(capacity - player_count, 0)
 
     if bye_count <= 0:
         return []
@@ -261,17 +306,27 @@ def calculate_bye_positions(player_count):
     return sorted(positions)
 
 
-def build_round_one_slots(players):
+def build_round_one_slots(players, capacity=None):
     players = list(players or [])
     player_count = len(players)
 
     if player_count < 2:
         return []
 
-    capacity = tournament_bracket_capacity(player_count)
+    if capacity is None:
+        capacity = tournament_bracket_capacity(player_count)
+
+    if capacity < player_count:
+        raise ValueError(
+            "Bracket capacity cannot be smaller than "
+            "the number of players."
+        )
 
     bye_positions = set(
-        calculate_bye_positions(player_count)
+        calculate_bye_positions(
+            player_count,
+            capacity
+        )
     )
 
     slots = []
@@ -301,8 +356,11 @@ def build_round_one_slots(players):
     return slots
 
 
-def build_round_one_pairings(players):
-    slots = build_round_one_slots(players)
+def build_round_one_pairings(players, capacity=None):
+    slots = build_round_one_slots(
+        players,
+        capacity
+    )
     pairings = []
 
     for index in range(0, len(slots), 2):
@@ -2534,12 +2592,13 @@ def founder_tournament_capacity():
 
     max_players = int(max_players_raw)
 
-    if max_players not in SUPPORTED_PLAYER_COUNTS:
-        supported = ", ".join(
-            str(size) for size in SUPPORTED_PLAYER_COUNTS
-        )
+    if (
+        max_players < 2
+        or max_players & (max_players - 1)
+    ):
         return (
-            f"Maximum players must be {supported}."
+            "Maximum players must be a power of two "
+            "starting at 2."
         ), 400
 
     if max_players < tournament.max_players:
@@ -2635,12 +2694,18 @@ def founder_tournament_settings():
     if entry_fee < 0:
         return "Entry fee cannot be negative.", 400
 
-    if max_players not in SUPPORTED_PLAYER_COUNTS:
-        supported = ", ".join(
-            str(size) for size in SUPPORTED_PLAYER_COUNTS
-        )
+    if (
+        max_players < 2
+        or max_players & (max_players - 1)
+    ):
         return (
-            f"Maximum players must be {supported}."
+            "Maximum players must be a power of two "
+            "starting at 2."
+        ), 400
+
+    if max_players < tournament.max_players:
+        return (
+            "Tournament capacity cannot be reduced."
         ), 400
 
     if not competition_day:
@@ -2701,8 +2766,9 @@ def draw_tournament():
     """
     Release the official V2 tournament draw.
 
-    Supports 2 through 32 approved players.
-    Non-power-of-two player counts receive BYEs.
+    Uses the Founder-configured tournament capacity.
+    Approved players fill the configured bracket and remaining
+    slots are handled as BYEs.
     """
 
     access = founder_required()
@@ -2777,22 +2843,17 @@ def draw_tournament():
             "the tournament player limit."
         ), 400
 
-    if player_count > 32:
-        return (
-            "AminationEsports currently supports "
-            "a maximum of 32 players."
-        ), 400
-
     try:
-        capacity = tournament_bracket_capacity(player_count)
-        rounds = tournament_rounds(player_count)
+        capacity = tournament.max_players
+        rounds = tournament_rounds(capacity)
     except ValueError as exc:
         return str(exc), 400
 
     random.shuffle(approved_players)
 
     pairings = build_round_one_pairings(
-        approved_players
+        approved_players,
+        capacity
     )
 
     first_round = rounds[0]
@@ -2916,7 +2977,7 @@ def draw_tournament():
             + " players in a "
             + str(capacity)
             + "-slot bracket. BYEs: "
-            + str(calculate_bye_count(player_count))
+            + str(max(capacity - player_count, 0))
             + "."
         ),
         created_at=datetime.utcnow()

@@ -812,48 +812,29 @@
 
             <!-- ================================= -->
             <!-- TOURNAMENT CAPACITY CONTROL -->
+{% if tournament %}
+<div class="control-card" style="margin-bottom:25px;">
+    <h3>👥 TOURNAMENT CAPACITY</h3>
 
-            {% if tournament %}
-            <div class="control-card" style="margin-bottom:25px;">
+    <p>
+        <strong>Current capacity:</strong>
+        {{ tournament.max_players }} players
+        <br>
+        <strong>Approved:</strong>
+        {{ approved_count }}/{{ tournament.max_players }}
+    </p>
 
-                <h3>👥 TOURNAMENT CAPACITY</h3>
+    <p>
+        Capacity is controlled by the Founder.
+        <strong>It does not increase automatically.</strong>
+    </p>
 
-                <p>
-                    <strong>Current capacity:</strong>
-                    {{ tournament.max_players }} players
-                    <br>
-                    <strong>Approved:</strong>
-                    {{ approved_count }}/{{ tournament.max_players }}
-                </p>
-
-                <p>
-                    Capacity is controlled by the Founder and
-                    <strong>never increases automatically.</strong>
-                </p>
-
-                {% if tournament.max_players < 32 %}
-                <form method="POST"
-                      action="{{ url_for("founder_tournament_capacity") }}"
-                      style="margin-top:15px;">
-
-                    <input type="hidden" name="max_players"
-                           value="32">
-
-                    <button type="submit"
-                            class="button"
-                            style="border:none;cursor:pointer;width:100%;"
-                            onclick="return confirm(
-                                'Increase tournament capacity to 32 players?'
-                            );">
-                        ⬆️ INCREASE CAPACITY TO 32 PLAYERS
-                    </button>
-
-                </form>
-                {% else %}
-                <p>
-                    ✅ <strong>Maximum current capacity: 32 players.</strong>
-                </p>
-                {% endif %}
+    <p style="margin-top:10px;">
+        The tournament engine supports any power-of-two capacity:
+        2, 4, 8, 16, 32, 64, 128, 256 and beyond.
+    </p>
+</div>
+{% endif %}
 
             </div>
             {% endif %}
@@ -908,9 +889,14 @@
                             Maximum Players
                         </label>
 
-                        <select
+                        <input
+                            type="number"
                             name="max_players"
+                            value="{{ tournament.max_players }}"
+                            min="2"
+                            step="1"
                             required
+                            inputmode="numeric"
                             style="
                                 width:100%;
                                 box-sizing:border-box;
@@ -920,52 +906,10 @@
                             "
                         >
 
-                            <option
-                                value="2"
-                                {% if tournament.max_players == 2 %}
-                                    selected
-                                {% endif %}
-                            >
-                                2 Players
-                            </option>
-
-                            <option
-                                value="4"
-                                {% if tournament.max_players == 4 %}
-                                    selected
-                                {% endif %}
-                            >
-                                4 Players
-                            </option>
-
-                            <option
-                                value="8"
-                                {% if tournament.max_players == 8 %}
-                                    selected
-                                {% endif %}
-                            >
-                                8 Players
-                            </option>
-
-                            <option
-                                value="16"
-                                {% if tournament.max_players == 16 %}
-                                    selected
-                                {% endif %}
-                            >
-                                16 Players
-                            </option>
-
-                            <option
-                                value="32"
-                                {% if tournament.max_players == 32 %}
-                                    selected
-                                {% endif %}
-                            >
-                                32 Players
-                            </option>
-
-                        </select>
+                        <small style="display:block;margin-top:-4px;">
+                            Use a power of two:
+                            2, 4, 8, 16, 32, 64, 128, 256, 512, 1024...
+                        </small>
 
                         <label>
                             Competition Day
@@ -1766,64 +1710,27 @@
                             Maximum players
                         </label>
 
-                        <select
+                        <input
+                            type="number"
                             name="max_players"
+                            value="{{ tournament.max_players }}"
+                            min="2"
+                            step="1"
                             required
+                            inputmode="numeric"
                             style="
                                 width:100%;
                                 box-sizing:border-box;
                                 padding:10px;
-                                margin:8px 0;
+                                margin:8px 0 12px;
                                 border-radius:8px;
                             "
                         >
 
-                            <option
-                                value="2"
-                                {% if tournament.max_players == 2 %}
-                                    selected
-                                {% endif %}
-                            >
-                                2
-                            </option>
-
-                            <option
-                                value="4"
-                                {% if tournament.max_players == 4 %}
-                                    selected
-                                {% endif %}
-                            >
-                                4
-                            </option>
-
-                            <option
-                                value="8"
-                                {% if tournament.max_players == 8 %}
-                                    selected
-                                {% endif %}
-                            >
-                                8
-                            </option>
-
-                            <option
-                                value="16"
-                                {% if tournament.max_players == 16 %}
-                                    selected
-                                {% endif %}
-                            >
-                                16
-                            </option>
-
-                            <option
-                                value="32"
-                                {% if tournament.max_players == 32 %}
-                                    selected
-                                {% endif %}
-                            >
-                                32
-                            </option>
-
-                        </select>
+                        <small style="display:block;margin-top:-4px;">
+                            Use a power of two:
+                            2, 4, 8, 16, 32, 64, 128, 256, 512, 1024...
+                        </small>
 
                         <label>
                             Competition day
