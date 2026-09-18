@@ -4157,7 +4157,7 @@ def temporary_internal_error_logger(error):
 
 
 # TEMPORARY: production Match schema migration for Season 1 BYE support.
-@app.route("/admin/migrate/match-player-nullable", methods=["POST"])
+@app.route("/admin/migrate/match-player-nullable", methods=["GET"])
 def migrate_match_player_nullable():
     access = founder_required()
     if access:
