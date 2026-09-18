@@ -681,7 +681,12 @@
 {% if rounds %}
 
 <div class="bracket-viewport">
-    <div class="bracket-canvas" id="bracket-canvas">
+    <div
+    class="bracket-canvas"
+    {% if tournament %}
+    data-tournament-id="{{ tournament.id }}"
+    {% endif %}
+ id="bracket-canvas">
 
         <svg id="bracket-lines" aria-hidden="true"></svg>
 
@@ -1624,6 +1629,350 @@
     window.AminationBracket = window.AminationBracket || {};
     window.AminationBracket.animateWinnerAdvance =
         animateWinnerAdvance;
+
+    /*
+     * ============================================================
+     * TOURNAMENT REPLAY CONTROLLER
+     * ============================================================
+     *
+     * The server-side TournamentEvent ledger is authoritative.
+     * This controller never invents tournament history.
+     *
+     * Replay flow:
+     *
+     *     API event 1
+     *          ↓
+     *     apply event
+     *          ↓
+     *     API event 2
+     *          ↓
+     *     apply event
+     *          ↓
+     *          ...
+     *
+     * The controller is deliberately manual for now.
+     * The public cinematic trigger will be added after this
+     * foundation has been verified.
+     */
+
+    const replayState = {
+        events: [],
+        currentIndex: 0,
+        playing: false,
+        tournamentId: null,
+        abortController: null
+    };
+
+    function getTournamentId() {
+        const firstMatch = document.querySelector(
+            ".match[data-match-id]"
+        );
+
+        if (!firstMatch) {
+            return null;
+        }
+
+        const tournamentNode = document.querySelector(
+            "[data-tournament-id]"
+        );
+
+        if (tournamentNode) {
+            const value = Number(
+                tournamentNode.dataset.tournamentId
+            );
+
+            if (Number.isInteger(value) && value > 0) {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    function replayDelay(event) {
+        if (!event) {
+            return 500;
+        }
+
+        switch (event.event_type) {
+            case "TOURNAMENT_DRAW":
+                return 1600;
+
+            case "MATCH_STARTED":
+                return 1100;
+
+            case "SCORE_UPDATED":
+                return 700;
+
+            case "MATCH_COMPLETED":
+                return 1300;
+
+            case "PLAYER_ADVANCED":
+                return 400;
+
+            case "PLAYER_ELIMINATED":
+                return 900;
+
+            default:
+                return 750;
+        }
+    }
+
+    function wait(milliseconds) {
+        return new Promise(function (resolve) {
+            setTimeout(resolve, milliseconds);
+        });
+    }
+
+    function findMatch(matchId) {
+        if (!matchId) {
+            return null;
+        }
+
+        return document.getElementById(
+            "match-" + matchId
+        );
+    }
+
+    function applyReplayEvent(event) {
+        if (!event) {
+            return Promise.resolve(false);
+        }
+
+        const match = findMatch(
+            event.match && event.match.id
+        );
+
+        /*
+         * Match lifecycle visualization.
+         * The authoritative match state already came from the
+         * server; replay only reveals that state in sequence.
+         */
+
+        if (match) {
+
+            if (event.event_type === "MATCH_STARTED") {
+                match.classList.add("live");
+                match.classList.remove("finished");
+            }
+
+            if (event.event_type === "SCORE_UPDATED") {
+                const payload = event.payload || {};
+
+                const score1 = match.querySelector(
+                    ".player-row.first .player-score"
+                );
+
+                const score2 = match.querySelector(
+                    ".player-row.second .player-score"
+                );
+
+                if (score1 && payload.player1_score !== undefined) {
+                    score1.textContent =
+                        String(payload.player1_score);
+                }
+
+                if (score2 && payload.player2_score !== undefined) {
+                    score2.textContent =
+                        String(payload.player2_score);
+                }
+
+                match.classList.add("live");
+            }
+
+            if (event.event_type === "MATCH_COMPLETED") {
+                match.classList.remove("live");
+                match.classList.add("finished");
+            }
+
+            if (event.event_type === "PLAYER_ELIMINATED") {
+                const player = match.querySelector(
+                    '.player-name[data-player-id="' +
+                    event.player_id +
+                    '"]'
+                );
+
+                if (player) {
+                    player.classList.add("loser");
+                }
+            }
+        }
+
+        /*
+         * Advancement uses the existing cinematic flight engine.
+         * The event ledger determines WHEN this happens.
+         */
+        if (event.event_type === "PLAYER_ADVANCED") {
+            const matchId =
+                event.match_id ||
+                (
+                    event.payload &&
+                    event.payload.from_match_id
+                );
+
+            if (
+                matchId &&
+                window.AminationBracket &&
+                typeof window.AminationBracket
+                    .animateWinnerAdvance === "function"
+            ) {
+                return window.AminationBracket
+                    .animateWinnerAdvance(matchId)
+                    .then(function () {
+                        return true;
+                    });
+            }
+        }
+
+        return Promise.resolve(true);
+    }
+
+    async function loadTournamentReplay() {
+
+        if (replayState.abortController) {
+            replayState.abortController.abort();
+        }
+
+        replayState.abortController =
+            new AbortController();
+
+        const tournamentId = getTournamentId();
+
+        if (!tournamentId) {
+            replayState.events = [];
+            replayState.currentIndex = 0;
+            replayState.tournamentId = null;
+            return [];
+        }
+
+        replayState.tournamentId = tournamentId;
+
+        const response = await fetch(
+            "/api/tournaments/" +
+            tournamentId +
+            "/events",
+            {
+                method: "GET",
+                headers: {
+                    "Accept": "application/json"
+                },
+                cache: "no-store",
+                signal: replayState.abortController.signal
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                "Tournament replay API returned HTTP " +
+                response.status
+            );
+        }
+
+        const data = await response.json();
+
+        if (
+            !data ||
+            data.success !== true ||
+            !Array.isArray(data.events)
+        ) {
+            throw new Error(
+                "Tournament replay API returned invalid data."
+            );
+        }
+
+        /*
+         * Never trust arrival order alone.
+         * Sequence number is the authoritative ordering key.
+         */
+        replayState.events =
+            data.events
+                .slice()
+                .sort(function (a, b) {
+                    return (
+                        Number(a.sequence_number) -
+                        Number(b.sequence_number)
+                    );
+                });
+
+        replayState.currentIndex = 0;
+
+        return replayState.events;
+    }
+
+    async function replayTournament(options) {
+
+        options = options || {};
+
+        if (replayState.playing) {
+            return false;
+        }
+
+        const events = await loadTournamentReplay();
+
+        if (!events.length) {
+            return false;
+        }
+
+        replayState.playing = true;
+
+        const initialDelay =
+            Number.isFinite(options.initialDelay)
+                ? options.initialDelay
+                : 1000;
+
+        try {
+            await wait(initialDelay);
+
+            while (
+                replayState.currentIndex <
+                replayState.events.length
+            ) {
+                const event =
+                    replayState.events[
+                        replayState.currentIndex
+                    ];
+
+                await applyReplayEvent(event);
+
+                replayState.currentIndex += 1;
+
+                if (
+                    replayState.currentIndex <
+                    replayState.events.length
+                ) {
+                    await wait(
+                        replayDelay(event)
+                    );
+                }
+            }
+
+            return true;
+
+        } finally {
+            replayState.playing = false;
+        }
+    }
+
+    function getReplayState() {
+        return {
+            tournamentId: replayState.tournamentId,
+            eventCount: replayState.events.length,
+            currentIndex: replayState.currentIndex,
+            playing: replayState.playing
+        };
+    }
+
+    window.AminationBracket =
+        window.AminationBracket || {};
+
+    window.AminationBracket.loadTournamentReplay =
+        loadTournamentReplay;
+
+    window.AminationBracket.replayTournament =
+        replayTournament;
+
+    window.AminationBracket.getReplayState =
+        getReplayState;
 
     function renderTree() {
         positionRounds();
