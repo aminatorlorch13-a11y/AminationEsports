@@ -2848,21 +2848,31 @@ def founder_tournament_settings():
 )
 def draw_tournament():
     """
-    Release the official V2 tournament draw.
+    Release the official tournament draw.
 
-    Uses the Founder-configured tournament capacity.
-    Approved players fill the configured bracket and remaining
-    slots are handled as BYEs.
+    The complete bracket tree is created at draw time.
+
+    Important:
+    - Capacity is controlled by Tournament.max_players.
+    - No bracket size is hard-coded.
+    - Every round exists immediately after the draw.
+    - Later-round player slots remain TBD until feeder matches
+      produce winners.
+    - source_match1_id/source_match2_id permanently describe the
+      bracket structure.
+    - BYEs are resolved immediately and their winners are placed
+      into the correct downstream slots.
     """
 
     access = founder_required()
-
     if access:
         return access
 
-    tournament = Tournament.query.order_by(
-        Tournament.id.desc()
-    ).first()
+    tournament = (
+        Tournament.query
+        .order_by(Tournament.id.desc())
+        .first()
+    )
 
     if not tournament:
         return "No tournament exists.", 404
@@ -2886,13 +2896,15 @@ def draw_tournament():
             "Reset the tournament before creating another draw."
         ), 409
 
-    approved_players = Player.query.filter_by(
-        application_status="approved",
-        active=True
-    ).order_by(
-        Player.id.asc()
-    ).all()
-
+    approved_players = (
+        Player.query
+        .filter_by(
+            application_status="approved",
+            active=True
+        )
+        .order_by(Player.id.asc())
+        .all()
+    )
 
     player_count = len(approved_players)
 
@@ -2920,10 +2932,18 @@ def draw_tournament():
         capacity
     )
 
+    if not pairings:
+        return "Unable to build the tournament bracket.", 500
+
+    # ------------------------------------------------------------
+    # PHASE 1
+    # Create EVERY Round 1 match.
+    # ------------------------------------------------------------
+
     first_round = rounds[0]
+    first_round_matches = []
 
     for pairing in pairings:
-
         player1 = pairing["player1"]
         player2 = pairing["player2"]
 
@@ -2990,7 +3010,6 @@ def draw_tournament():
         )
 
         if is_bye:
-
             if player1_id and not player2_id:
                 match.winner_id = player1_id
 
@@ -3005,28 +3024,173 @@ def draw_tournament():
             match.finished_at = datetime.utcnow()
 
         db.session.add(match)
+        first_round_matches.append(match)
 
     db.session.flush()
 
-    first_round_matches = Match.query.filter_by(
-        tournament_id=tournament.id,
-        round_name=first_round
-    ).order_by(
-        Match.bracket_position.asc()
-    ).all()
+    # ------------------------------------------------------------
+    # PHASE 2
+    # Create the ENTIRE remaining tree.
+    #
+    # Every downstream match exists immediately.
+    # Its feeder IDs point to the two matches that feed it.
+    # Player IDs remain NULL until winners are known.
+    # ------------------------------------------------------------
 
-    for match in first_round_matches:
-
-        if not match.is_bye:
-            continue
-
-        if not match.winner_id:
-            continue
-
-        create_next_round_match(
-            tournament,
-            match
+    previous_round_matches = (
+        sorted(
+            first_round_matches,
+            key=lambda match: int(
+                match.bracket_position or 0
+            )
         )
+    )
+
+    for round_index in range(1, len(rounds)):
+
+        round_name = rounds[round_index]
+        round_number = round_index + 1
+
+        current_round_matches = []
+
+        for position in range(
+            1,
+            (capacity // (2 ** (round_index + 1))) + 1
+        ):
+
+            source_position_1 = (
+                (position * 2) - 1
+            )
+
+            source_position_2 = (
+                position * 2
+            )
+
+            source_match1 = next(
+                (
+                    match
+                    for match in previous_round_matches
+                    if int(match.bracket_position or 0)
+                    == source_position_1
+                ),
+                None
+            )
+
+            source_match2 = next(
+                (
+                    match
+                    for match in previous_round_matches
+                    if int(match.bracket_position or 0)
+                    == source_position_2
+                ),
+                None
+            )
+
+            if source_match1 is None:
+                return (
+                    "Bracket construction error: "
+                    + round_name
+                    + " is missing feeder "
+                    + str(source_position_1)
+                    + "."
+                ), 500
+
+            if source_match2 is None:
+                return (
+                    "Bracket construction error: "
+                    + round_name
+                    + " is missing feeder "
+                    + str(source_position_2)
+                    + "."
+                ), 500
+
+            match = Match(
+                tournament_id=tournament.id,
+
+                player1_id=None,
+                player2_id=None,
+
+                player1_score=0,
+                player2_score=0,
+
+                status=MATCH_SCHEDULED,
+
+                round_name=round_name,
+                round_number=round_number,
+
+                match_number=position,
+                bracket_position=position,
+
+                source_match1_id=source_match1.id,
+                source_match2_id=source_match2.id,
+
+                is_bye=False,
+                bye_reason=None,
+
+                is_forfeit=False,
+                forfeit_player_id=None,
+                forfeit_reason=None,
+
+                winner_id=None,
+                loser_id=None,
+
+                is_live=False
+            )
+
+            db.session.add(match)
+            current_round_matches.append(match)
+
+        db.session.flush()
+
+        previous_round_matches = current_round_matches
+
+    # ------------------------------------------------------------
+    # PHASE 3
+    # Resolve Round 1 BYEs against the already-created tree.
+    #
+    # The complete tree already exists, so a BYE only fills the
+    # appropriate player slot in its existing Round 2 feeder.
+    # ------------------------------------------------------------
+
+    if len(rounds) > 1:
+        next_round = rounds[1]
+
+        for match in first_round_matches:
+
+            if not match.is_bye:
+                continue
+
+            if not match.winner_id:
+                continue
+
+            current_position = int(
+                match.bracket_position
+            )
+
+            next_position = (
+                ((current_position - 1) // 2) + 1
+            )
+
+            next_match = Match.query.filter_by(
+                tournament_id=tournament.id,
+                round_name=next_round,
+                bracket_position=next_position
+            ).first()
+
+            if next_match is None:
+                return (
+                    "Bracket construction error: "
+                    "BYE destination was not created."
+                ), 500
+
+            if current_position % 2 == 1:
+                next_match.player1_id = match.winner_id
+            else:
+                next_match.player2_id = match.winner_id
+
+    # ------------------------------------------------------------
+    # Official draw release.
+    # ------------------------------------------------------------
 
     tournament.status = TOURNAMENT_DRAW_RELEASED
 
@@ -3034,13 +3198,17 @@ def draw_tournament():
         action="tournament_draw_released",
         notes=(
             "Founder released the official V2 draw "
-            "for "
             + tournament.name
             + " with "
             + str(player_count)
             + " players in a "
             + str(capacity)
-            + "-slot bracket. BYEs: "
+            + "-slot bracket. "
+            + "Rounds: "
+            + str(len(rounds))
+            + ". Matches created: "
+            + str(capacity - 1)
+            + ". BYEs: "
             + str(max(capacity - player_count, 0))
             + "."
         ),
