@@ -776,6 +776,81 @@ class MatchEvent(db.Model):
 # PLAYER STATISTICS
 # ============================================================
 
+# ============================================================
+# TOURNAMENT EVENT LEDGER
+# ============================================================
+class TournamentEvent(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    # Tournament this event belongs to.
+    tournament_id = db.Column(
+        db.Integer,
+        db.ForeignKey("tournament.id"),
+        nullable=False,
+        index=True
+    )
+
+    # Optional match associated with the event.
+    match_id = db.Column(
+        db.Integer,
+        db.ForeignKey("match.id"),
+        nullable=True,
+        index=True
+    )
+
+    # Optional player associated with the event.
+    player_id = db.Column(
+        db.Integer,
+        db.ForeignKey("player.id"),
+        nullable=True,
+        index=True
+    )
+
+    # Canonical tournament replay event type.
+    event_type = db.Column(
+        db.String(60),
+        nullable=False,
+        index=True
+    )
+
+    # Monotonic order inside one tournament.
+    sequence_number = db.Column(
+        db.Integer,
+        nullable=False
+    )
+
+    # Structured event data.
+    payload = db.Column(
+        db.JSON,
+        nullable=True
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+        index=True
+    )
+
+    # Founder username or system identifier.
+    created_by = db.Column(
+        db.String(100),
+        nullable=True
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "tournament_id",
+            "sequence_number",
+            name="uq_tournament_event_sequence"
+        ),
+    )
+
+
 class PlayerStatistic(db.Model):
 
     id = db.Column(

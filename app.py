@@ -43,7 +43,8 @@ from models import (
     AdminAction,
     FounderMessage,
     Highlight,
-    AnalyticsEvent
+    AnalyticsEvent,
+    TournamentEvent
 )
 
 from payment_service import (
@@ -4379,6 +4380,81 @@ def temporary_internal_error_logger(error):
 
 
 # TEMPORARY: production Match schema migration for Season 1 BYE support.
+
+@app.route("/admin/migrate/tournament-event", methods=["GET"])
+def migrate_tournament_event():
+    """
+    Founder-only, additive migration for the tournament_event ledger.
+
+    Safety rules:
+    - Creates ONLY the tournament_event table.
+    - Refuses to modify an existing table.
+    - Does not touch Tournament, Match, Player, or Hall of Champion data.
+    """
+    if not founder_authenticated():
+        return "Unauthorized", 403
+
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+
+    if inspector.has_table("tournament_event"):
+        return "tournament_event already exists; no changes made."
+
+    dialect = db.engine.dialect.name
+
+    if dialect == "sqlite":
+        db.session.execute(text("""
+            CREATE TABLE tournament_event (
+                id INTEGER NOT NULL PRIMARY KEY,
+                tournament_id INTEGER NOT NULL,
+                match_id INTEGER,
+                player_id INTEGER,
+                event_type VARCHAR(60) NOT NULL,
+                sequence_number INTEGER NOT NULL,
+                payload JSON,
+                created_at DATETIME NOT NULL,
+                created_by VARCHAR(100),
+                CONSTRAINT uq_tournament_event_sequence
+                    UNIQUE (tournament_id, sequence_number),
+                FOREIGN KEY(tournament_id) REFERENCES tournament (id),
+                FOREIGN KEY(match_id) REFERENCES match (id),
+                FOREIGN KEY(player_id) REFERENCES player (id)
+            )
+        """))
+
+        db.session.execute(text("""
+            CREATE INDEX ix_tournament_event_tournament_id
+            ON tournament_event (tournament_id)
+        """))
+
+        db.session.execute(text("""
+            CREATE INDEX ix_tournament_event_match_id
+            ON tournament_event (match_id)
+        """))
+
+        db.session.execute(text("""
+            CREATE INDEX ix_tournament_event_player_id
+            ON tournament_event (player_id)
+        """))
+
+        db.session.execute(text("""
+            CREATE INDEX ix_tournament_event_event_type
+            ON tournament_event (event_type)
+        """))
+
+        db.session.execute(text("""
+            CREATE INDEX ix_tournament_event_created_at
+            ON tournament_event (created_at)
+        """))
+
+        db.session.commit()
+
+        return "tournament_event migration complete."
+
+    return f"Unsupported database dialect: {dialect}", 500
+
+
 @app.route("/admin/migrate/match-player-nullable", methods=["GET"])
 def migrate_match_player_nullable():
     access = founder_required()
