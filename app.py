@@ -4392,21 +4392,6 @@ def founder_live_match_control(match_id):
                 match
             )
 
-        # ====================================================
-        # TOURNAMENT COMPLETION — FINAL
-        # ====================================================
-
-        if (
-            tournament
-            and match.round_name == "Final"
-            and match.winner_id
-            and match.loser_id
-        ):
-            tournament.status = TOURNAMENT_COMPLETED
-            tournament.completed_at = datetime.utcnow()
-            tournament.champion_id = match.winner_id
-            tournament.runner_up_id = match.loser_id
-
         record_tournament_event(
             tournament_id=match.tournament_id,
             event_type="MATCH_COMPLETED",
@@ -4463,6 +4448,24 @@ def founder_live_match_control(match_id):
             },
             created_by="Founder"
         )
+
+        # ====================================================
+        # TOURNAMENT COMPLETION — FINAL
+        # ====================================================
+
+        # Champion confirmation deliberately happens AFTER the
+        # authoritative MATCH_COMPLETED / PLAYER_ADVANCED /
+        # PLAYER_ELIMINATED events so replay history is chronological.
+        if (
+            tournament
+            and match.round_name == "Final"
+            and match.winner_id
+            and match.loser_id
+        ):
+            confirm_tournament_champion(
+                tournament,
+                match
+            )
 
         # ====================================================
         # PLAYER STATISTICS
@@ -4535,6 +4538,228 @@ def founder_live_match_control(match_id):
     return redirect(
         url_for("admin_dashboard")
     )
+
+
+# ============================================================
+# TOURNAMENT — AUTHORITATIVE CHAMPION CONFIRMATION
+# ============================================================
+
+def confirm_tournament_champion(tournament, final_match):
+    """
+    Final championship confirmation.
+
+    This function runs inside the caller's existing transaction.
+
+    It is intentionally idempotent:
+    - one CHAMPION_CONFIRMED event per tournament
+    - one HallOfChampion record per tournament
+    - one automatic championship star per confirmed championship
+
+    The browser ceremony is presentation only. The database state
+    established here is authoritative.
+    """
+
+    if not tournament:
+        return None
+
+    if not final_match:
+        return None
+
+    champion_id = final_match.winner_id
+    runner_up_id = final_match.loser_id
+
+    if not champion_id or not runner_up_id:
+        return None
+
+    from models import (
+        HallOfChampion,
+        PlayerStatistic,
+        TournamentParticipant,
+    )
+
+    # --------------------------------------------------------
+    # IDEMPOTENCY GUARD
+    # --------------------------------------------------------
+
+    existing_event = TournamentEvent.query.filter_by(
+        tournament_id=tournament.id,
+        event_type="CHAMPION_CONFIRMED"
+    ).first()
+
+    existing_hall = HallOfChampion.query.filter_by(
+        tournament_id=tournament.id
+    ).first()
+
+    # --------------------------------------------------------
+    # AUTHORITATIVE TOURNAMENT STATE
+    # --------------------------------------------------------
+
+    tournament.status = TOURNAMENT_COMPLETED
+    tournament.completed_at = (
+        tournament.completed_at or datetime.utcnow()
+    )
+    tournament.champion_id = champion_id
+    tournament.runner_up_id = runner_up_id
+
+    champion = db.session.get(
+        Player,
+        champion_id
+    )
+
+    runner_up = db.session.get(
+        Player,
+        runner_up_id
+    )
+
+    if not champion:
+        raise ValueError(
+            "Champion player could not be loaded."
+        )
+
+    if not runner_up:
+        raise ValueError(
+            "Runner-up player could not be loaded."
+        )
+
+    # --------------------------------------------------------
+    # TOURNAMENT-SPECIFIC PARTICIPATION STATE
+    # --------------------------------------------------------
+
+    champion_participant = (
+        TournamentParticipant.query
+        .filter_by(
+            tournament_id=tournament.id,
+            player_id=champion_id
+        )
+        .first()
+    )
+
+    runner_up_participant = (
+        TournamentParticipant.query
+        .filter_by(
+            tournament_id=tournament.id,
+            player_id=runner_up_id
+        )
+        .first()
+    )
+
+    if champion_participant:
+        champion_participant.status = "champion"
+
+    if runner_up_participant:
+        runner_up_participant.status = "runner_up"
+
+    # --------------------------------------------------------
+    # GLOBAL PLAYER STATE
+    #
+    # Kept for compatibility with the existing V1/V2 system.
+    # The historical tournament record remains the authoritative
+    # source for Hall of Champions.
+    # --------------------------------------------------------
+
+    champion.application_status = "champion"
+    runner_up.application_status = "runner_up"
+
+    # --------------------------------------------------------
+    # AUTOMATIC CHAMPIONSHIP STAR
+    # --------------------------------------------------------
+
+    if not existing_event:
+        champion.championship_stars = (
+            champion.championship_stars or 0
+        ) + 1
+
+    # --------------------------------------------------------
+    # PERFORMANCE SNAPSHOT
+    # --------------------------------------------------------
+
+    stats = PlayerStatistic.query.filter_by(
+        player_id=champion_id
+    ).first()
+
+    matches_played = (
+        stats.matches_played
+        if stats
+        else None
+    )
+
+    wins = (
+        stats.wins
+        if stats
+        else None
+    )
+
+    goals_scored = (
+        stats.goals
+        if stats
+        else None
+    )
+
+    # The existing PlayerStatistic model does not currently
+    # provide a reliable tournament-scoped goals-conceded field,
+    # so do not manufacture one here.
+    goals_conceded = None
+
+    team_name = None
+
+    if champion_participant:
+        team_name = champion_participant.team_name
+
+    if not team_name:
+        team_name = champion.team_name
+
+    final_score = (
+        f"{final_match.player1_score} - "
+        f"{final_match.player2_score}"
+    )
+
+    # --------------------------------------------------------
+    # PERMANENT HALL RECORD
+    # --------------------------------------------------------
+
+    if not existing_hall:
+        existing_hall = HallOfChampion(
+            tournament_id=tournament.id,
+            player_id=champion_id,
+            team_name=team_name,
+            season_number=tournament.season_number,
+            tournament_name=tournament.name,
+            final_score=final_score,
+            matches_played=matches_played,
+            wins=wins,
+            goals_scored=goals_scored,
+            goals_conceded=goals_conceded,
+            champion_announced_at=datetime.utcnow(),
+            created_at=datetime.utcnow()
+        )
+
+        db.session.add(existing_hall)
+
+    # --------------------------------------------------------
+    # AUTHORITATIVE REPLAY EVENT
+    # --------------------------------------------------------
+
+    if not existing_event:
+        record_tournament_event(
+            tournament_id=tournament.id,
+            event_type="CHAMPION_CONFIRMED",
+            match_id=final_match.id,
+            player_id=champion_id,
+            payload={
+                "champion_id": champion_id,
+                "runner_up_id": runner_up_id,
+                "final_match_id": final_match.id,
+                "tournament_id": tournament.id,
+                "tournament_name": tournament.name,
+                "season_number": tournament.season_number,
+                "final_score": final_score,
+                "championship_star_awarded": True
+            },
+            created_by="System"
+        )
+
+    return existing_hall
+
 
 @app.route("/production-diagnostic", methods=["GET"])
 def production_diagnostic():
