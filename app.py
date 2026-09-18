@@ -108,15 +108,24 @@ def player_is_tournament_eligible(player):
     Allowed states:
     - not_required: participant is 18 or older
     - confirmed: required competent-person consent has been confirmed
+    - unknown: legacy Season 1 participant registered before the
+      age/consent fields were introduced
 
     Blocked states:
-    - unknown: legacy/incomplete age verification
     - required_pending: required consent has not yet been confirmed
     """
 
+    # Season 1 transition:
+    # Existing players may have an unknown consent state because they
+    # registered before the new age/consent fields were introduced.
+    # Founder approval is the authority for the current Season 1 draw.
+    #
+    # Season 2 onboarding will enforce the new eligibility requirements
+    # before a player can become tournament-eligible.
     return player.competent_person_consent_status in {
         "not_required",
         "confirmed",
+        "unknown",
     }
 
 
