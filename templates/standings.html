@@ -1380,7 +1380,7 @@
         return token;
     }
 
-    function animateWinnerAdvance(matchId) {
+    function animateWinnerAdvance(matchId, arrivalCallback) {
         if (!flightLayer) {
             return Promise.resolve(false);
         }
@@ -1496,6 +1496,10 @@
 
             token.remove();
 
+            if (typeof arrivalCallback === "function") {
+                arrivalCallback();
+            }
+
             return Promise.resolve(true);
         }
 
@@ -1605,6 +1609,10 @@
                                 target.classList.remove(
                                     "flight-target"
                                 );
+
+                                if (typeof arrivalCallback === "function") {
+                                    arrivalCallback();
+                                }
 
                                 resolve(true);
                             },
@@ -1874,10 +1882,13 @@
                 event.player.name;
 
             /*
-             * First reveal the authoritative destination slot.
-             * The animation then visually carries the winner into
-             * that exact slot.
+             * The destination slot is identified before the flight,
+             * but it must remain visually empty until the winner
+             * physically arrives.
              */
+            let destinationRow = null;
+            let destinationName = null;
+
             if (
                 target &&
                 playerId &&
@@ -1887,8 +1898,6 @@
                     target.querySelectorAll(
                         ".player-row"
                     );
-
-                let destinationRow = null;
 
                 for (
                     let index = 0;
@@ -1915,13 +1924,40 @@
                 }
 
                 if (destinationRow) {
-                    setReplayPlayer(
-                        destinationRow,
-                        playerName,
-                        playerId
-                    );
+                    destinationName =
+                        destinationRow.querySelector(
+                            ".player-name"
+                        );
+
+                    if (destinationName) {
+                        destinationName.style.visibility =
+                            "hidden";
+
+                        destinationName.dataset.replayPending =
+                            "true";
+                    }
                 }
             }
+
+            const revealDestination = function () {
+                if (
+                    !destinationRow ||
+                    !destinationName
+                ) {
+                    return;
+                }
+
+                setReplayPlayer(
+                    destinationRow,
+                    playerName,
+                    playerId
+                );
+
+                destinationName.style.visibility =
+                    "visible";
+
+                delete destinationName.dataset.replayPending;
+            };
 
             if (
                 matchId &&
@@ -1930,11 +1966,24 @@
                     .animateWinnerAdvance === "function"
             ) {
                 return window.AminationBracket
-                    .animateWinnerAdvance(matchId)
-                    .then(function () {
+                    .animateWinnerAdvance(
+                        matchId,
+                        revealDestination
+                    )
+                    .then(function (animated) {
+                        /*
+                         * If the movement engine could not animate,
+                         * never leave the destination hidden.
+                         */
+                        if (!animated) {
+                            revealDestination();
+                        }
+
                         return true;
                     });
             }
+
+            revealDestination();
         }
 
         return Promise.resolve(true);
