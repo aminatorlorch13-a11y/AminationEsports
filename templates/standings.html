@@ -949,7 +949,6 @@
     }
 
     function drawBranches() {
-
         svg.innerHTML = "";
 
         const canvasWidth = canvas.scrollWidth;
@@ -963,21 +962,31 @@
         svg.setAttribute("width", canvasWidth);
         svg.setAttribute("height", canvasHeight);
 
+        /*
+         * Traditional tournament-tree geometry:
+         *
+         * SOURCE 1 ─────────┐
+         *                    ├──────── TARGET
+         * SOURCE 2 ─────────┘
+         *
+         * The two feeders share one vertical branch instead of
+         * independently travelling all the way into the target.
+         */
         rounds.forEach(function (round) {
-
             const currentMatches = matchesInRound(round);
 
             currentMatches.forEach(function (match) {
-
-                const source1 =
-                    document.getElementById(
+                const source1 = match.dataset.source1
+                    ? document.getElementById(
                         "match-" + match.dataset.source1
-                    );
+                    )
+                    : null;
 
-                const source2 =
-                    document.getElementById(
+                const source2 = match.dataset.source2
+                    ? document.getElementById(
                         "match-" + match.dataset.source2
-                    );
+                    )
+                    : null;
 
                 if (!source1 && !source2) {
                     return;
@@ -988,48 +997,125 @@
                 const targetX = target.left;
                 const targetY = target.centerY;
 
-                if (source1) {
+                /*
+                 * Normal two-feeder bracket match.
+                 */
+                if (source1 && source2) {
+                    const rect1 = relativeRect(source1);
+                    const rect2 = relativeRect(source2);
 
-                    const source = relativeRect(source1);
+                    const branchX = Math.round(
+                        Math.max(rect1.right, rect2.right) +
+                        Math.max(18, (targetX - Math.max(rect1.right, rect2.right)) * 0.45)
+                    );
 
+                    const topY = rect1.centerY;
+                    const bottomY = rect2.centerY;
+
+                    /*
+                     * Source 1 → shared branch.
+                     */
                     drawLine(
                         makePath(
-                            source.right,
-                            source.centerY,
+                            rect1.right,
+                            topY,
+                            branchX,
+                            topY
+                        )
+                    );
+
+                    /*
+                     * Source 2 → shared branch.
+                     */
+                    drawLine(
+                        makePath(
+                            rect2.right,
+                            bottomY,
+                            branchX,
+                            bottomY
+                        )
+                    );
+
+                    /*
+                     * Shared vertical branch.
+                     */
+                    drawLine(
+                        makePath(
+                            branchX,
+                            topY,
+                            branchX,
+                            bottomY
+                        )
+                    );
+
+                    /*
+                     * Shared branch → target.
+                     */
+                    drawLine(
+                        makePath(
+                            branchX,
+                            targetY,
                             targetX,
                             targetY
                         )
                     );
+
+                    return;
                 }
 
-                if (source2) {
+                /*
+                 * Single-feeder case.
+                 *
+                 * This is useful while a bracket contains a BYE,
+                 * unresolved/TBD side, or another legitimate
+                 * one-sided advancement.
+                 */
+                const source = source1 || source2;
+                const sourceRect = relativeRect(source);
 
-                    const source = relativeRect(source2);
+                const branchX = Math.round(
+                    sourceRect.right +
+                    Math.max(18, (targetX - sourceRect.right) * 0.5)
+                );
 
-                    drawLine(
-                        makePath(
-                            source.right,
-                            source.centerY,
-                            targetX,
-                            targetY
-                        )
-                    );
-                }
+                drawLine(
+                    makePath(
+                        sourceRect.right,
+                        sourceRect.centerY,
+                        branchX,
+                        sourceRect.centerY
+                    )
+                );
+
+                drawLine(
+                    makePath(
+                        branchX,
+                        sourceRect.centerY,
+                        branchX,
+                        targetY
+                    )
+                );
+
+                drawLine(
+                    makePath(
+                        branchX,
+                        targetY,
+                        targetX,
+                        targetY
+                    )
+                );
             });
         });
 
         /*
          * Final → Champion.
          */
-
         const finalRound = rounds[rounds.length - 1];
 
         if (finalRound && champion) {
-
             const finals = matchesInRound(finalRound);
 
             if (finals.length) {
-
                 const finalRect = relativeRect(finals[0]);
                 const championRect = relativeRect(champion);
 
