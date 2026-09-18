@@ -409,6 +409,147 @@
 
         /*
          * ============================================================
+         * WINNER FLIGHT SYSTEM
+         * ============================================================
+         */
+
+        .winner-flight-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            pointer-events: none;
+            overflow: visible;
+        }
+
+        .winner-flight {
+            position: absolute;
+            left: 0;
+            top: 0;
+            min-width: 150px;
+            max-width: 210px;
+            height: 34px;
+            padding: 0 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            border: 1px solid var(--gold-bright);
+            background:
+                linear-gradient(
+                    90deg,
+                    rgba(226,185,54,.08),
+                    rgba(0,0,0,.94),
+                    rgba(226,185,54,.08)
+                );
+            color: var(--gold-bright);
+            font-size: .68rem;
+            font-weight: 950;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-shadow:
+                0 0 10px rgba(226,185,54,.65),
+                0 0 26px rgba(226,185,54,.28),
+                inset 0 0 12px rgba(226,185,54,.12);
+            clip-path: polygon(
+                0 0,
+                calc(100% - 7px) 0,
+                100% 7px,
+                100% 100%,
+                7px 100%,
+                0 calc(100% - 7px)
+            );
+            transform-origin: center center;
+            will-change: transform, opacity;
+        }
+
+        .winner-flight::before {
+            content: "◆";
+            margin-right: 7px;
+            font-size: .55rem;
+            text-shadow: 0 0 8px rgba(226,185,54,.9);
+        }
+
+        .winner-flight::after {
+            content: "";
+            position: absolute;
+            inset: -2px;
+            border: 1px solid rgba(226,185,54,.25);
+            opacity: .7;
+            animation: flightPulse 900ms ease-in-out infinite alternate;
+        }
+
+        .match.flight-source {
+            animation: sourceLock 420ms ease-out both;
+        }
+
+        .match.flight-target {
+            animation: targetArrival 700ms ease-out both;
+        }
+
+        @keyframes sourceLock {
+            0% {
+                box-shadow:
+                    0 0 18px rgba(226,185,54,.15),
+                    inset 0 0 22px rgba(226,185,54,.04);
+            }
+
+            100% {
+                box-shadow:
+                    0 0 28px rgba(226,185,54,.5),
+                    inset 0 0 28px rgba(226,185,54,.12);
+            }
+        }
+
+        @keyframes targetArrival {
+            0% {
+                transform: scale(.985);
+                box-shadow:
+                    0 0 0 rgba(226,185,54,0);
+            }
+
+            45% {
+                transform: scale(1.025);
+                box-shadow:
+                    0 0 35px rgba(226,185,54,.75),
+                    inset 0 0 24px rgba(226,185,54,.16);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow:
+                    0 0 18px rgba(226,185,54,.15),
+                    inset 0 0 22px rgba(226,185,54,.04);
+            }
+        }
+
+        @keyframes flightPulse {
+            from {
+                opacity: .25;
+                transform: scale(.98);
+            }
+
+            to {
+                opacity: .9;
+                transform: scale(1.02);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .winner-flight::after {
+                animation: none;
+            }
+
+            .match.flight-source,
+            .match.flight-target {
+                animation: none;
+            }
+        }
+
+        /*
+         * ============================================================
          * CHAMPION NODE
          * ============================================================
          */
@@ -543,6 +684,12 @@
     <div class="bracket-canvas" id="bracket-canvas">
 
         <svg id="bracket-lines" aria-hidden="true"></svg>
+
+        <div
+            id="winner-flight-layer"
+            class="winner-flight-layer"
+            aria-hidden="true"
+        ></div>
 
         <div class="rounds" id="rounds">
 
@@ -1130,6 +1277,353 @@
             }
         }
     }
+
+    /*
+     * ============================================================
+     * WINNER ADVANCE / FLIGHT ENGINE
+     * ============================================================
+     *
+     * The server remains authoritative for tournament state.
+     * This layer only visualizes an already-known advancement.
+     *
+     * A future live-event/replay system can call:
+     *
+     *     animateWinnerAdvance(matchId);
+     *
+     * after a result has been officially committed.
+     */
+
+    const flightLayer = document.getElementById(
+        "winner-flight-layer"
+    );
+
+    function getWinnerElement(match) {
+        if (!match) {
+            return null;
+        }
+
+        const winnerName =
+            match.querySelector(".player-name.winner");
+
+        if (winnerName) {
+            return winnerName;
+        }
+
+        /*
+         * BYE matches can have a player without the normal
+         * winner class depending on when the page was rendered.
+         */
+        const playerRows =
+            Array.from(match.querySelectorAll(".player-name"));
+
+        for (const player of playerRows) {
+            if (
+                player.textContent.trim() !== "TBD" &&
+                !player.classList.contains("loser")
+            ) {
+                return player;
+            }
+        }
+
+        return null;
+    }
+
+    function getAdvanceTarget(match) {
+        if (!match) {
+            return null;
+        }
+
+        const sourceId = match.dataset.matchId;
+
+        if (!sourceId) {
+            return null;
+        }
+
+        return document.querySelector(
+            '.match[data-source-1="' + sourceId + '"],' +
+            '.match[data-source-2="' + sourceId + '"]'
+        );
+    }
+
+    function relativeCenter(element) {
+        const rect = relativeRect(element);
+
+        return {
+            x: rect.left + (rect.right - rect.left) / 2,
+            y: rect.centerY
+        };
+    }
+
+    function createFlightToken(name) {
+        if (!flightLayer) {
+            return null;
+        }
+
+        const token = document.createElement("div");
+
+        token.className = "winner-flight";
+        token.textContent = name;
+
+        flightLayer.appendChild(token);
+
+        return token;
+    }
+
+    function animateWinnerAdvance(matchId) {
+        if (!flightLayer) {
+            return Promise.resolve(false);
+        }
+
+        const match = document.getElementById(
+            "match-" + matchId
+        );
+
+        if (!match) {
+            return Promise.resolve(false);
+        }
+
+        const winner = getWinnerElement(match);
+
+        if (!winner) {
+            return Promise.resolve(false);
+        }
+
+        const target = getAdvanceTarget(match);
+
+        if (!target) {
+            return Promise.resolve(false);
+        }
+
+        /*
+         * Respect reduced-motion preferences.
+         */
+        const reducedMotion =
+            window.matchMedia &&
+            window.matchMedia(
+                "(prefers-reduced-motion: reduce)"
+            ).matches;
+
+        const sourcePoint = relativeCenter(winner);
+        const targetMatchRect = relativeRect(target);
+
+        /*
+         * Land on the appropriate player row in the target match.
+         * The first unresolved slot is the natural destination.
+         */
+        const targetPlayers =
+            Array.from(
+                target.querySelectorAll(".player-row")
+            );
+
+        let destinationRow = targetPlayers.find(
+            function (row) {
+                const name = row.querySelector(".player-name");
+
+                return (
+                    name &&
+                    name.classList.contains("tbd")
+                );
+            }
+        );
+
+        if (!destinationRow) {
+            destinationRow = targetPlayers[0] || null;
+        }
+
+        if (!destinationRow) {
+            return Promise.resolve(false);
+        }
+
+        const destinationPoint =
+            relativeCenter(destinationRow);
+
+        const token = createFlightToken(
+            winner.textContent.trim()
+        );
+
+        if (!token) {
+            return Promise.resolve(false);
+        }
+
+        const tokenWidth = token.offsetWidth;
+        const tokenHeight = token.offsetHeight;
+
+        const startX =
+            sourcePoint.x - tokenWidth / 2;
+
+        const startY =
+            sourcePoint.y - tokenHeight / 2;
+
+        const endX =
+            destinationPoint.x - tokenWidth / 2;
+
+        const endY =
+            destinationPoint.y - tokenHeight / 2;
+
+        token.style.transform =
+            "translate3d(" +
+            startX +
+            "px, " +
+            startY +
+            "px, 0)";
+
+        match.classList.add("flight-source");
+
+        target.classList.add("flight-target");
+
+        if (reducedMotion) {
+            token.style.opacity = "1";
+            token.style.transform =
+                "translate3d(" +
+                endX +
+                "px, " +
+                endY +
+                "px, 0)";
+
+            target.classList.remove("flight-target");
+            match.classList.remove("flight-source");
+
+            token.remove();
+
+            return Promise.resolve(true);
+        }
+
+        const distance = Math.hypot(
+            endX - startX,
+            endY - startY
+        );
+
+        /*
+         * Long enough to feel deliberate, but bounded so a
+         * large bracket does not create an excessively slow UI.
+         */
+        const duration = Math.min(
+            2400,
+            Math.max(
+                1300,
+                1100 + distance * 1.25
+            )
+        );
+
+        const controlOffset =
+            Math.max(
+                70,
+                Math.min(
+                    190,
+                    Math.abs(endX - startX) * 0.32
+                )
+            );
+
+        const control1X =
+            startX +
+            controlOffset;
+
+        const control1Y =
+            startY;
+
+        const control2X =
+            endX -
+            controlOffset;
+
+        const control2Y =
+            endY;
+
+        const animation =
+            token.animate(
+                [
+                    {
+                        transform:
+                            "translate3d(" +
+                            startX +
+                            "px, " +
+                            startY +
+                            "px, 0) scale(.88)",
+                        opacity: 0
+                    },
+                    {
+                        transform:
+                            "translate3d(" +
+                            control1X +
+                            "px, " +
+                            control1Y +
+                            "px, 0) scale(1)",
+                        opacity: 1,
+                        offset: .22
+                    },
+                    {
+                        transform:
+                            "translate3d(" +
+                            control2X +
+                            "px, " +
+                            control2Y +
+                            "px, 0) scale(1.04)",
+                        opacity: 1,
+                        offset: .78
+                    },
+                    {
+                        transform:
+                            "translate3d(" +
+                            endX +
+                            "px, " +
+                            endY +
+                            "px, 0) scale(1)",
+                        opacity: 1
+                    }
+                ],
+                {
+                    duration: duration,
+                    easing: "cubic-bezier(.16,.82,.24,1)",
+                    fill: "forwards"
+                }
+            );
+
+        return animation.finished
+            .then(function () {
+                target.classList.add("flight-target");
+
+                return new Promise(
+                    function (resolve) {
+                        setTimeout(
+                            function () {
+                                token.remove();
+
+                                match.classList.remove(
+                                    "flight-source"
+                                );
+
+                                target.classList.remove(
+                                    "flight-target"
+                                );
+
+                                resolve(true);
+                            },
+                            650
+                        );
+                    }
+                );
+            })
+            .catch(function () {
+                token.remove();
+
+                match.classList.remove(
+                    "flight-source"
+                );
+
+                target.classList.remove(
+                    "flight-target"
+                );
+
+                return false;
+            });
+    }
+
+    /*
+     * Public hook for the real tournament event/replay system.
+     * No animation runs automatically here.
+     */
+    window.AminationBracket = window.AminationBracket || {};
+    window.AminationBracket.animateWinnerAdvance =
+        animateWinnerAdvance;
 
     function renderTree() {
         positionRounds();
