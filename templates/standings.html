@@ -745,13 +745,16 @@
                         {% endif %}
 
                         <div class="player-row first">
-                            <span class="
-                                player-name
-                                {% if not player1 %}tbd{% endif %}
-                                {% if match.winner_id == match.player1_id and match.player1_id %}winner{% endif %}
-                                {% if match.loser_id == match.player1_id and match.player1_id %}loser{% endif %}
-                                {% if match.is_bye and player1 %}bye{% endif %}
-                            ">
+                            <span
+                                class="
+                                    player-name
+                                    {% if not player1 %}tbd{% endif %}
+                                    {% if match.winner_id == match.player1_id and match.player1_id %}winner{% endif %}
+                                    {% if match.loser_id == match.player1_id and match.player1_id %}loser{% endif %}
+                                    {% if match.is_bye and player1 %}bye{% endif %}
+                                "
+                                {% if player1 %}data-player-id="{{ player1.id }}"{% endif %}
+                            >
                                 {% if player1 %}
                                     {{ player1.name }}
                                 {% else %}
@@ -769,13 +772,16 @@
                         </div>
 
                         <div class="player-row second">
-                            <span class="
-                                player-name
-                                {% if not player2 %}tbd{% endif %}
-                                {% if match.winner_id == match.player2_id and match.player2_id %}winner{% endif %}
-                                {% if match.loser_id == match.player2_id and match.player2_id %}loser{% endif %}
-                                {% if match.is_bye and player2 %}bye{% endif %}
-                            ">
+                            <span
+                                class="
+                                    player-name
+                                    {% if not player2 %}tbd{% endif %}
+                                    {% if match.winner_id == match.player2_id and match.player2_id %}winner{% endif %}
+                                    {% if match.loser_id == match.player2_id and match.player2_id %}loser{% endif %}
+                                    {% if match.is_bye and player2 %}bye{% endif %}
+                                "
+                                {% if player2 %}data-player-id="{{ player2.id }}"{% endif %}
+                            >
                                 {% if player2 %}
                                     {{ player2.name }}
                                 {% else %}
@@ -1760,11 +1766,11 @@
                 const payload = event.payload || {};
 
                 const score1 = match.querySelector(
-                    ".player-row.first .player-score"
+                    ".player-row.first .score"
                 );
 
                 const score2 = match.querySelector(
-                    ".player-row.second .player-score"
+                    ".player-row.second .score"
                 );
 
                 if (score1 && payload.player1_score !== undefined) {
@@ -1803,12 +1809,77 @@
          * The event ledger determines WHEN this happens.
          */
         if (event.event_type === "PLAYER_ADVANCED") {
+
             const matchId =
                 event.match_id ||
                 (
                     event.payload &&
                     event.payload.from_match_id
                 );
+
+            const targetId =
+                event.payload &&
+                event.payload.next_match_id;
+
+            const target =
+                findMatch(targetId);
+
+            const playerId =
+                event.player_id;
+
+            const playerName =
+                event.player &&
+                event.player.name;
+
+            /*
+             * First reveal the authoritative destination slot.
+             * The animation then visually carries the winner into
+             * that exact slot.
+             */
+            if (
+                target &&
+                playerId &&
+                playerName
+            ) {
+                const rows =
+                    target.querySelectorAll(
+                        ".player-row"
+                    );
+
+                let destinationRow = null;
+
+                for (
+                    let index = 0;
+                    index < rows.length;
+                    index += 1
+                ) {
+                    const name =
+                        rows[index].querySelector(
+                            ".player-name"
+                        );
+
+                    if (
+                        name &&
+                        name.classList.contains("tbd")
+                    ) {
+                        destinationRow =
+                            rows[index];
+                        break;
+                    }
+                }
+
+                if (!destinationRow && rows.length) {
+                    destinationRow = rows[0];
+                }
+
+                if (destinationRow) {
+                    setReplayPlayer(
+                        destinationRow,
+                        playerName,
+                        playerId
+                    );
+                }
+            }
 
             if (
                 matchId &&
@@ -1826,6 +1897,328 @@
 
         return Promise.resolve(true);
     }
+
+    /*
+     * ============================================================
+     * REPLAY BASELINE / RESET
+     * ============================================================
+     *
+     * The server renders the current authoritative tournament
+     * state. Replay must not begin from that finished state.
+     *
+     * We therefore capture the structural/player baseline once,
+     * then restore the visible bracket to its pre-event state
+     * before replaying the event ledger.
+     *
+     * This is visual-only.
+     * No database state is changed.
+     */
+
+    const replayBaseline = {
+        matches: new Map(),
+        captured: false
+    };
+
+    function captureReplayBaseline() {
+        if (replayBaseline.captured) {
+            return;
+        }
+
+        const matches =
+            document.querySelectorAll(
+                ".match[data-match-id]"
+            );
+
+        matches.forEach(function (match) {
+
+            const firstRow =
+                match.querySelector(
+                    ".player-row.first"
+                );
+
+            const secondRow =
+                match.querySelector(
+                    ".player-row.second"
+                );
+
+            const firstName =
+                firstRow &&
+                firstRow.querySelector(
+                    ".player-name"
+                );
+
+            const secondName =
+                secondRow &&
+                secondRow.querySelector(
+                    ".player-name"
+                );
+
+            const firstScore =
+                firstRow &&
+                firstRow.querySelector(
+                    ".score"
+                );
+
+            const secondScore =
+                secondRow &&
+                secondRow.querySelector(
+                    ".score"
+                );
+
+            const status =
+                match.querySelector(
+                    ".match-status"
+                );
+
+            replayBaseline.matches.set(
+                match.dataset.matchId,
+                {
+                    firstName:
+                        firstName
+                            ? firstName.textContent.trim()
+                            : "TBD",
+
+                    secondName:
+                        secondName
+                            ? secondName.textContent.trim()
+                            : "TBD",
+
+                    firstPlayerId:
+                        firstName
+                            ? (
+                                firstName.dataset.playerId ||
+                                null
+                            )
+                            : null,
+
+                    secondPlayerId:
+                        secondName
+                            ? (
+                                secondName.dataset.playerId ||
+                                null
+                            )
+                            : null,
+
+                    firstScore:
+                        firstScore
+                            ? firstScore.textContent.trim()
+                            : "—",
+
+                    secondScore:
+                        secondScore
+                            ? secondScore.textContent.trim()
+                            : "—",
+
+                    status:
+                        status
+                            ? status.textContent.trim()
+                            : "PENDING",
+
+                    isBye:
+                        match.classList.contains("bye")
+                }
+            );
+        });
+
+        replayBaseline.captured = true;
+    }
+
+    function setReplayPlayer(
+        row,
+        name,
+        playerId
+    ) {
+        if (!row) {
+            return;
+        }
+
+        const nameNode =
+            row.querySelector(".player-name");
+
+        const scoreNode =
+            row.querySelector(".score");
+
+        if (!nameNode) {
+            return;
+        }
+
+        nameNode.textContent = name || "TBD";
+
+        if (name && playerId) {
+            nameNode.dataset.playerId =
+                String(playerId);
+            nameNode.classList.remove("tbd");
+        } else {
+            delete nameNode.dataset.playerId;
+            nameNode.classList.add("tbd");
+        }
+
+        nameNode.classList.remove(
+            "winner",
+            "loser"
+        );
+
+        if (scoreNode) {
+            scoreNode.textContent =
+                name && playerId
+                    ? "0"
+                    : "—";
+        }
+    }
+
+    function setReplayStatus(
+        match,
+        statusText
+    ) {
+        const status =
+            match.querySelector(
+                ".match-status"
+            );
+
+        if (!status) {
+            return;
+        }
+
+        status.textContent = statusText;
+
+        status.classList.remove(
+            "live",
+            "finished",
+            "bye"
+        );
+
+        if (statusText === "LIVE") {
+            status.classList.add("live");
+        }
+
+        if (statusText === "FINAL") {
+            status.classList.add("finished");
+        }
+
+        if (statusText === "BYE") {
+            status.classList.add("bye");
+        }
+    }
+
+    function resetBracketForReplay() {
+        captureReplayBaseline();
+
+        replayBaseline.matches.forEach(
+            function (baseline, matchId) {
+
+                const match =
+                    findMatch(matchId);
+
+                if (!match) {
+                    return;
+                }
+
+                match.classList.remove(
+                    "live",
+                    "finished",
+                    "flight-source",
+                    "flight-target"
+                );
+
+                const firstRow =
+                    match.querySelector(
+                        ".player-row.first"
+                    );
+
+                const secondRow =
+                    match.querySelector(
+                        ".player-row.second"
+                    );
+
+                /*
+                 * Round 1 is the draw result. The current event
+                 * ledger records TOURNAMENT_DRAW, but does not yet
+                 * contain MATCH_CREATED/player-placement events.
+                 *
+                 * Therefore Round 1 participants remain visible
+                 * while all feeder rounds return to TBD.
+                 */
+                const hasSource =
+                    Boolean(
+                        match.dataset.source1 ||
+                        match.dataset.source2
+                    );
+
+                if (hasSource) {
+
+                    setReplayPlayer(
+                        firstRow,
+                        null,
+                        null
+                    );
+
+                    setReplayPlayer(
+                        secondRow,
+                        null,
+                        null
+                    );
+
+                } else {
+
+                    setReplayPlayer(
+                        firstRow,
+                        baseline.firstPlayerId
+                            ? baseline.firstName
+                            : null,
+                        baseline.firstPlayerId
+                    );
+
+                    setReplayPlayer(
+                        secondRow,
+                        baseline.secondPlayerId
+                            ? baseline.secondName
+                            : null,
+                        baseline.secondPlayerId
+                    );
+                }
+
+                /*
+                 * BYE structure remains visible in Round 1.
+                 * Its participant remains attached to the slot.
+                 */
+                if (baseline.isBye) {
+                    setReplayStatus(
+                        match,
+                        "BYE"
+                    );
+
+                    match.classList.add("bye");
+
+                } else {
+
+                    match.classList.remove("bye");
+
+                    setReplayStatus(
+                        match,
+                        "PENDING"
+                    );
+                }
+            }
+        );
+
+        const championNode =
+            document.getElementById(
+                "champion-node"
+            );
+
+        if (championNode) {
+            const championName =
+                championNode.querySelector(
+                    ".champion-name"
+                );
+
+            if (championName) {
+                championName.textContent =
+                    "AWAITING CHAMPION";
+            }
+        }
+    }
+
 
     async function loadTournamentReplay() {
 
@@ -1912,6 +2305,8 @@
         if (!events.length) {
             return false;
         }
+
+        resetBracketForReplay();
 
         replayState.playing = true;
 
