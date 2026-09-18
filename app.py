@@ -1141,6 +1141,127 @@ def standings():
     )
 
 
+@app.route(
+    "/api/tournaments/<int:tournament_id>/events",
+    methods=["GET"]
+)
+def tournament_events_api(tournament_id):
+    """
+    Read-only tournament replay event stream.
+
+    This endpoint exposes the authoritative tournament event ledger
+    in sequence order. It never creates, updates, or deletes data.
+    """
+
+    tournament = db.session.get(
+        Tournament,
+        tournament_id
+    )
+
+    if tournament is None:
+        return {
+            "success": False,
+            "error": "Tournament not found."
+        }, 404
+
+    events = (
+        TournamentEvent.query
+        .filter_by(tournament_id=tournament.id)
+        .order_by(
+            TournamentEvent.sequence_number.asc()
+        )
+        .all()
+    )
+
+    match_ids = {
+        event.match_id
+        for event in events
+        if event.match_id is not None
+    }
+
+    player_ids = {
+        event.player_id
+        for event in events
+        if event.player_id is not None
+    }
+
+    matches = {
+        match.id: match
+        for match in Match.query.filter(
+            Match.id.in_(match_ids)
+        ).all()
+    } if match_ids else {}
+
+    players = {
+        player.id: player
+        for player in Player.query.filter(
+            Player.id.in_(player_ids)
+        ).all()
+    } if player_ids else {}
+
+    serialized_events = []
+
+    for event in events:
+
+        match = matches.get(event.match_id)
+        player = players.get(event.player_id)
+
+        serialized_events.append({
+            "id": event.id,
+            "sequence_number": event.sequence_number,
+            "event_type": event.event_type,
+            "created_at": (
+                event.created_at.isoformat()
+                if event.created_at
+                else None
+            ),
+            "created_by": event.created_by,
+            "match": (
+                {
+                    "id": match.id,
+                    "round_name": match.round_name,
+                    "round_number": match.round_number,
+                    "bracket_position": match.bracket_position,
+                    "player1_id": match.player1_id,
+                    "player2_id": match.player2_id,
+                    "player1_score": match.player1_score,
+                    "player2_score": match.player2_score,
+                    "winner_id": match.winner_id,
+                    "loser_id": match.loser_id,
+                    "status": match.status,
+                    "is_bye": match.is_bye,
+                    "is_forfeit": match.is_forfeit
+                }
+                if match
+                else None
+            ),
+            "player": (
+                {
+                    "id": player.id,
+                    "name": player.name
+                }
+                if player
+                else None
+            ),
+            "payload": event.payload or {}
+        })
+
+    return {
+        "success": True,
+        "tournament": {
+            "id": tournament.id,
+            "name": tournament.name,
+            "status": tournament.status,
+            "season_number": tournament.season_number,
+            "capacity": tournament_bracket_capacity(
+                tournament.max_players
+            )
+        },
+        "event_count": len(serialized_events),
+        "events": serialized_events
+    }, 200
+
+
 @app.route("/players")
 def players():
 
