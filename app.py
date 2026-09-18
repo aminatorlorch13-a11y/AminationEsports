@@ -4120,6 +4120,20 @@ def founder_live_match_control(match_id):
         if not match.started_at:
             match.started_at = datetime.utcnow()
 
+        record_tournament_event(
+            tournament_id=match.tournament_id,
+            event_type="MATCH_STARTED",
+            match_id=match.id,
+            payload={
+                "round_name": match.round_name,
+                "round_number": match.round_number,
+                "bracket_position": match.bracket_position,
+                "player1_id": match.player1_id,
+                "player2_id": match.player2_id
+            },
+            created_by="Founder"
+        )
+
     # ========================================================
     # STOP
     # ========================================================
@@ -4170,6 +4184,20 @@ def founder_live_match_control(match_id):
         # Winner and loser remain unset.
         match.player1_score = player1_score
         match.player2_score = player2_score
+
+        record_tournament_event(
+            tournament_id=match.tournament_id,
+            event_type="SCORE_UPDATED",
+            match_id=match.id,
+            payload={
+                "player1_score": match.player1_score,
+                "player2_score": match.player2_score,
+                "live_minute": match.live_minute,
+                "live_period": match.live_period,
+                "live_message": match.live_message
+            },
+            created_by="Founder"
+        )
 
     # ========================================================
     # FINISH
@@ -4235,8 +4263,10 @@ def founder_live_match_control(match_id):
         # ====================================================
         # ADVANCE WINNER TO NEXT ROUND
         # ====================================================
+        next_match = None
+
         if tournament:
-            create_next_round_match(
+            next_match = create_next_round_match(
                 tournament,
                 match
             )
@@ -4255,6 +4285,63 @@ def founder_live_match_control(match_id):
             tournament.completed_at = datetime.utcnow()
             tournament.champion_id = match.winner_id
             tournament.runner_up_id = match.loser_id
+
+        record_tournament_event(
+            tournament_id=match.tournament_id,
+            event_type="MATCH_COMPLETED",
+            match_id=match.id,
+            payload={
+                "round_name": match.round_name,
+                "round_number": match.round_number,
+                "bracket_position": match.bracket_position,
+                "player1_id": match.player1_id,
+                "player2_id": match.player2_id,
+                "player1_score": match.player1_score,
+                "player2_score": match.player2_score,
+                "winner_id": match.winner_id,
+                "loser_id": match.loser_id,
+                "next_match_id": (
+                    next_match.id
+                    if next_match is not None
+                    else None
+                ),
+                "is_final": (
+                    match.round_name == "Final"
+                )
+            },
+            created_by="Founder"
+        )
+
+        record_tournament_event(
+            tournament_id=match.tournament_id,
+            event_type="PLAYER_ADVANCED",
+            match_id=match.id,
+            player_id=match.winner_id,
+            payload={
+                "winner_id": match.winner_id,
+                "from_match_id": match.id,
+                "next_match_id": (
+                    next_match.id
+                    if next_match is not None
+                    else None
+                ),
+                "round_name": match.round_name
+            },
+            created_by="Founder"
+        )
+
+        record_tournament_event(
+            tournament_id=match.tournament_id,
+            event_type="PLAYER_ELIMINATED",
+            match_id=match.id,
+            player_id=match.loser_id,
+            payload={
+                "loser_id": match.loser_id,
+                "match_id": match.id,
+                "round_name": match.round_name
+            },
+            created_by="Founder"
+        )
 
         # ====================================================
         # PLAYER STATISTICS
