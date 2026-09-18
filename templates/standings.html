@@ -1789,6 +1789,47 @@
             if (event.event_type === "MATCH_COMPLETED") {
                 match.classList.remove("live");
                 match.classList.add("finished");
+
+                /*
+                 * MATCH_COMPLETED carries the authoritative winner
+                 * and loser IDs. Apply those visual states before
+                 * PLAYER_ADVANCED arrives in the event stream.
+                 */
+                const winnerId =
+                    event.match &&
+                    event.match.winner_id;
+
+                const loserId =
+                    event.match &&
+                    event.match.loser_id;
+
+                if (winnerId) {
+                    const winner =
+                        match.querySelector(
+                            '.player-name[data-player-id="' +
+                            winnerId +
+                            '"]'
+                        );
+
+                    if (winner) {
+                        winner.classList.remove("loser");
+                        winner.classList.add("winner");
+                    }
+                }
+
+                if (loserId) {
+                    const loser =
+                        match.querySelector(
+                            '.player-name[data-player-id="' +
+                            loserId +
+                            '"]'
+                        );
+
+                    if (loser) {
+                        loser.classList.remove("winner");
+                        loser.classList.add("loser");
+                    }
+                }
             }
 
             if (event.event_type === "PLAYER_ELIMINATED") {
