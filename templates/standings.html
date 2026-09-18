@@ -531,6 +531,12 @@
             overflow: visible;
         }
 
+        /*
+         * ============================================================
+         * CINEMATIC WINNER TRANSIT
+         * ============================================================
+         */
+
         .winner-flight {
             position: absolute;
             left: 0;
@@ -573,13 +579,16 @@
             );
             transform-origin: center center;
             will-change: transform, opacity;
+            animation: winnerFlightPulse 720ms ease-in-out infinite alternate;
         }
 
         .winner-flight::before {
             content: "◆";
             margin-right: 7px;
             font-size: .55rem;
-            text-shadow: 0 0 8px rgba(226,185,54,.9);
+            text-shadow:
+                0 0 8px rgba(226,185,54,.95),
+                0 0 18px rgba(226,185,54,.55);
         }
 
         .winner-flight::after {
@@ -588,15 +597,78 @@
             inset: -2px;
             border: 1px solid rgba(226,185,54,.25);
             opacity: .7;
+            box-shadow:
+                0 0 14px rgba(226,185,54,.35),
+                inset 0 0 10px rgba(226,185,54,.08);
             animation: flightPulse 900ms ease-in-out infinite alternate;
         }
 
+        .winner-flight-layer::before,
+        .winner-flight-layer::after {
+            content: "";
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 1px solid rgba(226,185,54,.75);
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+        }
+
         .match.flight-source {
-            animation: sourceLock 420ms ease-out both;
+            animation:
+                sourceLock 420ms ease-out both,
+                winnerDeparture 900ms ease-in-out 420ms both;
         }
 
         .match.flight-target {
-            animation: targetArrival 700ms ease-out both;
+            animation:
+                targetArrival 700ms ease-out both,
+                targetEnergy 1200ms ease-out 700ms both;
+        }
+
+        @media (max-width: 700px) {
+            .winner-flight {
+                min-width: 125px;
+                max-width: 165px;
+                height: 30px;
+                padding: 0 9px;
+                font-size: .58rem;
+            }
+        }
+
+        @keyframes winnerFlightPulse {
+            from {
+                filter: brightness(1);
+            }
+
+            to {
+                filter: brightness(1.35);
+            }
+        }
+
+        @keyframes winnerDeparture {
+            0% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: .72;
+            }
+        }
+
+        @keyframes targetEnergy {
+            0% {
+                filter: brightness(1);
+            }
+
+            35% {
+                filter: brightness(1.45);
+            }
+
+            100% {
+                filter: brightness(1);
+            }
         }
 
         @keyframes sourceLock {
@@ -648,12 +720,16 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .winner-flight::after {
+            .winner-flight {
                 animation: none;
             }
 
             .match.flight-source,
             .match.flight-target {
+                animation: none;
+            }
+
+            .winner-flight::after {
                 animation: none;
             }
         }
@@ -1721,7 +1797,7 @@
                                 );
 
                                 if (typeof arrivalCallback === "function") {
-                                    arrivalCallback();
+                                    arrivalCallback(true);
                                 }
 
                                 resolve(true);
@@ -1741,6 +1817,10 @@
                 target.classList.remove(
                     "flight-target"
                 );
+
+                if (typeof arrivalCallback === "function") {
+                    arrivalCallback(false);
+                }
 
                 return false;
             });
