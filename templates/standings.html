@@ -1665,6 +1665,7 @@
         events: [],
         currentIndex: 0,
         playing: false,
+        stopping: false,
         tournamentId: null,
         abortController: null
     };
@@ -2334,21 +2335,32 @@
     }
 
     async function replayTournament(options) {
-
         options = options || {};
 
         if (replayState.playing) {
             return false;
         }
 
+        replayState.stopping = false;
+
+        /*
+         * Always load the authoritative ledger again.
+         * A replay therefore starts from the server's latest
+         * recorded history rather than stale browser state.
+         */
         const events = await loadTournamentReplay();
 
         if (!events.length) {
             return false;
         }
 
+        /*
+         * Restore the visual bracket to its pre-event baseline.
+         * This is visual-only and never touches the database.
+         */
         resetBracketForReplay();
 
+        replayState.currentIndex = 0;
         replayState.playing = true;
 
         const initialDelay =
@@ -2363,30 +2375,59 @@
                 replayState.currentIndex <
                 replayState.events.length
             ) {
+                if (replayState.stopping) {
+                    break;
+                }
+
                 const event =
                     replayState.events[
                         replayState.currentIndex
                     ];
 
+                /*
+                 * Apply exactly one authoritative event.
+                 * Advancement waits for its cinematic flight to
+                 * complete before the ledger proceeds.
+                 */
                 await applyReplayEvent(event);
 
                 replayState.currentIndex += 1;
 
                 if (
-                    replayState.currentIndex <
+                    replayState.stopping ||
+                    replayState.currentIndex >=
                     replayState.events.length
                 ) {
-                    await wait(
-                        replayDelay(event)
-                    );
+                    break;
                 }
+
+                await wait(
+                    replayDelay(event)
+                );
             }
 
-            return true;
+            return !replayState.stopping;
 
         } finally {
             replayState.playing = false;
+            replayState.stopping = false;
         }
+    }
+
+    function stopTournamentReplay() {
+
+        if (!replayState.playing) {
+            return false;
+        }
+
+        replayState.stopping = true;
+
+        if (replayState.abortController) {
+            replayState.abortController.abort();
+            replayState.abortController = null;
+        }
+
+        return true;
     }
 
     function getReplayState() {
@@ -2406,6 +2447,9 @@
 
     window.AminationBracket.replayTournament =
         replayTournament;
+
+    window.AminationBracket.stopTournamentReplay =
+        stopTournamentReplay;
 
     window.AminationBracket.getReplayState =
         getReplayState;
