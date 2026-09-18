@@ -4154,6 +4154,49 @@ def temporary_internal_error_logger(error):
 # STEP 8R.69 — PRODUCTION SCHEMA DIAGNOSTIC
 # ============================================================
 
+
+
+# TEMPORARY: production Match schema migration for Season 1 BYE support.
+@app.route("/admin/migrate/match-player-nullable", methods=["POST"])
+def migrate_match_player_nullable():
+    access = founder_required()
+    if access:
+        return access
+
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(db.engine)
+    columns = {
+        column["name"]: column
+        for column in inspector.get_columns("match")
+    }
+
+    results = {}
+
+    with db.engine.begin() as conn:
+        for column_name in ("player1_id", "player2_id"):
+            if column_name not in columns:
+                return {
+                    "success": False,
+                    "error": f"Missing column: {column_name}"
+                }, 500
+
+            if columns[column_name]["nullable"]:
+                results[column_name] = "already_nullable"
+                continue
+
+            conn.execute(text(
+                f"ALTER TABLE match "
+                f"ALTER COLUMN {column_name} DROP NOT NULL"
+            ))
+            results[column_name] = "made_nullable"
+
+    return {
+        "success": True,
+        "database": db.engine.dialect.name,
+        "results": results
+    }, 200
+
 @app.route("/admin/diagnostic/match-schema")
 def diagnostic_match_schema():
     access = founder_required()
