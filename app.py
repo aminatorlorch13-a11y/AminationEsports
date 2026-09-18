@@ -2840,26 +2840,6 @@ def draw_tournament():
     ).all()
 
 
-    ineligible_players = [
-        player
-        for player in approved_players
-        if not player_is_tournament_eligible(player)
-    ]
-
-    if ineligible_players:
-        names = ", ".join(
-            player.name
-            for player in ineligible_players
-        )
-
-        return (
-            "Cannot release the tournament draw. "
-            "The following approved players have incomplete "
-            "age/consent verification: "
-            + names
-            + "."
-        ), 409
-
     player_count = len(approved_players)
 
     if player_count < 2:
