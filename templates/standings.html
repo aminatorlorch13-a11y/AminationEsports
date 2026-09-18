@@ -1,252 +1,1083 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>Standings — Amination Esports</title>
+    <title>
+        {% if tournament %}
+            {{ tournament.name }} — Amination eSports
+        {% else %}
+            Amination eSports — Bracket
+        {% endif %}
+    </title>
 
     <style>
+        :root {
+            --gold: #e2b936;
+            --gold-bright: #ffe36a;
+            --gold-dim: rgba(226, 185, 54, 0.45);
+            --gold-faint: rgba(226, 185, 54, 0.10);
+            --white: #f4f4f4;
+            --muted: #777;
+            --black: #030303;
+            --red: #ff3d55;
+            --green: #76ff7a;
+        }
 
         * {
             box-sizing: border-box;
         }
 
+        html,
         body {
             margin: 0;
-            background: #050505;
-            color: white;
-            font-family: Arial, sans-serif;
+            min-height: 100%;
+            background: var(--black);
+            color: var(--white);
+            font-family:
+                Inter,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
         }
 
-        header {
-            padding: 28px 20px;
-            text-align: center;
-            border-bottom: 1px solid #222;
+        body {
+            overflow-x: hidden;
+            background:
+                radial-gradient(
+                    ellipse at 50% -10%,
+                    rgba(226,185,54,.16),
+                    transparent 45%
+                ),
+                linear-gradient(
+                    rgba(226,185,54,.025) 1px,
+                    transparent 1px
+                ),
+                linear-gradient(
+                    90deg,
+                    rgba(226,185,54,.025) 1px,
+                    transparent 1px
+                ),
+                #030303;
+            background-size:
+                auto,
+                40px 40px,
+                40px 40px;
         }
 
-        .brand {
-            font-size: 30px;
-            font-weight: bold;
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1000;
+            background:
+                linear-gradient(
+                    rgba(255,255,255,.025) 50%,
+                    transparent 50%
+                );
+            background-size: 100% 4px;
+            opacity: .12;
         }
 
-        .brand span {
-            color: #e2b936;
-        }
-
-        nav {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 22px;
-            padding: 22px 15px;
-            border-bottom: 1px solid #222;
-        }
-
-        nav a {
-            color: white;
+        a {
+            color: inherit;
             text-decoration: none;
         }
 
-        nav a:hover {
-            color: #e2b936;
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--gold-dim);
+            background: rgba(3,3,3,.94);
+            backdrop-filter: blur(16px);
         }
 
-        .container {
-            max-width: 1050px;
-            margin: auto;
-            padding: 45px 15px;
+        .brand {
+            flex-shrink: 0;
+            color: var(--gold-bright);
+            font-size: .82rem;
+            font-weight: 950;
+            letter-spacing: 2px;
         }
 
-        h1 {
-            color: #e2b936;
-        }
-
-        .table-wrap {
+        .nav {
+            display: flex;
+            gap: 16px;
             overflow-x: auto;
-            margin-top: 25px;
+            scrollbar-width: none;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 700px;
-            background: #111;
-            border: 1px solid #292929;
+        .nav::-webkit-scrollbar {
+            display: none;
         }
 
-        th {
-            background: #181818;
-            color: #e2b936;
+        .nav a {
+            color: #888;
+            font-size: .78rem;
+            font-weight: 700;
+            white-space: nowrap;
         }
 
-        th,
-        td {
-            padding: 15px 12px;
+        .nav a:hover,
+        .nav a.active {
+            color: var(--gold-bright);
+        }
+
+        .hero {
+            padding: 45px 20px 28px;
             text-align: center;
-            border-bottom: 1px solid #292929;
         }
 
-        td:first-child,
-        td:nth-child(2) {
-            text-align: left;
+        .eyebrow {
+            color: var(--gold);
+            font-size: .68rem;
+            font-weight: 900;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .hero h1 {
+            margin: 10px 0;
+            font-size: clamp(2rem, 7vw, 4rem);
+            line-height: 1;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow:
+                0 0 15px rgba(226,185,54,.25),
+                0 0 40px rgba(226,185,54,.10);
+        }
+
+        .hero p {
+            max-width: 720px;
+            margin: 0 auto;
+            color: var(--muted);
+            font-size: .9rem;
+        }
+
+        .capacity {
+            display: inline-flex;
+            margin-top: 18px;
+            padding: 8px 15px;
+            border: 1px solid var(--gold-dim);
+            border-radius: 999px;
+            color: var(--gold-bright);
+            background: var(--gold-faint);
+            font-size: .7rem;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+        }
+
+        /*
+         * ============================================================
+         * BRACKET VIEWPORT
+         * ============================================================
+         */
+
+        .bracket-viewport {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 20px 25px 90px;
+            scrollbar-color: var(--gold) #111;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .bracket-canvas {
+            position: relative;
+            width: max-content;
+            min-width: max-content;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /*
+         * SVG sits behind all match cards.
+         * It is the actual tournament-tree wiring.
+         */
+
+        #bracket-lines {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: visible;
+            z-index: 1;
+        }
+
+        .tree-line {
+            fill: none;
+            stroke: var(--gold-dim);
+            stroke-width: 2;
+            vector-effect: non-scaling-stroke;
+        }
+
+        .tree-line-glow {
+            fill: none;
+            stroke: rgba(226,185,54,.15);
+            stroke-width: 7;
+            vector-effect: non-scaling-stroke;
+            filter: blur(3px);
+        }
+
+        /*
+         * ============================================================
+         * ROUNDS
+         * ============================================================
+         */
+
+        .rounds {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: flex-start;
+            gap: 105px;
+        }
+
+        .round {
+            position: relative;
+            width: 230px;
+            min-width: 230px;
+        }
+
+        .round-header {
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 18px;
+            border-bottom: 1px solid var(--gold-dim);
+            color: var(--gold-bright);
+            font-size: .7rem;
+            font-weight: 950;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .round-body {
+            position: relative;
+        }
+
+        /*
+         * JavaScript assigns the vertical position to every match.
+         * The amount of spacing doubles as the rounds progress.
+         */
+
+        .match {
+            position: absolute;
+            left: 0;
+            width: 230px;
+            height: 78px;
+            overflow: hidden;
+            border: 1px solid rgba(226,185,54,.42);
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(226,185,54,.09),
+                    rgba(7,7,7,.97)
+                );
+            box-shadow:
+                inset 0 0 22px rgba(226,185,54,.025),
+                0 0 18px rgba(0,0,0,.55);
+            clip-path: polygon(
+                0 0,
+                calc(100% - 10px) 0,
+                100% 10px,
+                100% 100%,
+                10px 100%,
+                0 calc(100% - 10px)
+            );
+        }
+
+        .match.live {
+            border-color: var(--red);
+            box-shadow:
+                0 0 18px rgba(255,61,85,.15),
+                inset 0 0 22px rgba(255,61,85,.04);
+        }
+
+        .match.finished {
+            border-color: rgba(118,255,122,.32);
+        }
+
+        .match.bye {
+            border-color: var(--gold-dim);
+            opacity: .78;
+        }
+
+        .match-number {
+            position: absolute;
+            top: 5px;
+            left: 9px;
+            color: #555;
+            font-size: .55rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+
+        .match-status {
+            position: absolute;
+            top: 5px;
+            right: 9px;
+            color: #555;
+            font-size: .53rem;
+            font-weight: 950;
+            letter-spacing: 1px;
+        }
+
+        .match-status.live {
+            color: var(--red);
+            text-shadow: 0 0 8px rgba(255,61,85,.7);
+        }
+
+        .match-status.finished {
+            color: var(--green);
+        }
+
+        .match-status.bye {
+            color: var(--gold);
+        }
+
+        .player-row {
+            position: absolute;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            height: 27px;
+            padding: 0 9px;
+            border-top: 1px solid rgba(255,255,255,.045);
+        }
+
+        .player-row.first {
+            top: 24px;
+        }
+
+        .player-row.second {
+            top: 50px;
+        }
+
+        .player-name {
+            min-width: 0;
+            overflow: hidden;
+            color: #d7d7d7;
+            font-size: .76rem;
+            font-weight: 750;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .player-name.tbd {
+            color: #555;
+            font-style: italic;
+        }
+
+        .player-name.winner {
+            color: var(--gold-bright);
+            text-shadow: 0 0 9px rgba(226,185,54,.3);
+        }
+
+        .player-name.loser {
+            color: #4d4d4d;
+            text-decoration: line-through;
+        }
+
+        .player-name.bye {
+            color: var(--gold);
+        }
+
+        .score {
+            flex-shrink: 0;
+            min-width: 17px;
+            color: #eee;
+            font-size: .75rem;
+            font-weight: 950;
+            text-align: right;
+        }
+
+        /*
+         * ============================================================
+         * CHAMPION NODE
+         * ============================================================
+         */
+
+        .champion-node {
+            position: absolute;
+            z-index: 3;
+            width: 250px;
+            min-height: 100px;
+            padding: 18px;
+            border: 1px solid var(--gold);
+            background:
+                radial-gradient(
+                    circle at center,
+                    rgba(226,185,54,.16),
+                    rgba(0,0,0,.96)
+                );
+            box-shadow:
+                0 0 28px rgba(226,185,54,.15),
+                inset 0 0 30px rgba(226,185,54,.05);
+            text-align: center;
+            clip-path: polygon(
+                0 10px,
+                10px 0,
+                calc(100% - 10px) 0,
+                100% 10px,
+                100% calc(100% - 10px),
+                calc(100% - 10px) 100%,
+                10px 100%,
+                0 calc(100% - 10px)
+            );
+        }
+
+        .champion-icon {
+            font-size: 1.5rem;
+        }
+
+        .champion-label {
+            margin-top: 6px;
+            color: var(--gold-bright);
+            font-size: .7rem;
+            font-weight: 950;
+            letter-spacing: 2px;
+        }
+
+        .champion-name {
+            margin-top: 5px;
+            color: #777;
+            font-size: .78rem;
+            font-weight: 800;
         }
 
         .empty {
-            margin-top: 30px;
-            padding: 30px;
-            background: #111;
-            border: 1px solid #292929;
-            border-radius: 15px;
-            color: #999;
+            max-width: 650px;
+            margin: 50px auto 100px;
+            padding: 40px 25px;
+            border: 1px solid var(--gold-dim);
+            background: rgba(10,10,10,.92);
+            text-align: center;
         }
 
-    </style>
+        .empty h2 {
+            margin-top: 0;
+            color: var(--gold-bright);
+        }
 
+        .empty p {
+            color: var(--muted);
+        }
+
+        .footer {
+            padding: 25px 20px 60px;
+            color: #444;
+            text-align: center;
+            font-size: .65rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+        }
+
+        @media (max-width: 700px) {
+            .topbar {
+                padding: 12px 14px;
+            }
+
+            .rounds {
+                gap: 80px;
+            }
+
+            .bracket-viewport {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+        }
+    </style>
 </head>
 
 <body>
 
-<header>
+<header class="topbar">
+    <a class="brand" href="/">AMINATION ESPORTS</a>
 
-    <div class="brand">
-        AMINATION <span>ESPORTS</span>
-    </div>
-
+    <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/tournament">Tournament</a>
+        <a href="/live">Live</a>
+        <a href="/standings" class="active">Bracket</a>
+        <a href="/players">Players</a>
+        <a href="/login">Login</a>
+    </nav>
 </header>
 
+{% if tournament %}
 
-<nav>
+<section class="hero">
+    <div class="eyebrow">Official Tournament Network</div>
 
-    <a href="{{ url_for('home') }}">Home</a>
-    <a href="{{ url_for('tournament') }}">Tournament</a>
-    <a href="{{ url_for('live') }}">Live</a>
-    <a href="{{ url_for('standings') }}">Standings</a>
-    <a href="{{ url_for('players') }}">Players</a>
-    <a href="{{ url_for('player_login') }}">Login</a>
-
-</nav>
-
-
-<div class="container">
-
-    <h1>
-        🏆 AMINATION STANDINGS
-    </h1>
+    <h1>{{ tournament.name }}</h1>
 
     <p>
-        Current tournament standings based on completed
-        matches.
+        The live tournament tree — connected directly to the Amination
+        eSports match engine.
     </p>
 
+    <div class="capacity">
+        ⚡ {{ capacity }}-SLOT KNOCKOUT
+    </div>
+</section>
 
-    {% if standings %}
+{% if rounds %}
 
-        <div class="table-wrap">
+<div class="bracket-viewport">
+    <div class="bracket-canvas" id="bracket-canvas">
 
-            <table>
+        <svg id="bracket-lines" aria-hidden="true"></svg>
 
-                <thead>
+        <div class="rounds" id="rounds">
 
-                    <tr>
+            {% for round_name in rounds %}
 
-                        <th>#</th>
-                        <th>Player</th>
-                        <th>MP</th>
-                        <th>W</th>
-                        <th>D</th>
-                        <th>L</th>
-                        <th>GF</th>
-                        <th>GA</th>
-                        <th>GD</th>
-                        <th>PTS</th>
+            <section
+                class="round"
+                data-round-index="{{ loop.index0 }}"
+                data-round-name="{{ round_name }}"
+            >
 
-                    </tr>
+                <div class="round-header">
+                    {{ round_name }}
+                </div>
 
-                </thead>
+                <div class="round-body">
 
+                    {% for match in bracket_matches.get(round_name, []) %}
 
-                <tbody>
+                    {% set player1 = players.get(match.player1_id) %}
+                    {% set player2 = players.get(match.player2_id) %}
 
-                    {% for row in standings %}
+                    <article
+                        class="match
+                            {% if match.is_bye %}bye{% endif %}
+                            {% if match.is_live %}live{% endif %}
+                            {% if match.status == 'finished' %}finished{% endif %}"
+                        id="match-{{ match.id }}"
+                        data-match-id="{{ match.id }}"
+                        data-round-index="{{ loop.index0 }}"
+                        data-bracket-position="{{ match.bracket_position or loop.index0 + 1 }}"
+                        data-source-1="{{ match.source_match1_id or '' }}"
+                        data-source-2="{{ match.source_match2_id or '' }}"
+                    >
 
-                        <tr>
+                        <div class="match-number">
+                            MATCH {{ match.match_number or match.id }}
+                        </div>
 
-                            <td>
-                                {{ loop.index }}
-                            </td>
+                        {% if match.is_bye %}
+                            <div class="match-status bye">BYE</div>
+                        {% elif match.is_live %}
+                            <div class="match-status live">LIVE</div>
+                        {% elif match.status == "finished" %}
+                            <div class="match-status finished">FINAL</div>
+                        {% else %}
+                            <div class="match-status">PENDING</div>
+                        {% endif %}
 
-                            <td>
-                                <strong>
-                                    {{ row.player.name }}
-                                </strong>
-                            </td>
+                        <div class="player-row first">
+                            <span class="
+                                player-name
+                                {% if not player1 %}tbd{% endif %}
+                                {% if match.winner_id == match.player1_id and match.player1_id %}winner{% endif %}
+                                {% if match.loser_id == match.player1_id and match.player1_id %}loser{% endif %}
+                                {% if match.is_bye and player1 %}bye{% endif %}
+                            ">
+                                {% if player1 %}
+                                    {{ player1.name }}
+                                {% else %}
+                                    TBD
+                                {% endif %}
+                            </span>
 
-                            <td>
-                                {{ row.played }}
-                            </td>
+                            <span class="score">
+                                {% if match.player1_id %}
+                                    {{ match.player1_score or 0 }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
 
-                            <td>
-                                {{ row.wins }}
-                            </td>
+                        <div class="player-row second">
+                            <span class="
+                                player-name
+                                {% if not player2 %}tbd{% endif %}
+                                {% if match.winner_id == match.player2_id and match.player2_id %}winner{% endif %}
+                                {% if match.loser_id == match.player2_id and match.player2_id %}loser{% endif %}
+                                {% if match.is_bye and player2 %}bye{% endif %}
+                            ">
+                                {% if player2 %}
+                                    {{ player2.name }}
+                                {% else %}
+                                    TBD
+                                {% endif %}
+                            </span>
 
-                            <td>
-                                {{ row.draws }}
-                            </td>
+                            <span class="score">
+                                {% if match.player2_id %}
+                                    {{ match.player2_score or 0 }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
 
-                            <td>
-                                {{ row.losses }}
-                            </td>
-
-                            <td>
-                                {{ row.gf }}
-                            </td>
-
-                            <td>
-                                {{ row.ga }}
-                            </td>
-
-                            <td>
-                                {{ row.gd }}
-                            </td>
-
-                            <td>
-                                <strong>
-                                    {{ row.points }}
-                                </strong>
-                            </td>
-
-                        </tr>
+                    </article>
 
                     {% endfor %}
 
-                </tbody>
+                </div>
+            </section>
 
-            </table>
+            {% endfor %}
+
+            <div
+                class="champion-node"
+                id="champion-node"
+            >
+                <div class="champion-icon">🏆</div>
+                <div class="champion-label">CHAMPION DESTINATION</div>
+
+                <div class="champion-name">
+                    {% if tournament.champion_id and players.get(tournament.champion_id) %}
+                        {{ players.get(tournament.champion_id).name }}
+                    {% else %}
+                        AWAITING CHAMPION
+                    {% endif %}
+                </div>
+            </div>
 
         </div>
-
-    {% else %}
-
-        <div class="empty">
-
-            🏆 Standings are not available yet.
-
-            <br><br>
-
-            Once completed tournament matches are
-            recorded, the standings will appear here.
-
-        </div>
-
-    {% endif %}
-
+    </div>
 </div>
 
-</body>
+{% else %}
 
+<section class="empty">
+    <h2>BRACKET NOT RELEASED</h2>
+    <p>
+        The tournament structure is ready. The official draw will
+        populate the tournament tree when released.
+    </p>
+</section>
+
+{% endif %}
+
+{% else %}
+
+<section class="empty">
+    <h2>NO ACTIVE TOURNAMENT</h2>
+    <p>
+        The Amination eSports tournament network is waiting for the
+        next competition.
+    </p>
+</section>
+
+{% endif %}
+
+<footer class="footer">
+    AMINATION ESPORTS • FROM IMAGINATION TO REALITY
+</footer>
+
+<script>
+(function () {
+    "use strict";
+
+    const canvas = document.getElementById("bracket-canvas");
+    const roundsContainer = document.getElementById("rounds");
+    const svg = document.getElementById("bracket-lines");
+    const champion = document.getElementById("champion-node");
+
+    if (!canvas || !roundsContainer || !svg) {
+        return;
+    }
+
+    const rounds = Array.from(
+        roundsContainer.querySelectorAll(".round")
+    );
+
+    const MATCH_HEIGHT = 78;
+    const MIN_MATCH_GAP = 28;
+    const ROUND_GAP = 105;
+
+    function matchesInRound(round) {
+        return Array.from(
+            round.querySelectorAll(".match")
+        );
+    }
+
+    function positionRounds() {
+        /*
+         * The first round establishes the full tree height.
+         * Every subsequent round occupies the midpoint between
+         * its feeder matches.
+         */
+
+        const firstRound = rounds[0];
+
+        if (!firstRound) {
+            return;
+        }
+
+        const firstMatches = matchesInRound(firstRound);
+
+        const firstGap = Math.max(
+            MIN_MATCH_GAP,
+            Math.floor(46 - Math.log2(Math.max(firstMatches.length, 1)) * 2)
+        );
+
+        firstRound.querySelector(".round-body").style.height =
+            (
+                firstMatches.length * MATCH_HEIGHT +
+                Math.max(0, firstMatches.length - 1) * firstGap
+            ) + "px";
+
+        firstMatches.forEach(function (match, index) {
+            match.style.top =
+                index * (MATCH_HEIGHT + firstGap) + "px";
+        });
+
+        for (let r = 1; r < rounds.length; r++) {
+
+            const previous = rounds[r - 1];
+            const current = rounds[r];
+
+            const previousMatches = matchesInRound(previous);
+            const currentMatches = matchesInRound(current);
+
+            const previousCenters = previousMatches.map(function (match) {
+                return match.offsetTop + MATCH_HEIGHT / 2;
+            });
+
+            if (!currentMatches.length) {
+                current.querySelector(".round-body").style.height =
+                    firstRound.querySelector(".round-body").offsetHeight + "px";
+                continue;
+            }
+
+            const currentPositions = [];
+
+            currentMatches.forEach(function (match, index) {
+
+                const source1 = match.dataset.source1;
+                const source2 = match.dataset.source2;
+
+                let center;
+
+                const firstSource =
+                    document.getElementById("match-" + source1);
+
+                const secondSource =
+                    document.getElementById("match-" + source2);
+
+                if (firstSource && secondSource) {
+
+                    center =
+                        (
+                            firstSource.offsetTop +
+                            MATCH_HEIGHT / 2 +
+                            secondSource.offsetTop +
+                            MATCH_HEIGHT / 2
+                        ) / 2;
+
+                } else if (firstSource) {
+
+                    center =
+                        firstSource.offsetTop +
+                        MATCH_HEIGHT / 2;
+
+                } else if (secondSource) {
+
+                    center =
+                        secondSource.offsetTop +
+                        MATCH_HEIGHT / 2;
+
+                } else {
+
+                    /*
+                     * Fallback for older/incomplete match records.
+                     * Bracket position still gives us deterministic
+                     * traditional-tree placement.
+                     */
+
+                    const bracketPosition =
+                        parseInt(
+                            match.dataset.bracketPosition || index + 1,
+                            10
+                        );
+
+                    const previousCount =
+                        Math.max(previousMatches.length, 1);
+
+                    const normalized =
+                        (bracketPosition - 0.5) /
+                        currentMatches.length;
+
+                    center =
+                        normalized *
+                        previousMatches.length *
+                        (MATCH_HEIGHT + firstGap);
+
+                    center = Math.max(
+                        MATCH_HEIGHT / 2,
+                        center
+                    );
+                }
+
+                currentPositions.push(
+                    Math.max(
+                        0,
+                        center - MATCH_HEIGHT / 2
+                    )
+                );
+            });
+
+            const lastPosition =
+                currentPositions[currentPositions.length - 1] || 0;
+
+            const bodyHeight =
+                Math.max(
+                    firstRound.querySelector(".round-body").offsetHeight,
+                    lastPosition + MATCH_HEIGHT
+                );
+
+            current.querySelector(".round-body").style.height =
+                bodyHeight + "px";
+
+            currentMatches.forEach(function (match, index) {
+                match.style.top =
+                    currentPositions[index] + "px";
+            });
+        }
+
+        /*
+         * Put the Champion destination beside the Final.
+         */
+
+        const finalRound = rounds[rounds.length - 1];
+
+        if (finalRound) {
+
+            const finalMatches = matchesInRound(finalRound);
+
+            if (finalMatches.length) {
+
+                const finalMatch = finalMatches[0];
+
+                champion.style.left =
+                    (
+                        finalRound.offsetLeft +
+                        finalRound.offsetWidth +
+                        ROUND_GAP
+                    ) + "px";
+
+                champion.style.top =
+                    (
+                        finalRound.offsetTop +
+                        finalMatch.offsetTop +
+                        finalMatch.offsetHeight / 2 -
+                        champion.offsetHeight / 2
+                    ) + "px";
+            }
+        }
+    }
+
+    function relativeRect(element) {
+        const elementRect = element.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+
+        return {
+            left: elementRect.left - canvasRect.left,
+            right: elementRect.right - canvasRect.left,
+            top: elementRect.top - canvasRect.top,
+            bottom: elementRect.bottom - canvasRect.top,
+            centerY:
+                elementRect.top -
+                canvasRect.top +
+                elementRect.height / 2
+        };
+    }
+
+    function makePath(x1, y1, x2, y2) {
+        const midpoint = x1 + (x2 - x1) / 2;
+
+        return [
+            "M", x1, y1,
+            "H", midpoint,
+            "V", y2,
+            "H", x2
+        ].join(" ");
+    }
+
+    function drawLine(pathData) {
+        const glow = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "path"
+        );
+
+        glow.setAttribute("class", "tree-line-glow");
+        glow.setAttribute("d", pathData);
+
+        const line = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "path"
+        );
+
+        line.setAttribute("class", "tree-line");
+        line.setAttribute("d", pathData);
+
+        svg.appendChild(glow);
+        svg.appendChild(line);
+    }
+
+    function drawBranches() {
+
+        svg.innerHTML = "";
+
+        const canvasWidth = canvas.scrollWidth;
+        const canvasHeight = canvas.scrollHeight;
+
+        svg.setAttribute(
+            "viewBox",
+            "0 0 " + canvasWidth + " " + canvasHeight
+        );
+
+        svg.setAttribute("width", canvasWidth);
+        svg.setAttribute("height", canvasHeight);
+
+        rounds.forEach(function (round) {
+
+            const currentMatches = matchesInRound(round);
+
+            currentMatches.forEach(function (match) {
+
+                const source1 =
+                    document.getElementById(
+                        "match-" + match.dataset.source1
+                    );
+
+                const source2 =
+                    document.getElementById(
+                        "match-" + match.dataset.source2
+                    );
+
+                if (!source1 && !source2) {
+                    return;
+                }
+
+                const target = relativeRect(match);
+
+                const targetX = target.left;
+                const targetY = target.centerY;
+
+                if (source1) {
+
+                    const source = relativeRect(source1);
+
+                    drawLine(
+                        makePath(
+                            source.right,
+                            source.centerY,
+                            targetX,
+                            targetY
+                        )
+                    );
+                }
+
+                if (source2) {
+
+                    const source = relativeRect(source2);
+
+                    drawLine(
+                        makePath(
+                            source.right,
+                            source.centerY,
+                            targetX,
+                            targetY
+                        )
+                    );
+                }
+            });
+        });
+
+        /*
+         * Final → Champion.
+         */
+
+        const finalRound = rounds[rounds.length - 1];
+
+        if (finalRound && champion) {
+
+            const finals = matchesInRound(finalRound);
+
+            if (finals.length) {
+
+                const finalRect = relativeRect(finals[0]);
+                const championRect = relativeRect(champion);
+
+                drawLine(
+                    makePath(
+                        finalRect.right,
+                        finalRect.centerY,
+                        championRect.left,
+                        championRect.centerY
+                    )
+                );
+            }
+        }
+    }
+
+    function renderTree() {
+        positionRounds();
+
+        /*
+         * Give the browser a layout frame before reading positions.
+         */
+        requestAnimationFrame(function () {
+            drawBranches();
+        });
+    }
+
+    window.addEventListener(
+        "load",
+        renderTree
+    );
+
+    window.addEventListener(
+        "resize",
+        function () {
+            renderTree();
+        }
+    );
+
+    /*
+     * Small delay protects against fonts changing element dimensions.
+     */
+    setTimeout(
+        renderTree,
+        150
+    );
+
+})();
+</script>
+
+</body>
 </html>

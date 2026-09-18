@@ -1073,15 +1073,69 @@ def live():
 
 @app.route("/standings")
 def standings():
+    """
+    Public tournament bracket.
 
-    players = Player.query.filter_by(
-        active=True
-    ).order_by(
-        Player.name.asc()
-    ).all()
+    The bracket is driven by the tournament's configured capacity
+    and the real Match feeder relationships. No bracket size is
+    hard-coded.
+    """
+
+    tournament = (
+        Tournament.query
+        .order_by(Tournament.id.desc())
+        .first()
+    )
+
+    if not tournament:
+        return render_template(
+            "standings.html",
+            tournament=None,
+            capacity=0,
+            rounds=[],
+            bracket_matches={},
+            players={}
+        )
+
+    capacity = tournament_bracket_capacity(
+        tournament.max_players
+    )
+
+    round_names = tournament_rounds(capacity)
+
+    matches = (
+        Match.query
+        .filter_by(tournament_id=tournament.id)
+        .order_by(
+            Match.round_number.asc(),
+            Match.bracket_position.asc(),
+            Match.id.asc()
+        )
+        .all()
+    )
+
+    players = {
+        player.id: player
+        for player in Player.query.all()
+    }
+
+    bracket_matches = {
+        round_name: []
+        for round_name in round_names
+    }
+
+    for match in matches:
+        bracket_matches.setdefault(
+            match.round_name,
+            []
+        ).append(match)
 
     return render_template(
         "standings.html",
+        tournament=tournament,
+        capacity=capacity,
+        rounds=round_names,
+        bracket_matches=bracket_matches,
         players=players
     )
 
