@@ -2843,6 +2843,58 @@ def founder_tournament_settings():
 # FOUNDER — OFFICIAL TOURNAMENT DRAW
 # ============================================================
 
+def record_tournament_event(
+    tournament_id,
+    event_type,
+    match_id=None,
+    player_id=None,
+    payload=None,
+    created_by=None
+):
+    """
+    Append one immutable event to a tournament's event ledger.
+
+    The caller owns the surrounding transaction.
+    This helper NEVER commits independently.
+
+    Sequence numbers are scoped to the tournament.
+    """
+
+    last_sequence = (
+        db.session.query(
+            db.func.max(
+                TournamentEvent.sequence_number
+            )
+        )
+        .filter(
+            TournamentEvent.tournament_id == tournament_id
+        )
+        .scalar()
+    )
+
+    next_sequence = (
+        int(last_sequence)
+        if last_sequence is not None
+        else 0
+    ) + 1
+
+    event = TournamentEvent(
+        tournament_id=tournament_id,
+        match_id=match_id,
+        player_id=player_id,
+        event_type=event_type,
+        sequence_number=next_sequence,
+        payload=payload,
+        created_at=datetime.utcnow(),
+        created_by=created_by
+    )
+
+    db.session.add(event)
+    db.session.flush()
+
+    return event
+
+
 @app.route(
     "/admin/tournament/draw",
     methods=["POST"]
@@ -3194,6 +3246,19 @@ def draw_tournament():
     # ------------------------------------------------------------
 
     tournament.status = TOURNAMENT_DRAW_RELEASED
+
+    record_tournament_event(
+        tournament_id=tournament.id,
+        event_type="TOURNAMENT_DRAW",
+        payload={
+            "capacity": capacity,
+            "approved_player_count": player_count,
+            "rounds": rounds,
+            "match_count": capacity - 1,
+            "bye_count": max(capacity - player_count, 0)
+        },
+        created_by="Founder"
+    )
 
     action = AdminAction(
         action="tournament_draw_released",
