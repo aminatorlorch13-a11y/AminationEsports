@@ -4449,7 +4449,11 @@ def migrate_tournament_event():
             ON tournament_event (created_at)
         """))
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
 
         return "tournament_event migration complete."
 
