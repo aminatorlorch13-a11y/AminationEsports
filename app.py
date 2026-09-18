@@ -4391,8 +4391,9 @@ def migrate_tournament_event():
     - Refuses to modify an existing table.
     - Does not touch Tournament, Match, Player, or Hall of Champion data.
     """
-    if not founder_authenticated():
-        return "Unauthorized", 403
+    access = founder_required()
+    if access:
+        return access
 
     from sqlalchemy import inspect, text
 
