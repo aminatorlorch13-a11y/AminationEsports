@@ -413,6 +413,116 @@
          * ============================================================
          */
 
+        /*
+         * ============================================================
+         * CINEMATIC DRAW REVEAL
+         * ============================================================
+         */
+
+        #bracket-canvas.replay-awaiting-draw .match {
+            opacity: 0;
+            transform: translateX(-18px) scale(.985);
+        }
+
+        #bracket-canvas.replay-awaiting-draw .champion-node {
+            opacity: 0;
+        }
+
+        /*
+         * ============================================================
+         * CINEMATIC BRACKET NETWORK
+         * ============================================================
+         */
+
+        #bracket-canvas.replay-awaiting-draw #bracket-lines {
+            opacity: 0;
+        }
+
+        #bracket-canvas.draw-live #bracket-lines {
+            opacity: 1;
+            transition: opacity 900ms ease;
+        }
+
+        #bracket-canvas.draw-live .tree-line {
+            stroke-dasharray: 8 12;
+            animation: bracketEnergy 1.6s linear infinite;
+        }
+
+        #bracket-canvas.draw-live .tree-line-glow {
+            stroke-dasharray: 8 12;
+            animation: bracketEnergy 1.6s linear infinite reverse;
+        }
+
+        @keyframes bracketEnergy {
+            to {
+                stroke-dashoffset: -40;
+            }
+        }
+
+        #bracket-canvas.draw-live .match {
+            transition:
+                opacity 520ms ease,
+                transform 520ms cubic-bezier(.16,.82,.24,1),
+                box-shadow 520ms ease;
+        }
+
+        #bracket-canvas.draw-live .champion-node {
+            transition:
+                opacity 900ms ease,
+                transform 900ms cubic-bezier(.16,.82,.24,1);
+        }
+
+        .match.draw-reveal {
+            opacity: 1 !important;
+            transform: translateX(0) scale(1) !important;
+            box-shadow:
+                0 0 22px rgba(226,185,54,.32),
+                inset 0 0 20px rgba(226,185,54,.08);
+        }
+
+        .match.draw-reveal::after {
+            content: "";
+            position: absolute;
+            inset: -1px;
+            border: 1px solid rgba(226,185,54,.65);
+            pointer-events: none;
+            animation: drawScan 700ms ease-out forwards;
+        }
+
+        #bracket-canvas.draw-complete .champion-node {
+            opacity: 1;
+        }
+
+        @keyframes drawScan {
+            0% {
+                opacity: .95;
+                transform: translateX(-18px);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(12px);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #bracket-canvas.draw-live .tree-line,
+            #bracket-canvas.draw-live .tree-line-glow {
+                animation: none;
+            }
+
+            #bracket-canvas.replay-awaiting-draw .match,
+            #bracket-canvas.draw-live .match {
+                transition: none;
+                transform: none;
+            }
+
+            .match.draw-reveal::after {
+                animation: none;
+                opacity: 0;
+            }
+        }
+
         .winner-flight-layer {
             position: absolute;
             inset: 0;
@@ -1749,9 +1859,122 @@
         );
     }
 
+    async function revealTournamentDraw() {
+        if (!canvas) {
+            return false;
+        }
+
+        const matches =
+            Array.from(
+                document.querySelectorAll(
+                    ".match[data-match-id]"
+                )
+            );
+
+        canvas.classList.remove(
+            "replay-awaiting-draw"
+        );
+
+        canvas.classList.add(
+            "draw-live"
+        );
+
+        if (!matches.length) {
+            canvas.classList.add(
+                "draw-complete"
+            );
+            return true;
+        }
+
+        const reducedMotion =
+            window.matchMedia &&
+            window.matchMedia(
+                "(prefers-reduced-motion: reduce)"
+            ).matches;
+
+        const firstRound =
+            rounds[0];
+
+        const firstRoundMatches =
+            firstRound
+                ? matchesInRound(firstRound)
+                : matches;
+
+        const revealList =
+            firstRoundMatches.length
+                ? firstRoundMatches
+                : matches;
+
+        /*
+         * The official draw reveals Round 1 first.
+         * These are real Match records from the tournament.
+         */
+        for (
+            let index = 0;
+            index < revealList.length;
+            index += 1
+        ) {
+            const match =
+                revealList[index];
+
+            if (!match) {
+                continue;
+            }
+
+            match.classList.add(
+                "draw-reveal"
+            );
+
+            if (!reducedMotion) {
+                await wait(110);
+            }
+        }
+
+        /*
+         * The remaining tree already exists in the authoritative
+         * bracket. Reveal its structure after Round 1.
+         * Feeder slots remain TBD until PLAYER_ADVANCED events.
+         */
+        for (
+            let index = 0;
+            index < matches.length;
+            index += 1
+        ) {
+            const match =
+                matches[index];
+
+            if (
+                revealList.indexOf(match) !== -1
+            ) {
+                continue;
+            }
+
+            match.classList.add(
+                "draw-reveal"
+            );
+
+            if (!reducedMotion) {
+                await wait(70);
+            }
+        }
+
+        canvas.classList.add(
+            "draw-complete"
+        );
+
+        return true;
+    }
+
     function applyReplayEvent(event) {
         if (!event) {
             return Promise.resolve(false);
+        }
+
+        if (
+            event.event_type ===
+            "TOURNAMENT_DRAW"
+        ) {
+            return revealTournamentDraw();
         }
 
         const match = findMatch(
@@ -2193,6 +2416,17 @@
 
     function resetBracketForReplay() {
         captureReplayBaseline();
+
+        if (canvas) {
+            canvas.classList.remove(
+                "draw-live",
+                "draw-complete"
+            );
+
+            canvas.classList.add(
+                "replay-awaiting-draw"
+            );
+        }
 
         replayBaseline.matches.forEach(
             function (baseline, matchId) {
