@@ -65,6 +65,27 @@ from payfast_service import (
 
 app = Flask(__name__)
 
+# TEMPORARY PRODUCTION DIAGNOSTIC
+# Logs unhandled application exceptions so Render captures
+# the exact traceback while diagnosing a live registration failure.
+@app.errorhandler(Exception)
+def log_unhandled_exception(error):
+    from werkzeug.exceptions import HTTPException
+
+    if isinstance(error, HTTPException):
+        return error
+
+    from flask import request
+
+    app.logger.exception(
+        "UNHANDLED APPLICATION EXCEPTION | method=%s | path=%s",
+        request.method,
+        request.path,
+    )
+
+    return "Internal Server Error", 500
+
+
 
 app.config.from_object(Config)
 
