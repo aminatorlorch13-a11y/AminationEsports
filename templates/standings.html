@@ -1591,22 +1591,30 @@
             return Promise.resolve(false);
         }
 
-        /*
-         * Respect reduced-motion preferences.
-         */
         const reducedMotion =
             window.matchMedia &&
             window.matchMedia(
                 "(prefers-reduced-motion: reduce)"
             ).matches;
 
-        const sourcePoint = relativeCenter(winner);
-        const targetMatchRect = relativeRect(target);
-
         /*
-         * Land on the appropriate player row in the target match.
-         * The first unresolved slot is the natural destination.
+         * The winner does not simply fly from one match to another.
+         *
+         * The movement follows the same orthogonal geometry as the
+         * bracket connector:
+         *
+         *     SOURCE
+         *        |
+         *        +----------+
+         *                   |
+         *                   +---------- DESTINATION
+         *
+         * This makes the advancement feel physically connected to
+         * the tournament tree.
          */
+
+        const sourcePoint = relativeCenter(winner);
+
         const targetPlayers =
             Array.from(
                 target.querySelectorAll(".player-row")
@@ -1646,16 +1654,20 @@
         const tokenHeight = token.offsetHeight;
 
         const startX =
-            sourcePoint.x - tokenWidth / 2;
+            sourcePoint.x -
+            tokenWidth / 2;
 
         const startY =
-            sourcePoint.y - tokenHeight / 2;
+            sourcePoint.y -
+            tokenHeight / 2;
 
         const endX =
-            destinationPoint.x - tokenWidth / 2;
+            destinationPoint.x -
+            tokenWidth / 2;
 
         const endY =
-            destinationPoint.y - tokenHeight / 2;
+            destinationPoint.y -
+            tokenHeight / 2;
 
         token.style.transform =
             "translate3d(" +
@@ -1665,7 +1677,6 @@
             "px, 0)";
 
         match.classList.add("flight-source");
-
         target.classList.add("flight-target");
 
         if (reducedMotion) {
@@ -1683,104 +1694,203 @@
             token.remove();
 
             if (typeof arrivalCallback === "function") {
-                arrivalCallback();
+                arrivalCallback(true);
             }
 
             return Promise.resolve(true);
         }
 
-        const distance = Math.hypot(
-            endX - startX,
-            endY - startY
-        );
-
         /*
-         * Long enough to feel deliberate, but bounded so a
-         * large bracket does not create an excessively slow UI.
+         * The junction sits between the two matches.
+         *
+         * For a normal advancing match, the connector leaves the
+         * source horizontally, turns at the midpoint, then travels
+         * horizontally into the destination.
          */
-        const duration = Math.min(
-            2400,
+        const junctionX =
+            startX +
             Math.max(
-                1300,
-                1100 + distance * 1.25
-            )
-        );
-
-        const controlOffset =
-            Math.max(
-                70,
+                55,
                 Math.min(
-                    190,
-                    Math.abs(endX - startX) * 0.32
+                    180,
+                    Math.abs(endX - startX) * 0.5
                 )
             );
 
-        const control1X =
-            startX +
-            controlOffset;
+        /*
+         * Build the actual orthogonal travel route.
+         *
+         * The vertical portion is especially important for the
+         * traditional tournament-tree appearance.
+         */
+        const waypoints = [
+            {
+                x: startX,
+                y: startY
+            },
+            {
+                x: junctionX,
+                y: startY
+            },
+            {
+                x: junctionX,
+                y: endY
+            },
+            {
+                x: endX,
+                y: endY
+            }
+        ];
 
-        const control1Y =
-            startY;
+        /*
+         * Convert route distance into cinematic duration.
+         * Longer bracket jumps receive more travel time, but the
+         * animation remains bounded for large tournaments.
+         */
+        let routeDistance = 0;
 
-        const control2X =
-            endX -
-            controlOffset;
+        for (
+            let index = 1;
+            index < waypoints.length;
+            index += 1
+        ) {
+            routeDistance += Math.hypot(
+                waypoints[index].x -
+                    waypoints[index - 1].x,
+                waypoints[index].y -
+                    waypoints[index - 1].y
+            );
+        }
 
-        const control2Y =
-            endY;
+        const duration = Math.min(
+            3000,
+            Math.max(
+                1500,
+                1200 + routeDistance * 1.05
+            )
+        );
+
+        /*
+         * Convert the orthogonal route into Web Animation
+         * keyframes.
+         *
+         * The offsets are distance-weighted so the token moves
+         * consistently along the physical connector instead of
+         * speeding up on one segment and crawling on another.
+         */
+        const totalDistance = routeDistance || 1;
+
+        let travelled = 0;
+
+        const keyframes = [
+            {
+                transform:
+                    "translate3d(" +
+                    startX +
+                    "px, " +
+                    startY +
+                    "px, 0) scale(.84)",
+                opacity: 0
+            }
+        ];
+
+        for (
+            let index = 1;
+            index < waypoints.length;
+            index += 1
+        ) {
+            const previous =
+                waypoints[index - 1];
+
+            const current =
+                waypoints[index];
+
+            const segmentDistance =
+                Math.hypot(
+                    current.x - previous.x,
+                    current.y - previous.y
+                );
+
+            travelled += segmentDistance;
+
+            const offset =
+                travelled / totalDistance;
+
+            keyframes.push({
+                transform:
+                    "translate3d(" +
+                    current.x +
+                    "px, " +
+                    current.y +
+                    "px, 0) scale(" +
+                    (
+                        index ===
+                        waypoints.length - 1
+                            ? 1
+                            : 1.035
+                    ) +
+                    ")",
+                opacity: 1,
+                offset: offset
+            });
+        }
+
+        /*
+         * Small pause at the junction makes the advancement feel
+         * deliberate rather than like a normal DOM transition.
+         */
+        if (waypoints.length >= 4) {
+            const junction =
+                waypoints[1];
+
+            keyframes.splice(
+                2,
+                0,
+                {
+                    transform:
+                        "translate3d(" +
+                        junction.x +
+                        "px, " +
+                        junction.y +
+                        "px, 0) scale(1.08)",
+                    opacity: 1,
+                    offset: Math.min(
+                        .48,
+                        (
+                            Math.hypot(
+                                junction.x -
+                                    startX,
+                                junction.y -
+                                    startY
+                            ) /
+                            totalDistance
+                        ) + .015
+                    )
+                }
+            );
+        }
 
         const animation =
             token.animate(
-                [
-                    {
-                        transform:
-                            "translate3d(" +
-                            startX +
-                            "px, " +
-                            startY +
-                            "px, 0) scale(.88)",
-                        opacity: 0
-                    },
-                    {
-                        transform:
-                            "translate3d(" +
-                            control1X +
-                            "px, " +
-                            control1Y +
-                            "px, 0) scale(1)",
-                        opacity: 1,
-                        offset: .22
-                    },
-                    {
-                        transform:
-                            "translate3d(" +
-                            control2X +
-                            "px, " +
-                            control2Y +
-                            "px, 0) scale(1.04)",
-                        opacity: 1,
-                        offset: .78
-                    },
-                    {
-                        transform:
-                            "translate3d(" +
-                            endX +
-                            "px, " +
-                            endY +
-                            "px, 0) scale(1)",
-                        opacity: 1
-                    }
-                ],
+                keyframes,
                 {
                     duration: duration,
-                    easing: "cubic-bezier(.16,.82,.24,1)",
+                    easing:
+                        "cubic-bezier(.16,.82,.24,1)",
                     fill: "forwards"
                 }
             );
 
         return animation.finished
             .then(function () {
-                target.classList.add("flight-target");
+                /*
+                 * The winner has physically arrived.
+                 * Give the destination a short energy pulse before
+                 * committing the player into its DOM slot.
+                 */
+                target.classList.add(
+                    "flight-target"
+                );
 
                 return new Promise(
                     function (resolve) {
@@ -1796,7 +1906,10 @@
                                     "flight-target"
                                 );
 
-                                if (typeof arrivalCallback === "function") {
+                                if (
+                                    typeof arrivalCallback ===
+                                    "function"
+                                ) {
                                     arrivalCallback(true);
                                 }
 
@@ -1818,7 +1931,10 @@
                     "flight-target"
                 );
 
-                if (typeof arrivalCallback === "function") {
+                if (
+                    typeof arrivalCallback ===
+                    "function"
+                ) {
                     arrivalCallback(false);
                 }
 
