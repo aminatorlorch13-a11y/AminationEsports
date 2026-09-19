@@ -736,6 +736,580 @@
 
         /*
          * ============================================================
+         * CHAMPION CEREMONY
+         * ============================================================
+         */
+
+        .champion-star,
+        .champion-star-label {
+            opacity: 0;
+            transform: scale(.72);
+            transition:
+                opacity 500ms ease,
+                transform 700ms cubic-bezier(.16,.82,.24,1);
+        }
+
+        .champion-star {
+            margin-top: 8px;
+            color: var(--gold-bright);
+            font-size: 1.5rem;
+            filter:
+                drop-shadow(0 0 8px rgba(226,185,54,.9))
+                drop-shadow(0 0 22px rgba(226,185,54,.55));
+        }
+
+        .champion-star-label {
+            margin-top: 2px;
+            color: var(--gold);
+            font-size: .55rem;
+            font-weight: 950;
+            letter-spacing: 1.5px;
+        }
+
+        .champion-node.champion-confirmed {
+            border-color: var(--gold-bright);
+            box-shadow:
+                0 0 32px rgba(226,185,54,.55),
+                0 0 70px rgba(226,185,54,.18),
+                inset 0 0 34px rgba(226,185,54,.12);
+        }
+
+        .champion-node.champion-confirmed .champion-name {
+            color: var(--gold-bright);
+            text-shadow:
+                0 0 10px rgba(226,185,54,.45);
+        }
+
+        .champion-node.champion-confirmed .champion-star,
+        .champion-node.champion-confirmed .champion-star-label {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .champion-ceremony {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            box-sizing: border-box;
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .champion-ceremony.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .ceremony-backdrop {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(
+                    circle at center,
+                    rgba(226,185,54,.2),
+                    rgba(0,0,0,.94) 46%,
+                    #000 100%
+                );
+            opacity: 0;
+        }
+
+        .champion-ceremony.active .ceremony-backdrop {
+            animation: ceremonyBackdrop 1800ms ease-out forwards;
+        }
+
+        .ceremony-card {
+            position: relative;
+            z-index: 4;
+            width: min(560px, 100%);
+            padding: 42px 28px 34px;
+            box-sizing: border-box;
+            border: 1px solid rgba(226,185,54,.8);
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(20,20,20,.97),
+                    rgba(0,0,0,.98)
+                );
+            text-align: center;
+            clip-path: polygon(
+                0 18px,
+                18px 0,
+                calc(100% - 18px) 0,
+                100% 18px,
+                100% calc(100% - 18px),
+                calc(100% - 18px) 100%,
+                18px 100%,
+                0 calc(100% - 18px)
+            );
+            box-shadow:
+                0 0 35px rgba(226,185,54,.38),
+                0 0 100px rgba(226,185,54,.16),
+                inset 0 0 45px rgba(226,185,54,.06);
+            opacity: 0;
+            transform:
+                translateY(35px)
+                scale(.82);
+        }
+
+        .champion-ceremony.active .ceremony-card {
+            animation:
+                ceremonyCardEnter
+                1100ms
+                450ms
+                cubic-bezier(.16,.82,.24,1)
+                forwards;
+        }
+
+        .ceremony-overline {
+            color: var(--gold);
+            font-size: .65rem;
+            font-weight: 950;
+            letter-spacing: 4px;
+        }
+
+        .ceremony-trophy {
+            margin-top: 16px;
+            font-size: 4.5rem;
+            line-height: 1;
+            filter:
+                drop-shadow(0 0 12px rgba(226,185,54,.8))
+                drop-shadow(0 0 35px rgba(226,185,54,.35));
+            opacity: 0;
+            transform: translateY(-20px) scale(.55);
+        }
+
+        .champion-ceremony.active .ceremony-trophy {
+            animation:
+                trophyReveal
+                900ms
+                1100ms
+                cubic-bezier(.16,.82,.24,1)
+                forwards;
+        }
+
+        .ceremony-title {
+            margin-top: 18px;
+            color: #fff;
+            font-size: clamp(1.8rem, 7vw, 3.1rem);
+            font-weight: 1000;
+            letter-spacing: 5px;
+            text-shadow:
+                0 0 16px rgba(226,185,54,.28);
+            opacity: 0;
+        }
+
+        .champion-ceremony.active .ceremony-title {
+            animation:
+                ceremonyTextReveal
+                650ms
+                1450ms
+                ease-out
+                forwards;
+        }
+
+        .ceremony-player {
+            margin-top: 12px;
+            color: var(--gold-bright);
+            font-size: clamp(1.4rem, 6vw, 2.5rem);
+            font-weight: 1000;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            text-shadow:
+                0 0 12px rgba(226,185,54,.55),
+                0 0 35px rgba(226,185,54,.22);
+            opacity: 0;
+            transform: scale(.75);
+        }
+
+        .champion-ceremony.active .ceremony-player {
+            animation:
+                championNameReveal
+                1000ms
+                1650ms
+                cubic-bezier(.16,.82,.24,1)
+                forwards;
+        }
+
+        .ceremony-star {
+            margin-top: 22px;
+            color: var(--gold-bright);
+            font-size: 3rem;
+            line-height: 1;
+            opacity: 0;
+            transform: scale(.15) rotate(-25deg);
+            filter:
+                drop-shadow(0 0 10px rgba(226,185,54,.95))
+                drop-shadow(0 0 35px rgba(226,185,54,.65))
+                drop-shadow(0 0 70px rgba(226,185,54,.25));
+        }
+
+        .champion-ceremony.active .ceremony-star {
+            animation:
+                starReveal
+                1100ms
+                2150ms
+                cubic-bezier(.16,.82,.24,1)
+                forwards;
+        }
+
+        .ceremony-star-title {
+            margin-top: 8px;
+            color: #fff;
+            font-size: .8rem;
+            font-weight: 1000;
+            letter-spacing: 3px;
+            opacity: 0;
+        }
+
+        .champion-ceremony.active .ceremony-star-title {
+            animation:
+                ceremonyTextReveal
+                650ms
+                2700ms
+                ease-out
+                forwards;
+        }
+
+        .ceremony-season {
+            margin-top: 18px;
+            color: #777;
+            font-size: .55rem;
+            font-weight: 850;
+            letter-spacing: 2px;
+            opacity: 0;
+        }
+
+        .champion-ceremony.active .ceremony-season {
+            animation:
+                ceremonyTextReveal
+                650ms
+                3100ms
+                ease-out
+                forwards;
+        }
+
+        .ceremony-energy {
+            position: absolute;
+            z-index: 2;
+            width: 70vw;
+            height: 2px;
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(226,185,54,.95),
+                    transparent
+                );
+            box-shadow:
+                0 0 14px rgba(226,185,54,.9),
+                0 0 35px rgba(226,185,54,.35);
+            opacity: 0;
+        }
+
+        .ceremony-energy-a {
+            transform: rotate(18deg);
+        }
+
+        .ceremony-energy-b {
+            transform: rotate(-18deg);
+        }
+
+        .ceremony-energy-c {
+            width: 45vw;
+        }
+
+        .champion-ceremony.active .ceremony-energy-a {
+            animation: ceremonyEnergyA 1500ms ease-out forwards;
+        }
+
+        .champion-ceremony.active .ceremony-energy-b {
+            animation: ceremonyEnergyB 1500ms ease-out forwards;
+        }
+
+        .champion-ceremony.active .ceremony-energy-c {
+            animation: ceremonyEnergyC 1700ms ease-out forwards;
+        }
+
+        .ceremony-particles {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .ceremony-particle {
+            position: absolute;
+            width: 5px;
+            height: 12px;
+            background: var(--gold-bright);
+            box-shadow:
+                0 0 8px rgba(226,185,54,.9);
+            opacity: 0;
+        }
+
+        .champion-ceremony.active .ceremony-particle {
+            animation:
+                ceremonyParticle
+                var(--particle-duration)
+                var(--particle-delay)
+                ease-out
+                forwards;
+        }
+
+        @keyframes ceremonyBackdrop {
+            0% {
+                opacity: 0;
+            }
+
+            35% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: .92;
+            }
+        }
+
+        @keyframes ceremonyCardEnter {
+            0% {
+                opacity: 0;
+                transform:
+                    translateY(35px)
+                    scale(.82);
+            }
+
+            65% {
+                opacity: 1;
+                transform:
+                    translateY(-4px)
+                    scale(1.025);
+            }
+
+            100% {
+                opacity: 1;
+                transform:
+                    translateY(0)
+                    scale(1);
+            }
+        }
+
+        @keyframes trophyReveal {
+            0% {
+                opacity: 0;
+                transform:
+                    translateY(-20px)
+                    scale(.55);
+            }
+
+            65% {
+                opacity: 1;
+                transform:
+                    translateY(0)
+                    scale(1.16);
+            }
+
+            100% {
+                opacity: 1;
+                transform:
+                    translateY(0)
+                    scale(1);
+            }
+        }
+
+        @keyframes ceremonyTextReveal {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes championNameReveal {
+            0% {
+                opacity: 0;
+                transform: scale(.75);
+            }
+
+            65% {
+                opacity: 1;
+                transform: scale(1.08);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes starReveal {
+            0% {
+                opacity: 0;
+                transform:
+                    scale(.15)
+                    rotate(-25deg);
+            }
+
+            55% {
+                opacity: 1;
+                transform:
+                    scale(1.3)
+                    rotate(8deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform:
+                    scale(1)
+                    rotate(0);
+            }
+        }
+
+        @keyframes ceremonyEnergyA {
+            0% {
+                opacity: 0;
+                transform:
+                    translateX(-35vw)
+                    rotate(18deg);
+            }
+
+            45% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+                transform:
+                    translateX(35vw)
+                    rotate(18deg);
+            }
+        }
+
+        @keyframes ceremonyEnergyB {
+            0% {
+                opacity: 0;
+                transform:
+                    translateX(35vw)
+                    rotate(-18deg);
+            }
+
+            45% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+                transform:
+                    translateX(-35vw)
+                    rotate(-18deg);
+            }
+        }
+
+        @keyframes ceremonyEnergyC {
+            0% {
+                opacity: 0;
+                transform: scaleX(.1);
+            }
+
+            40% {
+                opacity: 1;
+                transform: scaleX(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scaleX(.2);
+            }
+        }
+
+        @keyframes ceremonyParticle {
+            0% {
+                opacity: 0;
+                transform:
+                    translate3d(0,0,0)
+                    rotate(0deg);
+            }
+
+            15% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+                transform:
+                    translate3d(
+                        var(--particle-x),
+                        var(--particle-y),
+                        0
+                    )
+                    rotate(
+                        var(--particle-rotation)
+                    );
+            }
+        }
+
+        @media (max-width: 700px) {
+            .ceremony-card {
+                padding:
+                    34px
+                    18px
+                    28px;
+            }
+
+            .ceremony-trophy {
+                font-size: 3.7rem;
+            }
+
+            .ceremony-star {
+                font-size: 2.6rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .champion-star,
+            .champion-star-label {
+                transition: none;
+                transform: none;
+            }
+
+            .champion-ceremony,
+            .champion-ceremony * {
+                animation: none !important;
+            }
+
+            .champion-ceremony.active {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            .ceremony-backdrop {
+                opacity: .92;
+            }
+
+            .ceremony-card,
+            .ceremony-trophy,
+            .ceremony-title,
+            .ceremony-player,
+            .ceremony-star,
+            .ceremony-star-title,
+            .ceremony-season {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        /*
+         * ============================================================
          * CHAMPION NODE
          * ============================================================
          */
@@ -1006,6 +1580,61 @@
                     {% else %}
                         AWAITING CHAMPION
                     {% endif %}
+                </div>
+
+                <div class="champion-star">
+                    ⭐
+                </div>
+
+                <div class="champion-star-label">
+                    AMINATION ESPORTS STAR
+                </div>
+            </div>
+
+            <div
+                class="champion-ceremony"
+                id="champion-ceremony"
+                aria-hidden="true"
+            >
+                <div class="ceremony-backdrop"></div>
+
+                <div class="ceremony-energy ceremony-energy-a"></div>
+                <div class="ceremony-energy ceremony-energy-b"></div>
+                <div class="ceremony-energy ceremony-energy-c"></div>
+
+                <div class="ceremony-particles" id="ceremony-particles"></div>
+
+                <div class="ceremony-card">
+                    <div class="ceremony-overline">
+                        AMINATION ESPORTS
+                    </div>
+
+                    <div class="ceremony-trophy">
+                        🏆
+                    </div>
+
+                    <div class="ceremony-title">
+                        CHAMPION
+                    </div>
+
+                    <div
+                        class="ceremony-player"
+                        id="ceremony-player"
+                    >
+                        AWAITING CHAMPION
+                    </div>
+
+                    <div class="ceremony-star">
+                        ⭐
+                    </div>
+
+                    <div class="ceremony-star-title">
+                        AMINATION ESPORTS STAR
+                    </div>
+
+                    <div class="ceremony-season">
+                        CHAMPIONSHIP CONFIRMED
+                    </div>
                 </div>
             </div>
 
@@ -2034,6 +2663,14 @@
             case "PLAYER_ELIMINATED":
                 return 900;
 
+            case "CHAMPION_CONFIRMED":
+                /*
+                 * The ceremony owns its presentation duration.
+                 * Keep only a short post-ceremony breathing pause
+                 * before replay completion.
+                 */
+                return 300;
+
             default:
                 return 750;
         }
@@ -2161,9 +2798,251 @@
         return true;
     }
 
+    let championCeremonyPlayed = false;
+
+    function createChampionCeremonyParticles() {
+        const particleContainer =
+            document.getElementById(
+                "ceremony-particles"
+            );
+
+        if (!particleContainer) {
+            return;
+        }
+
+        particleContainer.innerHTML = "";
+
+        const count = 44;
+
+        for (
+            let index = 0;
+            index < count;
+            index += 1
+        ) {
+            const particle =
+                document.createElement("span");
+
+            particle.className =
+                "ceremony-particle";
+
+            /*
+             * Deterministic particle choreography.
+             *
+             * Replay is intentionally repeatable:
+             * the same championship produces the same
+             * visual pattern instead of a different
+             * random celebration on every visit.
+             */
+            const angle =
+                (
+                    index * 137.5
+                ) * Math.PI / 180;
+
+            const distance =
+                150 +
+                (index % 11) * 24;
+
+            const x =
+                Math.cos(angle) *
+                distance;
+
+            const y =
+                Math.sin(angle) *
+                distance;
+
+            const rotation =
+                (
+                    (index * 83) % 720
+                ) - 360;
+
+            const duration =
+                1000 +
+                (index % 7) * 140;
+
+            const delay =
+                2200 +
+                (index % 9) * 85;
+
+            particle.style.left =
+                "50%";
+
+            particle.style.top =
+                "50%";
+
+            particle.style.setProperty(
+                "--particle-x",
+                x + "px"
+            );
+
+            particle.style.setProperty(
+                "--particle-y",
+                y + "px"
+            );
+
+            particle.style.setProperty(
+                "--particle-rotation",
+                rotation + "deg"
+            );
+
+            particle.style.setProperty(
+                "--particle-duration",
+                duration + "ms"
+            );
+
+            particle.style.setProperty(
+                "--particle-delay",
+                delay + "ms"
+            );
+
+            particleContainer.appendChild(
+                particle
+            );
+        }
+    }
+
+    function resetChampionCeremony() {
+        championCeremonyPlayed = false;
+
+        const ceremony =
+            document.getElementById(
+                "champion-ceremony"
+            );
+
+        if (ceremony) {
+            ceremony.classList.remove(
+                "active"
+            );
+            ceremony.setAttribute(
+                "aria-hidden",
+                "true"
+            );
+        }
+
+        const championNode =
+            document.getElementById(
+                "champion-node"
+            );
+
+        if (championNode) {
+            championNode.classList.remove(
+                "champion-confirmed"
+            );
+        }
+    }
+
+    async function playChampionCeremony(
+        event
+    ) {
+        if (championCeremonyPlayed) {
+            return true;
+        }
+
+        const ceremony =
+            document.getElementById(
+                "champion-ceremony"
+            );
+
+        const championNode =
+            document.getElementById(
+                "champion-node"
+            );
+
+        if (!ceremony || !championNode) {
+            return false;
+        }
+
+        const payload =
+            event && event.payload
+                ? event.payload
+                : {};
+
+        const playerName =
+            event &&
+            event.player &&
+            event.player.name
+                ? event.player.name
+                : (
+                    payload.champion_name ||
+                    "CHAMPION"
+                );
+
+        const ceremonyPlayer =
+            document.getElementById(
+                "ceremony-player"
+            );
+
+        if (ceremonyPlayer) {
+            ceremonyPlayer.textContent =
+                playerName;
+        }
+
+        const championName =
+            championNode.querySelector(
+                ".champion-name"
+            );
+
+        if (championName) {
+            championName.textContent =
+                playerName;
+        }
+
+        championNode.classList.add(
+            "champion-confirmed"
+        );
+
+        createChampionCeremonyParticles();
+
+        championCeremonyPlayed = true;
+
+        ceremony.classList.add("active");
+        ceremony.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+
+        const reducedMotion =
+            window.matchMedia &&
+            window.matchMedia(
+                "(prefers-reduced-motion: reduce)"
+            ).matches;
+
+        /*
+         * The ceremony is presentation only.
+         * CHAMPION_CONFIRMED has already been committed
+         * by the authoritative server-side lifecycle.
+         */
+        await wait(
+            reducedMotion
+                ? 900
+                : 6200
+        );
+
+        if (!replayState.stopping) {
+            ceremony.classList.remove(
+                "active"
+            );
+
+            ceremony.setAttribute(
+                "aria-hidden",
+                "true"
+            );
+        }
+
+        return true;
+    }
+
     function applyReplayEvent(event) {
         if (!event) {
             return Promise.resolve(false);
+        }
+
+        if (
+            event.event_type ===
+            "CHAMPION_CONFIRMED"
+        ) {
+            return playChampionCeremony(
+                event
+            );
         }
 
         if (
@@ -2611,6 +3490,7 @@
     }
 
     function resetBracketForReplay() {
+        resetChampionCeremony();
         captureReplayBaseline();
 
         if (canvas) {
