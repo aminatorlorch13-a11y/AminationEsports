@@ -5412,6 +5412,154 @@ def migrate_tournament_event():
     return f"Unsupported database dialect: {dialect}", 500
 
 
+
+# ============================================================
+# TEMPORARY: production Tournament schema reconciliation.
+# ============================================================
+@app.route("/admin/migrate/tournament-schema", methods=["GET"])
+def migrate_tournament_schema():
+    """
+    Founder-only, additive reconciliation for the Tournament model.
+
+    Safety rules:
+    - Inspects the existing tournament table first.
+    - Adds ONLY columns currently required by the Tournament model.
+    - Never drops or alters existing Tournament columns.
+    - Never deletes or rewrites Tournament records.
+    - Is idempotent: already-present columns are left untouched.
+    - Does not create refund_completed_at because that field is no
+      longer part of the current Tournament model.
+    """
+    access = founder_required()
+    if access:
+        return access
+
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+
+    if not inspector.has_table("tournament"):
+        return {
+            "success": False,
+            "error": "Tournament table does not exist."
+        }, 500
+
+    existing = {
+        column["name"]
+        for column in inspector.get_columns("tournament")
+    }
+
+    dialect = db.engine.dialect.name
+
+    # This migration intentionally targets production PostgreSQL.
+    # SQLite cannot safely reproduce the ALTER TABLE + foreign-key
+    # constraint operations used below without rebuilding the table.
+    if dialect != "postgresql":
+        return {
+            "success": False,
+            "error": (
+                f"Unsupported database dialect: {dialect}. "
+                "This production schema migration requires PostgreSQL."
+            )
+        }, 500
+
+    column_sql = {
+        "season_number": "INTEGER",
+        "whatsapp_group_link": "VARCHAR(500)",
+        "live_enabled": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "live_provider": "VARCHAR(30)",
+        "live_embed_url": "VARCHAR(1000)",
+        "live_title": "VARCHAR(200)",
+        "live_match_id": "INTEGER",
+        "payment_instructions": "TEXT",
+        "payment_deadline": "TIMESTAMP",
+        "availability_deadline": "TIMESTAMP",
+        "created_at": "TIMESTAMP",
+        "completed_at": "TIMESTAMP",
+        "champion_id": "INTEGER",
+        "runner_up_id": "INTEGER",
+    }
+
+    added = []
+    already_present = []
+
+    try:
+        with db.engine.begin() as conn:
+            for column_name, column_definition in column_sql.items():
+                if column_name in existing:
+                    already_present.append(column_name)
+                    continue
+
+                conn.execute(
+                    text(
+                        f"ALTER TABLE tournament "
+                        f"ADD COLUMN {column_name} {column_definition}"
+                    )
+                )
+                added.append(column_name)
+
+            # Preserve the current application invariant:
+            # every Tournament row must have a usable created_at.
+            if "created_at" not in existing:
+                conn.execute(
+                    text(
+                        "UPDATE tournament "
+                        "SET created_at = CURRENT_TIMESTAMP "
+                        "WHERE created_at IS NULL"
+                    )
+                )
+
+            # Add foreign-key constraints only when the corresponding
+            # column was newly introduced. Existing production constraints
+            # are deliberately not modified by this migration.
+            if "live_match_id" not in existing:
+                conn.execute(
+                    text(
+                        "ALTER TABLE tournament "
+                        "ADD CONSTRAINT fk_tournament_live_match "
+                        "FOREIGN KEY (live_match_id) REFERENCES match(id)"
+                    )
+                )
+
+            if "champion_id" not in existing:
+                conn.execute(
+                    text(
+                        "ALTER TABLE tournament "
+                        "ADD CONSTRAINT fk_tournament_champion "
+                        "FOREIGN KEY (champion_id) REFERENCES player(id)"
+                    )
+                )
+
+            if "runner_up_id" not in existing:
+                conn.execute(
+                    text(
+                        "ALTER TABLE tournament "
+                        "ADD CONSTRAINT fk_tournament_runner_up "
+                        "FOREIGN KEY (runner_up_id) REFERENCES player(id)"
+                    )
+                )
+
+    except Exception as exc:
+        db.session.rollback()
+        return {
+            "success": False,
+            "database": dialect,
+            "error": str(exc),
+            "added_before_failure": added
+        }, 500
+
+    return {
+        "success": True,
+        "database": dialect,
+        "added": added,
+        "already_present": already_present,
+        "message": (
+            "Tournament schema reconciliation complete. "
+            "No existing Tournament records were deleted."
+        )
+    }, 200
+
+
 @app.route("/admin/migrate/match-player-nullable", methods=["GET"])
 def migrate_match_player_nullable():
     access = founder_required()
