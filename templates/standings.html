@@ -207,12 +207,14 @@
 
         #bracket-lines {
             position: absolute;
-            inset: 0;
+            top: 0;
+            left: 0;
+            display: block;
             width: 100%;
             height: 100%;
             pointer-events: none;
             overflow: visible;
-            z-index: 1;
+            z-index: 2;
         }
 
         .tree-line {
@@ -275,6 +277,7 @@
 
         .match {
             position: absolute;
+            z-index: 3;
             left: 0;
             width: 230px;
             height: 78px;
@@ -1877,6 +1880,11 @@
         const elementRect = element.getBoundingClientRect();
         const canvasRect = canvas.getBoundingClientRect();
 
+        /*
+         * Convert viewport coordinates into bracket-canvas coordinates.
+         * This keeps connector geometry correct while the bracket
+         * viewport is horizontally scrolled.
+         */
         return {
             left: elementRect.left - canvasRect.left,
             right: elementRect.right - canvasRect.left,
@@ -1931,6 +1939,13 @@
             "viewBox",
             "0 0 " + canvasWidth + " " + canvasHeight
         );
+
+        /*
+         * Keep the SVG coordinate system exactly aligned with
+         * the measured bracket canvas.
+         */
+        svg.style.width = canvasWidth + "px";
+        svg.style.height = canvasHeight + "px";
 
         svg.setAttribute("width", canvasWidth);
         svg.setAttribute("height", canvasHeight);
@@ -3820,7 +3835,9 @@
          * Give the browser a layout frame before reading positions.
          */
         requestAnimationFrame(function () {
-            drawBranches();
+            requestAnimationFrame(function () {
+                drawBranches();
+            });
         });
     }
 
@@ -3842,6 +3859,68 @@
     setTimeout(
         renderTree,
         150
+    );
+
+    /*
+     * Automatically replay the authoritative tournament history
+     * when the bracket page is opened.
+     *
+     * The replay controller itself remains responsible for:
+     * - loading the event ledger
+     * - resetting visual state
+     * - sequencing events
+     * - cinematic winner movement
+     * - stopping safely
+     *
+     * This flag prevents duplicate playback if multiple browser
+     * initialization paths fire.
+     */
+    let automaticReplayStarted = false;
+
+    async function startAutomaticReplay() {
+        if (automaticReplayStarted) {
+            return;
+        }
+
+        automaticReplayStarted = true;
+
+        try {
+            /*
+             * Wait for the bracket to finish positioning and for
+             * the SVG connector geometry to be measured.
+             */
+            await new Promise(function (resolve) {
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(resolve);
+                });
+            });
+
+            await replayTournament({
+                initialDelay: 1200
+            });
+
+        } catch (error) {
+            /*
+             * Replay failure must never break the public bracket.
+             * The static bracket remains usable.
+             */
+            console.error(
+                "Automatic tournament replay failed:",
+                error
+            );
+
+            automaticReplayStarted = false;
+        }
+    }
+
+    window.addEventListener(
+        "load",
+        function () {
+            setTimeout(
+                startAutomaticReplay,
+                350
+            );
+        }
     );
 
 })();

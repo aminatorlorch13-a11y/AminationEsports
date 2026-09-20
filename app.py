@@ -172,6 +172,25 @@ def founder_required():
 # TOURNAMENT HELPERS — V2 BRACKET ENGINE
 # ============================================================
 
+def current_tournament():
+    """
+    Return the authoritative current numbered tournament.
+
+    Season identity is based on season_number, not simply the
+    newest database row. Legacy tournaments without a season
+    number are intentionally ignored by this helper.
+    """
+    return (
+        Tournament.query
+        .filter(Tournament.season_number.isnot(None))
+        .order_by(
+            Tournament.season_number.desc(),
+            Tournament.id.desc()
+        )
+        .first()
+    )
+
+
 def tournament_bracket_capacity(player_count):
     """
     Return the smallest power-of-two bracket capacity that can
@@ -1024,9 +1043,16 @@ def home():
 @app.route("/tournament")
 def tournament():
 
-    matches = Match.query.order_by(
-        Match.id.asc()
-    ).all()
+    tournament = current_tournament()
+    matches = []
+
+    if tournament:
+        matches = (
+            Match.query
+            .filter_by(tournament_id=tournament.id)
+            .order_by(Match.id.asc())
+            .all()
+        )
 
     players = {
         player.id: player
@@ -1041,6 +1067,7 @@ def tournament():
 
     return render_template(
         "tournament.html",
+        tournament=tournament,
         matches=matches,
         players=players,
         latest_notice=latest_notice
@@ -1052,13 +1079,24 @@ def live():
 
     # Public live page is driven directly from Founder-controlled
     # Match records. No separate live-state system is created.
+    # Only the authoritative current season may appear here.
 
-    live_matches = Match.query.filter(
-        Match.is_live.is_(True)
-    ).order_by(
-        Match.scheduled_time.asc(),
-        Match.id.asc()
-    ).all()
+    tournament = current_tournament()
+    live_matches = []
+
+    if tournament:
+        live_matches = (
+            Match.query
+            .filter(
+                Match.tournament_id == tournament.id,
+                Match.is_live.is_(True)
+            )
+            .order_by(
+                Match.scheduled_time.asc(),
+                Match.id.asc()
+            )
+            .all()
+        )
 
     players = {
         player.id: player
@@ -1067,6 +1105,7 @@ def live():
 
     return render_template(
         "live.html",
+        tournament=tournament,
         matches=live_matches,
         players=players
     )
@@ -1082,11 +1121,7 @@ def standings():
     hard-coded.
     """
 
-    tournament = (
-        Tournament.query
-        .order_by(Tournament.id.desc())
-        .first()
-    )
+    tournament = current_tournament()
 
     if not tournament:
         return render_template(
@@ -1304,9 +1339,16 @@ def player_profile(player_id):
 @app.route("/matches")
 def matches():
 
-    tournament_matches = Match.query.order_by(
-        Match.id.asc()
-    ).all()
+    tournament = current_tournament()
+    tournament_matches = []
+
+    if tournament:
+        tournament_matches = (
+            Match.query
+            .filter_by(tournament_id=tournament.id)
+            .order_by(Match.id.asc())
+            .all()
+        )
 
     players = {
         player.id: player
@@ -1315,6 +1357,7 @@ def matches():
 
     return render_template(
         "matches.html",
+        tournament=tournament,
         matches=tournament_matches,
         players=players
     )
@@ -1539,13 +1582,69 @@ def register():
         if len(password) < 8:
             return "Password must be at least 8 characters long.", 400
 
-        existing_email = Player.query.filter_by(email=email).first()
+        # --------------------------------------------------------
+        # Account identity + tournament registration
+        # --------------------------------------------------------
+        # A Player account is permanent across seasons.
+        # TournamentParticipant is season-specific.
+        #
+        # New player:
+        #   create Player + pending TournamentParticipant
+        #
+        # Returning player:
+        #   reuse existing Player + create a NEW pending
+        #   TournamentParticipant for this tournament.
+        #
+        # Security:
+        #   an existing account may only be reused when the
+        #   submitted email, FC username, and password all
+        #   identify the same account.
+        existing_email = Player.query.filter_by(
+            email=email
+        ).first()
 
-        if existing_email:
-            return "This email address is already registered.", 409
+        existing_player = Player.query.filter_by(
+            fc_username=fc_username
+        ).first()
+
+        if existing_email and existing_player:
+            if existing_email.id != existing_player.id:
+                return (
+                    "The email address and FC Mobile username "
+                    "belong to different player accounts."
+                ), 409
+
+        if existing_email and not existing_player:
+            return (
+                "This email address is already registered "
+                "to another player account."
+            ), 409
+
+        if existing_player and not existing_email:
+            return (
+                "This FC Mobile username is already registered "
+                "to another player account."
+            ), 409
+
+        returning_player = existing_email or existing_player
+
+        if returning_player:
+            if not returning_player.password_hash:
+                return (
+                    "This player account cannot be reused through "
+                    "registration. Please contact Amination Esports."
+                ), 409
+
+            if not check_password_hash(
+                returning_player.password_hash,
+                password
+            ):
+                return (
+                    "The password for this existing player account "
+                    "is incorrect."
+                ), 401
 
         if not squad_ovr.isdigit():
-
             return (
                 "Squad OVR must be a number."
             ), 400
@@ -1555,37 +1654,24 @@ def register():
         )
 
         if squad_ovr < 1 or squad_ovr > 200:
-
             return (
                 "Invalid Squad OVR."
             ), 400
 
         if terms_accepted != "yes":
-
             return (
                 "You must accept the tournament rules."
             ), 400
-
-        existing_player = Player.query.filter_by(
-            fc_username=fc_username
-        ).first()
-
-        if existing_player:
-
-            return (
-                "This FC Mobile username is already registered."
-            ), 409
 
         # --------------------------------------------------------
         # Tournament registration
         # --------------------------------------------------------
         # Registration belongs to the current tournament.
         # Do not create an orphan player account if no tournament exists.
-        tournament = Tournament.query.filter_by(
-            status=TOURNAMENT_REGISTRATION
-        ).order_by(
-            Tournament.id.desc()
-        ).first()
+        tournament = current_tournament()
+
+        if tournament and tournament.status != TOURNAMENT_REGISTRATION:
+            tournament = None
 
         if not tournament:
             return (
@@ -1594,39 +1680,48 @@ def register():
             ), 503
 
         # Prevent duplicate participation in the same tournament.
-        existing_participant = TournamentParticipant.query.filter_by(
-            tournament_id=tournament.id
-        ).join(
-            Player,
-            TournamentParticipant.player_id == Player.id
-        ).filter(
-            Player.fc_username == fc_username
-        ).first()
+        # This check uses player identity rather than global Player
+        # approval state, so returning players can register for a
+        # new season without overwriting their historical records.
+        registration_player = returning_player
 
-        if existing_participant:
-            return (
-                "This FC Mobile username is already registered "
-                "for this tournament."
-            ), 409
+        if registration_player:
+            existing_participant = (
+                TournamentParticipant.query.filter_by(
+                    tournament_id=tournament.id,
+                    player_id=registration_player.id
+                ).first()
+            )
 
-        player = Player(
-            name=name,
-            fc_username=fc_username,
-            country=country,
-            date_of_birth=date_of_birth,
-            competent_person_consent_status=(
-                competent_person_consent_status
-            ),
-            squad_ovr=squad_ovr,
-            email=email,
-            password_hash=generate_password_hash(password),
-            application_status="pending",
-            terms_accepted=True,
-            terms_version="2.0",
-            terms_accepted_at=datetime.utcnow(),
-            active=True
-        )
+            if existing_participant:
+                return (
+                    "This player is already registered "
+                    "for this tournament."
+                ), 409
 
+            player = registration_player
+
+        else:
+            player = Player(
+                name=name,
+                fc_username=fc_username,
+                country=country,
+                date_of_birth=date_of_birth,
+                competent_person_consent_status=(
+                    competent_person_consent_status
+                ),
+                squad_ovr=squad_ovr,
+                email=email,
+                password_hash=generate_password_hash(password),
+                application_status="pending",
+                terms_accepted=True,
+                terms_version="2.0",
+                terms_accepted_at=datetime.utcnow(),
+                active=True
+            )
+
+        # The participant record is the authoritative seasonal
+        # registration record. New applications ALWAYS begin pending.
         try:
             db.session.add(player)
 
@@ -1636,11 +1731,54 @@ def register():
 
             payment_required = bool(tournament.payment_enabled)
 
+            # --------------------------------------------------------
+            # Returning-player priority
+            # --------------------------------------------------------
+            # Priority comes ONLY from the immediately preceding
+            # completed numbered season. It never grants automatic
+            # approval or automatic tournament entry.
+            priority_type = "none"
+            priority_reason = None
+            priority_source_tournament_id = None
+
+            if registration_player:
+                previous_season = (
+                    Tournament.query
+                    .filter(
+                        Tournament.season_number.isnot(None),
+                        Tournament.season_number < tournament.season_number,
+                        Tournament.status == TOURNAMENT_COMPLETED,
+                    )
+                    .order_by(
+                        Tournament.season_number.desc(),
+                        Tournament.id.desc(),
+                    )
+                    .first()
+                )
+
+                if previous_season:
+                    if previous_season.champion_id == registration_player.id:
+                        priority_type = "champion"
+                        priority_reason = (
+                            f"Returning champion from {previous_season.name}."
+                        )
+                        priority_source_tournament_id = previous_season.id
+
+                    elif previous_season.runner_up_id == registration_player.id:
+                        priority_type = "runner_up"
+                        priority_reason = (
+                            f"Returning runner-up from {previous_season.name}."
+                        )
+                        priority_source_tournament_id = previous_season.id
+
             participant = TournamentParticipant(
                 tournament_id=tournament.id,
                 player_id=player.id,
                 team_name=player.team_name,
-                status="registered",
+                status="pending",
+                priority_type=priority_type,
+                priority_reason=priority_reason,
+                priority_source_tournament_id=priority_source_tournament_id,
                 availability_status="unknown",
 
                 payment_status=(
@@ -1714,11 +1852,7 @@ def registration_success(player_id):
         player_id
     )
 
-    tournament = (
-        Tournament.query
-        .order_by(Tournament.id.desc())
-        .first()
-    )
+    tournament = current_tournament()
 
     if (
         tournament
@@ -2313,22 +2447,43 @@ def admin_dashboard():
     }
 
 
-    approved_count = Player.query.filter_by(
-        application_status="approved"
-    ).count()
+    tournament = Tournament.query.order_by(
+        Tournament.id.desc()
+    ).first()
 
-    pending_count = Player.query.filter_by(
-        application_status="pending"
-    ).count()
+    # --------------------------------------------------------
+    # CURRENT-SEASON PARTICIPATION COUNTS
+    # --------------------------------------------------------
+    # TournamentParticipant is the authoritative source for
+    # season-specific registration state.
+    #
+    # Player.application_status remains global account state
+    # and must never grant entry into the current tournament.
+    # --------------------------------------------------------
+    approved_count = 0
+    pending_count = 0
+    waitlist_count = 0
+    withdrawn_count = 0
 
-    waitlist_count = Player.query.filter_by(
-        application_status="waitlist"
-    ).count()
+    if tournament:
+        participant_counts = dict(
+            db.session.query(
+                TournamentParticipant.status,
+                db.func.count(TournamentParticipant.id)
+            )
+            .filter(
+                TournamentParticipant.tournament_id == tournament.id
+            )
+            .group_by(TournamentParticipant.status)
+            .all()
+        )
 
-    withdrawn_count = Player.query.filter_by(
-        application_status="withdrawn"
-    ).count()
+        approved_count = participant_counts.get("approved", 0)
+        pending_count = participant_counts.get("pending", 0)
+        waitlist_count = participant_counts.get("waitlist", 0)
+        withdrawn_count = participant_counts.get("withdrawn", 0)
 
+    # Global account status remains available separately.
     removed_count = Player.query.filter_by(
         application_status="removed"
     ).count()
@@ -2345,9 +2500,18 @@ def admin_dashboard():
         AdminAction.created_at.desc()
     ).limit(20).all()
 
-    tournament = Tournament.query.order_by(
-        Tournament.id.desc()
-    ).first()
+    # --------------------------------------------------------
+    # CURRENT-SEASON REGISTRATIONS
+    # --------------------------------------------------------
+    current_participants = []
+
+    if tournament:
+        current_participants = (
+            TournamentParticipant.query
+            .filter_by(tournament_id=tournament.id)
+            .order_by(TournamentParticipant.id.desc())
+            .all()
+        )
 
     tournament_matches = []
 
@@ -2378,10 +2542,108 @@ def admin_dashboard():
         unread_messages=unread_messages,
         actions=actions,
         tournament=tournament,
+        current_participants=current_participants,
         tournament_matches=tournament_matches,
         matches=tournament_matches,
         analytics=analytics,
         analytics_trend=analytics_trend
+    )
+
+
+# ============================================================
+# CURRENT-SEASON PARTICIPANT STATUS
+# ============================================================
+# This controls participation in the current tournament only.
+# It deliberately does NOT modify Player.application_status.
+# ============================================================
+
+@app.route(
+    "/admin/tournament/participant/<int:participant_id>/status",
+    methods=["POST"]
+)
+def change_tournament_participant_status(participant_id):
+    access = founder_required()
+    if access:
+        return access
+
+    tournament = Tournament.query.order_by(
+        Tournament.id.desc()
+    ).first()
+
+    if not tournament:
+        return "No tournament exists.", 404
+
+    # Registration decisions are only allowed while registration
+    # is open. Once the draw is released, the field is locked.
+    if tournament.status != TOURNAMENT_REGISTRATION:
+        return (
+            "Current-season participant approval is closed because "
+            "registration is no longer open."
+        ), 409
+
+    participant = TournamentParticipant.query.filter_by(
+        id=participant_id,
+        tournament_id=tournament.id
+    ).first()
+
+    if not participant:
+        return (
+            "That participant does not belong to the current tournament."
+        ), 404
+
+    new_status = request.form.get(
+        "status",
+        ""
+    ).strip().lower()
+
+    allowed_statuses = {
+        "pending",
+        "approved",
+        "waitlist",
+        "withdrawn"
+    }
+
+    if new_status not in allowed_statuses:
+        return "Invalid tournament participant status.", 400
+
+    old_status = participant.status
+
+    # Approval capacity is calculated ONLY from this tournament's
+    # TournamentParticipant records.
+    if new_status == "approved" and old_status != "approved":
+        approved_count = TournamentParticipant.query.filter_by(
+            tournament_id=tournament.id,
+            status="approved"
+        ).count()
+
+        if approved_count >= tournament.max_players:
+            return (
+                "The tournament has reached "
+                f"{tournament.max_players} approved participants. "
+                "Use the waitlist until a place becomes available."
+            ), 400
+
+    participant.status = new_status
+
+    action = AdminAction(
+        player_id=participant.player_id,
+        action="tournament_participant_status_changed",
+        old_status=old_status,
+        new_status=new_status,
+        notes=(
+            f"Founder changed current tournament participant "
+            f"{participant.player_id} from {old_status} to "
+            f"{new_status}. Tournament ID={tournament.id}, "
+            f"season={tournament.season_number}."
+        ),
+        created_at=datetime.utcnow()
+    )
+
+    db.session.add(action)
+    db.session.commit()
+
+    return redirect(
+        url_for("admin_dashboard")
     )
 
 
@@ -2775,16 +3037,27 @@ def founder_tournament_control():
     methods=["POST"]
 )
 def founder_tournament_capacity():
+    """
+    Founder-controlled capacity for the CURRENT tournament only.
+
+    Capacity may increase or decrease while registration is open.
+    The capacity cannot fall below the current approved field.
+    Once the official draw is released, capacity is locked.
+    """
     access = founder_required()
     if access:
         return access
 
-    tournament = Tournament.query.order_by(
-        Tournament.id.desc()
-    ).first()
+    tournament = current_tournament()
 
     if not tournament:
         return "No tournament exists.", 404
+
+    if tournament.status != TOURNAMENT_REGISTRATION:
+        return (
+            "Tournament capacity is locked after the official draw "
+            "has been released."
+        ), 409
 
     max_players_raw = request.form.get(
         "max_players",
@@ -2792,49 +3065,59 @@ def founder_tournament_capacity():
     ).strip()
 
     if not max_players_raw.isdigit():
-        return (
-            "Maximum players must be a whole number."
-        ), 400
+        return "Maximum players must be a whole number.", 400
 
     max_players = int(max_players_raw)
 
-    if (
-        max_players < 2
-        or max_players & (max_players - 1)
-    ):
+    if max_players < 2 or max_players & (max_players - 1):
         return (
-            "Maximum players must be a power of two "
+            "Tournament capacity must be a power of two "
             "starting at 2."
         ), 400
 
-    if max_players < tournament.max_players:
+    approved_count = (
+        TournamentParticipant.query
+        .filter_by(
+            tournament_id=tournament.id,
+            status="approved"
+        )
+        .count()
+    )
+
+    if max_players < approved_count:
         return (
-            "Tournament capacity cannot be reduced."
-        ), 400
+            "Tournament capacity cannot be reduced below the "
+            f"current approved field of {approved_count} players."
+        ), 409
 
     if max_players == tournament.max_players:
-        return redirect(
-            url_for("admin_dashboard")
-        )
+        return redirect(url_for("admin_dashboard"))
 
     old_capacity = tournament.max_players
     tournament.max_players = max_players
 
+    direction = (
+        "increased"
+        if max_players > old_capacity
+        else "decreased"
+    )
+
     action = AdminAction(
         action="tournament_capacity_updated",
         notes=(
-            "Founder increased tournament capacity. "
+            f"Founder {direction} capacity for "
+            f"{tournament.name}. "
             f"Previous: {old_capacity}. "
-            f"New: {max_players}."
-        )
+            f"New: {max_players}. "
+            f"Approved field at change: {approved_count}."
+        ),
+        created_at=datetime.utcnow()
     )
 
     db.session.add(action)
     db.session.commit()
 
-    return redirect(
-        url_for("admin_dashboard")
-    )
+    return redirect(url_for("admin_dashboard"))
 
 
 @app.route(
@@ -2859,11 +3142,6 @@ def founder_tournament_settings():
         ""
     ).strip()
 
-    max_players_raw = request.form.get(
-        "max_players",
-        ""
-    ).strip()
-
     entry_fee_raw = request.form.get(
         "entry_fee",
         ""
@@ -2882,13 +3160,6 @@ def founder_tournament_settings():
     if not name:
         return "Tournament name is required.", 400
 
-    if not max_players_raw.isdigit():
-        return (
-            "Maximum players must be a whole number."
-        ), 400
-
-    max_players = int(max_players_raw)
-
     if not entry_fee_raw:
         return "Entry fee is required.", 400
 
@@ -2900,20 +3171,9 @@ def founder_tournament_settings():
     if entry_fee < 0:
         return "Entry fee cannot be negative.", 400
 
-    if (
-        max_players < 2
-        or max_players & (max_players - 1)
-    ):
-        return (
-            "Maximum players must be a power of two "
-            "starting at 2."
-        ), 400
-
-    if max_players < tournament.max_players:
-        return (
-            "Tournament capacity cannot be reduced."
-        ), 400
-
+    # Capacity is deliberately NOT handled by this route.
+    # /admin/tournament/capacity is the single authoritative
+    # capacity-control endpoint.
     if not competition_day:
         return "Competition day is required.", 400
 
@@ -2922,21 +3182,18 @@ def founder_tournament_settings():
 
     old_values = (
         f"name={tournament.name}, "
-        f"max_players={tournament.max_players}, "
         f"entry_fee={tournament.entry_fee}, "
         f"competition_day={tournament.competition_day}, "
         f"final_day={tournament.final_day}"
     )
 
     tournament.name = name
-    tournament.max_players = max_players
     tournament.entry_fee = entry_fee
     tournament.competition_day = competition_day
     tournament.final_day = final_day
 
     new_values = (
         f"name={tournament.name}, "
-        f"max_players={tournament.max_players}, "
         f"entry_fee={tournament.entry_fee}, "
         f"competition_day={tournament.competition_day}, "
         f"final_day={tournament.final_day}"
@@ -3070,13 +3327,25 @@ def draw_tournament():
             "Reset the tournament before creating another draw."
         ), 409
 
+    # ------------------------------------------------------------
+    # SEASON-SCOPED APPROVED FIELD
+    #
+    # Global Player.application_status is NOT tournament entry.
+    # A player must have an approved TournamentParticipant record
+    # belonging to THIS tournament.
+    # ------------------------------------------------------------
     approved_players = (
-        Player.query
-        .filter_by(
-            application_status="approved",
-            active=True
+        db.session.query(Player)
+        .join(
+            TournamentParticipant,
+            TournamentParticipant.player_id == Player.id
         )
-        .order_by(Player.id.asc())
+        .filter(
+            TournamentParticipant.tournament_id == tournament.id,
+            TournamentParticipant.status == "approved",
+            Player.active.is_(True)
+        )
+        .order_by(TournamentParticipant.id.asc())
         .all()
     )
 
@@ -4036,7 +4305,17 @@ def founder_substitute_match_player(match_id):
     if access:
         return access
 
-    match = Match.query.get_or_404(match_id)
+    tournament = current_tournament()
+    if not tournament:
+        return "No current tournament exists.", 404
+
+    match = Match.query.filter_by(
+        id=match_id,
+        tournament_id=tournament.id
+    ).first()
+
+    if not match:
+        return "That match does not belong to the current tournament.", 404
 
     if match.is_live:
         return "A live match cannot be substituted.", 409
@@ -4065,18 +4344,35 @@ def founder_substitute_match_player(match_id):
     if replacement_player in [match.player1_id, match.player2_id]:
         return "That player is already in this match.", 400
 
-    replacement = Player.query.filter_by(
-        id=replacement_player,
-        active=True,
-        application_status="approved"
-    ).first()
+    replacement_participant = (
+        TournamentParticipant.query
+        .filter_by(
+            tournament_id=tournament.id,
+            player_id=replacement_player,
+            status="approved"
+        )
+        .join(
+            Player,
+            TournamentParticipant.player_id == Player.id
+        )
+        .filter(
+            Player.active.is_(True)
+        )
+        .first()
+    )
 
-    if not replacement:
-        return "The replacement player is not an approved active player.", 400
+    if not replacement_participant:
+        return (
+            "The replacement player is not an approved active "
+            "participant in the current tournament."
+        ), 400
+
+    replacement = db.session.get(Player, replacement_player)
 
     # If the replacement player is already in another scheduled match,
     # swap the two players instead of rejecting the operation.
     replacement_match = Match.query.filter(
+        Match.tournament_id == tournament.id,
         Match.id != match.id,
         Match.status == MATCH_SCHEDULED,
         Match.is_live.is_(False),
@@ -4138,7 +4434,17 @@ def founder_schedule_match(match_id):
     if access:
         return access
 
-    match = Match.query.get_or_404(match_id)
+    tournament = current_tournament()
+    if not tournament:
+        return "No current tournament exists.", 404
+
+    match = Match.query.filter_by(
+        id=match_id,
+        tournament_id=tournament.id
+    ).first()
+
+    if not match:
+        return "That match does not belong to the current tournament.", 404
 
     scheduled_time = request.form.get(
         "scheduled_time",
@@ -4176,7 +4482,18 @@ def founder_live_match_control(match_id):
     if access:
         return access
 
-    match = Match.query.get_or_404(match_id)
+    tournament = current_tournament()
+    if not tournament:
+        return "No current tournament exists.", 404
+
+    match = Match.query.filter_by(
+        id=match_id,
+        tournament_id=tournament.id
+    ).first()
+
+    if not match:
+        return "That match does not belong to the current tournament.", 404
+
     action_type = request.form.get("action", "").strip()
 
     if action_type not in ["start", "stop", "update", "update_score", "finish"]:
@@ -4214,6 +4531,7 @@ def founder_live_match_control(match_id):
 
         # Only one match can be live at a time.
         other_live_matches = Match.query.filter(
+            Match.tournament_id == tournament.id,
             Match.is_live.is_(True),
             Match.id != match.id
         ).all()
@@ -4227,14 +4545,8 @@ def founder_live_match_control(match_id):
         match.is_live = True
         match.status = MATCH_LIVE
 
-        tournament = db.session.get(
-            Tournament,
-            match.tournament_id
-        )
-
         if (
-            tournament
-            and tournament.status == TOURNAMENT_DRAW_RELEASED
+            tournament.status == TOURNAMENT_DRAW_RELEASED
         ):
             tournament.status = TOURNAMENT_IN_PROGRESS
 
@@ -4849,6 +5161,148 @@ def repair_tournament():
         f"status={tournament.status}"
     )
 
+
+
+# ============================================================
+# SEASON LIFECYCLE — CREATE NEXT SEASON
+# ============================================================
+
+@app.route("/admin/tournament/create-season", methods=["POST"])
+def create_next_tournament_season():
+    """
+    Create the next permanent tournament season.
+
+    A new season is a new Tournament row. Historical tournaments
+    are never reset or overwritten.
+
+    Preconditions:
+      - Founder authentication is required.
+      - A numbered current season must exist.
+      - The current season must be completed.
+      - Capacity must be a power of two >= 2.
+      - Only one non-completed numbered season may exist.
+
+    The new season starts with:
+      - registration status
+      - no participants
+      - no matches
+      - no events
+      - no champion
+      - no runner-up
+      - live disabled
+    """
+    access = founder_required()
+    if access:
+        return access
+
+    current = current_tournament()
+
+    if not current:
+        return (
+            "No numbered tournament season exists. "
+            "The completed historical season must be established "
+            "before a new season can be created."
+        ), 409
+
+    if current.status != TOURNAMENT_COMPLETED:
+        return (
+            "A new season cannot be created until the current "
+            f"season ({current.season_number}) is completed."
+        ), 409
+
+    # Defensive lifecycle guard. Do not allow multiple active
+    # numbered seasons even if a future code path creates one.
+    active_seasons = (
+        Tournament.query
+        .filter(
+            Tournament.season_number.isnot(None),
+            Tournament.status != TOURNAMENT_COMPLETED
+        )
+        .count()
+    )
+
+    if active_seasons:
+        return (
+            "An active tournament season already exists. "
+            "Complete it before creating another season."
+        ), 409
+
+    capacity_raw = request.form.get("max_players", "").strip()
+
+    if not capacity_raw.isdigit():
+        return "Maximum players must be a whole number.", 400
+
+    capacity = int(capacity_raw)
+
+    if capacity < 2 or capacity & (capacity - 1):
+        return (
+            "Tournament capacity must be a power of two "
+            "starting at 2."
+        ), 400
+
+    requested_name = request.form.get("name", "").strip()
+
+    next_season = (
+        db.session.query(
+            db.func.max(Tournament.season_number)
+        ).scalar()
+        or 0
+    ) + 1
+
+    name = requested_name or f"Amination FC Season {next_season}"
+
+    # Carry forward only tournament configuration. Lifecycle state
+    # is deliberately reset for the new season.
+    new_tournament = Tournament(
+        name=name,
+        status=TOURNAMENT_REGISTRATION,
+        max_players=capacity,
+        entry_fee=current.entry_fee,
+        payment_enabled=current.payment_enabled,
+        currency=current.currency,
+        international_enabled=current.international_enabled,
+        competition_day=current.competition_day,
+        final_day=current.final_day,
+        season_number=next_season,
+        whatsapp_group_link=current.whatsapp_group_link,
+
+        live_enabled=False,
+        live_provider=None,
+        live_embed_url=None,
+        live_title=None,
+        live_match_id=None,
+
+        payment_instructions=current.payment_instructions,
+        payment_deadline=None,
+        availability_deadline=None,
+
+        completed_at=None,
+        champion_id=None,
+        runner_up_id=None
+    )
+
+    db.session.add(new_tournament)
+    db.session.flush()
+
+    action = AdminAction(
+        action="tournament_season_created",
+        old_status=current.status,
+        new_status=new_tournament.status,
+        notes=(
+            f"Founder created Season {next_season} "
+            f"({new_tournament.name}) from completed "
+            f"Season {current.season_number}. "
+            f"Previous tournament ID={current.id}. "
+            f"New tournament ID={new_tournament.id}. "
+            f"Capacity={capacity}."
+        ),
+        created_at=datetime.utcnow()
+    )
+
+    db.session.add(action)
+    db.session.commit()
+
+    return redirect(url_for("admin_dashboard"))
 
 
 # ============================================================

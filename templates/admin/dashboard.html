@@ -813,27 +813,77 @@
             <!-- ================================= -->
             <!-- TOURNAMENT CAPACITY CONTROL -->
 {% if tournament %}
-<div class="control-card" style="margin-bottom:25px;">
-    <h3>👥 TOURNAMENT CAPACITY</h3>
+                         <div class="control-card" style="margin-bottom:25px;">
+                                    <h3>👥 TOURNAMENT CAPACITY</h3>
 
-    <p>
-        <strong>Current capacity:</strong>
-        {{ tournament.max_players }} players
-        <br>
-        <strong>Approved:</strong>
-        {{ approved_count }}/{{ tournament.max_players }}
-    </p>
+                                    <p>
+                                        <strong>Current capacity:</strong>
+                                        {{ tournament.max_players }} players
+                                        <br>
+                                        <strong>Approved:</strong>
+                                        {{ approved_count }}/{{ tournament.max_players }}
+                                    </p>
 
-    <p>
-        Capacity is controlled by the Founder.
-        <strong>It does not increase automatically.</strong>
-    </p>
+                                    <p>
+                                        Capacity is controlled by the Founder.
+                                        It may be increased or decreased while
+                                        registration is open, but it cannot be
+                                        reduced below the current approved field.
+                                    </p>
 
-    <p style="margin-top:10px;">
-        The tournament engine supports any power-of-two capacity:
-        2, 4, 8, 16, 32, 64, 128, 256 and beyond.
-    </p>
-</div>
+                                    <p style="margin-top:10px;">
+                                        The tournament engine supports any
+                                        power-of-two capacity:
+                                        2, 4, 8, 16, 32, 64, 128, 256 and beyond.
+                                    </p>
+
+                                    <form
+                                        method="POST"
+                                        action="{{ url_for('founder_tournament_capacity') }}"
+                                        style="margin-top:15px;"
+                                    >
+                                        <label>
+                                            New Capacity
+                                        </label>
+
+                                        <input
+                                            type="number"
+                                            name="max_players"
+                                            value="{{ tournament.max_players }}"
+                                            min="2"
+                                            step="1"
+                                            required
+                                            inputmode="numeric"
+                                            style="
+                                            width:100%;
+                                            box-sizing:border-box;
+                                            padding:10px;
+                                            margin:8px 0 12px;
+                                            border-radius:8px;
+                                            "
+                                        >
+
+                                        <small style="display:block;margin-bottom:12px;">
+                                            Use a power of two: 2, 4, 8, 16,
+                                            32, 64, 128, 256, 512, 1024...
+                                        </small>
+
+                                        <button
+                                            type="submit"
+                                            class="button"
+                                            style="
+                                            border:none;
+                                            cursor:pointer;
+                                            width:100%;
+                                            "
+                                            onclick="return confirm(
+                                                'Change the tournament capacity?'
+                                            );"
+                                        >
+                                            🎯 CHANGE TOURNAMENT CAPACITY
+                                        </button>
+                                    </form>
+                         </div>
 {% endif %}
 
             </div>
@@ -883,32 +933,6 @@
                                 border-radius:8px;
                             "
                         >
-
-                        <label>
-                            Maximum Players
-                        </label>
-
-                        <input
-                            type="number"
-                            name="max_players"
-                            value="{{ tournament.max_players }}"
-                            min="2"
-                            step="1"
-                            required
-                            inputmode="numeric"
-                            style="
-                                width:100%;
-                                box-sizing:border-box;
-                                padding:10px;
-                                margin:8px 0 12px;
-                                border-radius:8px;
-                            "
-                        >
-
-                        <small style="display:block;margin-top:-4px;">
-                            Use a power of two:
-                            2, 4, 8, 16, 32, 64, 128, 256, 512, 1024...
-                        </small>
 
                         <label>
                             Competition Day
@@ -1252,6 +1276,217 @@
            href="#overview">
             ↑ Back to top
         </a>
+
+    </section>
+
+
+    <!-- ================================= -->
+    <!-- CURRENT-SEASON REGISTRATIONS -->
+    <!-- ================================= -->
+
+    <section
+        id="current-season-registrations"
+        class="admin-section"
+    >
+
+        <h2>
+            🏆 CURRENT SEASON REGISTRATIONS
+        </h2>
+
+        {% if tournament %}
+
+            <div class="control-card">
+
+                <h3>
+                    {{ tournament.name }}
+                    {% if tournament.season_number %}
+                        — Season {{ tournament.season_number }}
+                    {% endif %}
+                </h3>
+
+                <p>
+                    <strong>Participation is season-specific.</strong>
+                    Global Player approval does not automatically enter
+                    a player into this tournament.
+                </p>
+
+                <p>
+                    <strong>Approved:</strong>
+                    {{ approved_count }}/{{ tournament.max_players }}
+                    &nbsp; | &nbsp;
+                    <strong>Pending:</strong>
+                    {{ pending_count }}
+                    &nbsp; | &nbsp;
+                    <strong>Waitlist:</strong>
+                    {{ waitlist_count }}
+                </p>
+
+            </div>
+
+            {% if current_participants %}
+
+                {% for participant in current_participants %}
+
+                    <div class="control-card">
+
+                        <h3>
+                            {{ participant.player.name }}
+                        </h3>
+
+                        <p>
+                            <strong>FC Mobile:</strong>
+                            {{ participant.player.fc_username }}
+                        </p>
+
+                        <p>
+                            <strong>Season status:</strong>
+                            {{ participant.status }}
+                        </p>
+
+                        <p>
+                            <strong>Priority:</strong>
+                            {{ participant.priority_type or "none" }}
+                            {% if participant.priority_reason %}
+                                — {{ participant.priority_reason }}
+                            {% endif %}
+                        </p>
+
+                        <p>
+                            <strong>WhatsApp:</strong>
+                            {% if participant.whatsapp_joined %}
+                                🟢 Confirmed joined
+                            {% else %}
+                                🟡 Not yet confirmed
+                            {% endif %}
+                        </p>
+
+                        {% if participant.status == "pending" %}
+                            <form
+                                method="POST"
+                                action="{{ url_for(
+                                    'change_tournament_participant_status',
+                                    participant_id=participant.id
+                                ) }}"
+                            >
+
+                                <select
+                                    name="status"
+                                    required
+                                    style="
+                                        width:100%;
+                                        box-sizing:border-box;
+                                        padding:10px;
+                                        margin:8px 0;
+                                        border-radius:8px;
+                                    "
+                                >
+                                    <option value="pending">
+                                        🟡 Pending
+                                    </option>
+
+                                    <option value="approved">
+                                        🟢 Approve for this season
+                                    </option>
+
+                                    <option value="waitlist">
+                                        🔵 Waitlist
+                                    </option>
+
+                                    <option value="withdrawn">
+                                        ⚪ Withdrawn
+                                    </option>
+                                </select>
+
+                                <button
+                                    type="submit"
+                                    class="button primary"
+                                    style="width:100%;"
+                                    onclick="return confirm(
+                                        'Change this player’s participation status for the current season?'
+                                    );"
+                                >
+                                    UPDATE SEASON STATUS
+                                </button>
+
+                            </form>
+                        {% else %}
+                            <form
+                                method="POST"
+                                action="{{ url_for(
+                                    'change_tournament_participant_status',
+                                    participant_id=participant.id
+                                ) }}"
+                            >
+
+                                <select
+                                    name="status"
+                                    required
+                                    style="
+                                        width:100%;
+                                        box-sizing:border-box;
+                                        padding:10px;
+                                        margin:8px 0;
+                                        border-radius:8px;
+                                    "
+                                >
+                                    <option value="{{ participant.status }}">
+                                        Current: {{ participant.status }}
+                                    </option>
+
+                                    <option value="pending">
+                                        🟡 Pending
+                                    </option>
+
+                                    <option value="approved">
+                                        🟢 Approved
+                                    </option>
+
+                                    <option value="waitlist">
+                                        🔵 Waitlist
+                                    </option>
+
+                                    <option value="withdrawn">
+                                        ⚪ Withdrawn
+                                    </option>
+                                </select>
+
+                                <button
+                                    type="submit"
+                                    class="button"
+                                    style="width:100%;"
+                                    onclick="return confirm(
+                                        'Change this player’s participation status for the current season?'
+                                    );"
+                                >
+                                    UPDATE SEASON STATUS
+                                </button>
+
+                            </form>
+                        {% endif %}
+
+                    </div>
+
+                {% endfor %}
+
+            {% else %}
+
+                <div class="control-card">
+                    <p>
+                        No registrations for the current season.
+                    </p>
+                </div>
+
+            {% endif %}
+
+        {% else %}
+
+            <div class="control-card">
+                <p>
+                    No current tournament exists.
+                </p>
+            </div>
+
+        {% endif %}
 
     </section>
 
@@ -1672,222 +1907,7 @@
                 </div>
                 {% endif %}
 
-                <!-- TOURNAMENT SETTINGS -->
-
-                <div class="activity-card">
-
-                    <h3>
-                        ⚙️ Official Tournament Settings
-                    </h3>
-
-                    <form
-                        method="POST"
-                        action="{{ url_for(
-                            'founder_tournament_settings'
-                        ) }}"
-                    >
-
-                        <label>
-                            Tournament name
-                        </label>
-
-                        <input
-                            type="text"
-                            name="name"
-                            value="{{ tournament.name }}"
-                            required
-                            style="
-                                width:100%;
-                                box-sizing:border-box;
-                                padding:10px;
-                                margin:8px 0;
-                                border-radius:8px;
-                            "
-                        >
-
-                        <label>
-                            Maximum players
-                        </label>
-
-                        <input
-                            type="number"
-                            name="max_players"
-                            value="{{ tournament.max_players }}"
-                            min="2"
-                            step="1"
-                            required
-                            inputmode="numeric"
-                            style="
-                                width:100%;
-                                box-sizing:border-box;
-                                padding:10px;
-                                margin:8px 0 12px;
-                                border-radius:8px;
-                            "
-                        >
-
-                        <small style="display:block;margin-top:-4px;">
-                            Use a power of two:
-                            2, 4, 8, 16, 32, 64, 128, 256, 512, 1024...
-                        </small>
-
-                        <label>
-                            Competition day
-                        </label>
-
-                        <input
-                            type="text"
-                            name="competition_day"
-                            value="{{ tournament.competition_day }}"
-                            required
-                            style="
-                                width:100%;
-                                box-sizing:border-box;
-                                padding:10px;
-                                margin:8px 0;
-                                border-radius:8px;
-                            "
-                        >
-
-                                                <label>
-                            Entry Fee (ZAR)
-                        </label>
-
-                        <input
-                            type="number"
-                            name="entry_fee"
-                            value="{{ tournament.entry_fee }}"
-                            min="0"
-                            step="1"
-                            required
-                            style="
-                                width:100%;
-                                box-sizing:border-box;
-                                padding:10px;
-                                margin:8px 0;
-                                border-radius:8px;
-                            "
-                        >
-<label>
-                            Final day
-                        </label>
-
-                        <input
-                            type="text"
-                            name="final_day"
-                            value="{{ tournament.final_day }}"
-                            required
-                            style="
-                                width:100%;
-                                box-sizing:border-box;
-                                padding:10px;
-                                margin:8px 0;
-                                border-radius:8px;
-                            "
-                        >
-
-                        <button
-                            type="submit"
-                            class="button"
-                            style="
-                                border:none;
-                                cursor:pointer;
-                                width:100%;
-                            "
-                            onclick="return confirm(
-                                'Save the official tournament settings?'
-                            );"
-                        >
-                            💾 SAVE TOURNAMENT SETTINGS
-                        </button>
-
-                    </form>
-
-                </div>
-
-
-                <!-- DRAW / RESET -->
-
-                <div class="activity-card">
-
-                    <h3>
-                        🎲 Official Draw Management
-                    </h3>
-
-                    <p>
-                        The official draw is controlled from
-                        the Founder dashboard.
-                    </p>
-
-                    <form
-                        method="POST"
-                        action="{{ url_for(
-                            'draw_tournament'
-                        ) }}"
-                        style="margin-bottom:12px;"
-                    >
-
-                        <button
-                            type="submit"
-                            class="button"
-                            style="
-                                border:none;
-                                cursor:pointer;
-                                width:100%;
-                            "
-                            onclick="return confirm(
-                                'Create the official tournament draw?'
-                            );"
-                        >
-                            🎲 RELEASE OFFICIAL DRAW
-                        </button>
-
-                    </form>
-
-
-                    <form
-                        method="POST"
-                        action="{{ url_for(
-                            'reset_tournament'
-                        ) }}"
-                    >
-
-                        <button
-                            type="submit"
-                            class="button"
-                            style="
-                                border:none;
-                                cursor:pointer;
-                                width:100%;
-                            "
-                            onclick="return confirm(
-                                'Reset the tournament and remove all generated matches?'
-                            );"
-                        >
-                            ♻️ RESET TOURNAMENT
-                        </button>
-
-                    </form>
-
-                </div>
-
-            {% else %}
-
-                <div class="empty">
-                    No tournament currently exists.
-                </div>
-
-            {% endif %}
-
-        </div>
-
-    </section>
-
-
-
-
-    <!-- ================================= -->
-    <!-- FOUNDER LIVE MATCH CONTROL -->
+                <!-- FOUNDER LIVE MATCH CONTROL -->
     <!-- ================================= -->
 
     <section id="founder-live-match-control"

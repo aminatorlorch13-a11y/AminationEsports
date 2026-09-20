@@ -1,11 +1,24 @@
 from datetime import datetime
 
+import os
+from pathlib import Path
+
+TEST_DB = Path(
+    "/data/data/com.termux/files/home/amination_tournament_capacity_test.db"
+)
+
+if TEST_DB.exists():
+    TEST_DB.unlink()
+
+os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
+
 from app import (
     app,
     db,
     Tournament,
     AdminAction,
 )
+from models import Player, TournamentParticipant
 
 
 print("=" * 60)
@@ -15,10 +28,15 @@ print("=" * 60)
 app.config["TESTING"] = True
 
 with app.app_context():
+    db.drop_all()
+    db.create_all()
+
     ts = int(datetime.utcnow().timestamp())
 
     tournament = Tournament(
         name=f"Capacity Test {ts}",
+        season_number=1,
+        status="registration",
         max_players=16,
         entry_fee=999,
         competition_day="Saturday",
@@ -76,6 +94,33 @@ with app.app_context():
     # TEST 3 — CAPACITY REDUCTION PROTECTION
     # ------------------------------------------------------------
 
+    # Reductions are allowed during registration unless the new
+    # capacity would be smaller than the approved field.
+    approved_players = []
+
+    for index in range(17):
+        player = Player(
+            name=f"Approved Capacity Player {index + 1}",
+            fc_username=f"approved-capacity-{index + 1}",
+            active=True,
+            application_status="approved",
+        )
+        db.session.add(player)
+        approved_players.append(player)
+
+    db.session.flush()
+
+    for player in approved_players:
+        db.session.add(
+            TournamentParticipant(
+                tournament_id=tournament_id,
+                player_id=player.id,
+                status="approved",
+            )
+        )
+
+    db.session.commit()
+
     response = client.post(
         "/admin/tournament/capacity",
         data={"max_players": "16"},
@@ -83,16 +128,16 @@ with app.app_context():
     )
 
     print("===== TEST 3 — CAPACITY REDUCTION PROTECTION =====")
+    print("Approved field:", len(approved_players))
     print("HTTP status:", response.status_code)
 
-    assert response.status_code == 400
+    assert response.status_code == 409
 
     db.session.expire_all()
     saved = db.session.get(Tournament, tournament_id)
-
     assert saved.max_players == 32
 
-    print("CAPACITY REDUCTION REJECTED: PASS")
+    print("CAPACITY REDUCTION BELOW APPROVED FIELD REJECTED: PASS")
     print("CAPACITY REMAINS 32: PASS")
 
     # ------------------------------------------------------------

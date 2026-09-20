@@ -19,6 +19,8 @@ with app.app_context():
 
     tournament = Tournament(
         name="Route Capacity Test",
+        season_number=1,
+        status="registration",
         max_players=32,
         entry_fee=0,
         competition_day="Saturday",
@@ -107,25 +109,24 @@ with app.test_client() as client:
 
     print()
     print("===== CAPACITY REDUCTION =====")
-
     response = client.post(
         "/admin/tournament/capacity",
         data={"max_players": "128"},
         follow_redirects=False,
     )
 
-    assert response.status_code == 400
+    # Zero approved participants means the reduction is valid.
+    assert response.status_code == 302
 
     with app.app_context():
         tournament = db.session.get(Tournament, tournament_id)
-        assert tournament.max_players == 256
+        assert tournament.max_players == 128
 
-    print("256 → 128 rejected: PASS")
-    print("Capacity remains 256: PASS")
-
+    print("256 → 128 allowed with zero approved players: PASS")
+    print("Capacity changed to 128: PASS")
     print()
-    print("===== SETTINGS ROUTE CAPACITY REDUCTION =====")
 
+    print("===== SETTINGS ROUTE DOES NOT CONTROL CAPACITY =====")
     response = client.post(
         "/admin/tournament/settings",
         data={
@@ -138,14 +139,19 @@ with app.test_client() as client:
         follow_redirects=False,
     )
 
-    assert response.status_code == 400
+    # Capacity is intentionally excluded from this route.
+    assert response.status_code == 302
 
     with app.app_context():
         tournament = db.session.get(Tournament, tournament_id)
-        assert tournament.max_players == 256
+        assert tournament.max_players == 128
+        assert tournament.name == "Route Capacity Test"
+        assert tournament.entry_fee == 0
+        assert tournament.competition_day == "Saturday"
+        assert tournament.final_day == "Sunday"
 
-    print("Settings 256 → 128 rejected: PASS")
-    print("Settings capacity remains 256: PASS")
+    print("Settings update succeeds: PASS")
+    print("Capacity remains 128: PASS")
 
     response = client.post(
         "/admin/tournament/settings",
@@ -164,13 +170,13 @@ with app.test_client() as client:
     with app.app_context():
         tournament = db.session.get(Tournament, tournament_id)
         assert tournament.name == "Updated Route Capacity Test"
-        assert tournament.max_players == 256
+        assert tournament.max_players == 128
         assert tournament.entry_fee == 50
         assert tournament.competition_day == "Friday"
         assert tournament.final_day == "Saturday"
 
     print("Settings valid update: PASS")
-    print("Settings capacity remains 256 after valid update: PASS")
+    print("Settings capacity remains 128 after valid update: PASS")
 
     print()
     print("=" * 72)

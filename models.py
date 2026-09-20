@@ -229,6 +229,39 @@ class Tournament(db.Model):
         nullable=True
     )
 
+    # --------------------------------------------------------
+    # PUBLIC LIVE BROADCAST CONFIGURATION
+    # --------------------------------------------------------
+    # Current supported providers: youtube, tiktok.
+    # The provider remains data-driven so additional platforms
+    # can be introduced without redesigning the Tournament model.
+    live_enabled = db.Column(
+        db.Boolean,
+        default=False,
+        nullable=False
+    )
+
+    live_provider = db.Column(
+        db.String(30),
+        nullable=True
+    )
+
+    live_embed_url = db.Column(
+        db.String(1000),
+        nullable=True
+    )
+
+    live_title = db.Column(
+        db.String(200),
+        nullable=True
+    )
+
+    live_match_id = db.Column(
+        db.Integer,
+        db.ForeignKey("match.id"),
+        nullable=True
+    )
+
     # Payment instructions shown to players
     payment_instructions = db.Column(
         db.Text,
@@ -305,7 +338,7 @@ class TournamentParticipant(db.Model):
 
     # Participation status
     #
-    # registered
+    # pending
     # approved
     # waitlist
     # active
@@ -322,6 +355,27 @@ class TournamentParticipant(db.Model):
         db.String(30),
         default="registered",
         nullable=False
+    )
+
+    # --------------------------------------------------------
+    # SEASON-SPECIFIC RETURNING-PLAYER PRIORITY
+    # --------------------------------------------------------
+    # Priority never grants automatic approval or draw entry.
+    priority_type = db.Column(
+        db.String(40),
+        default="none",
+        nullable=False
+    )
+
+    priority_reason = db.Column(
+        db.String(255),
+        nullable=True
+    )
+
+    priority_source_tournament_id = db.Column(
+        db.Integer,
+        db.ForeignKey("tournament.id"),
+        nullable=True
     )
 
     # Availability
