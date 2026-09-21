@@ -1,320 +1,637 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>Live — Amination Esports</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live — Amination eSports</title>
 
     <style>
+        * { box-sizing: border-box; }
 
-        * {
-            box-sizing: border-box;
+        :root {
+            --gold: #e2b936;
+            --gold-bright: #ffe27a;
+            --black: #050505;
+            --panel: rgba(12,12,12,.88);
+            --panel-soft: rgba(20,20,20,.72);
+            --line: rgba(226,185,54,.22);
+            --muted: #929292;
+            --red: #ff3d3d;
+            --green: #45e08a;
         }
 
         body {
             margin: 0;
-            background: #050505;
-            color: white;
-            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            color: #fff;
+            font-family: Arial, Helvetica, sans-serif;
+            background:
+                radial-gradient(circle at 50% 0%, rgba(226,185,54,.11), transparent 34%),
+                linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
+                var(--black);
+            background-size: auto, 42px 42px, 42px 42px, auto;
         }
 
-        header {
-            padding: 28px 20px;
-            text-align: center;
-            border-bottom: 1px solid #222;
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(255,255,255,.018) 0,
+                rgba(255,255,255,.018) 1px,
+                transparent 1px,
+                transparent 4px
+            );
+            opacity: .35;
+        }
+
+        a { color: inherit; }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 16px 22px;
+            background: rgba(5,5,5,.94);
+            border-bottom: 1px solid var(--line);
+            backdrop-filter: blur(12px);
         }
 
         .brand {
-            font-size: 30px;
-            font-weight: bold;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 900;
+            letter-spacing: 2px;
+            white-space: nowrap;
         }
 
-        .brand span {
-            color: #e2b936;
-        }
+        .brand span { color: var(--gold); }
 
-        nav {
+        .nav {
             display: flex;
             flex-wrap: wrap;
-            justify-content: center;
-            gap: 22px;
-            padding: 22px 15px;
-            border-bottom: 1px solid #222;
+            justify-content: flex-end;
+            gap: 8px;
         }
 
-        nav a {
-            color: white;
+        .nav a {
+            padding: 9px 11px;
+            color: #bdbdbd;
             text-decoration: none;
+            border: 1px solid transparent;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .6px;
         }
 
-        nav a:hover {
-            color: #e2b936;
+        .nav a:hover,
+        .nav a.active {
+            color: var(--gold-bright);
+            border-color: var(--line);
+            background: rgba(226,185,54,.05);
         }
 
         .container {
-            max-width: 900px;
-            margin: auto;
-            padding: 45px 20px;
+            width: min(1100px, calc(100% - 28px));
+            margin: 0 auto;
+            padding: 48px 0 70px;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 34px;
+        }
+
+        .eyebrow {
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-transform: uppercase;
         }
 
         h1 {
-            color: #e2b936;
+            margin: 10px 0;
+            font-size: clamp(34px, 7vw, 68px);
+            line-height: 1;
+            letter-spacing: -2px;
         }
 
-        .live-card {
-            background: #111;
-            border: 1px solid #292929;
-            border-radius: 16px;
-            padding: 28px;
+        .hero p {
+            max-width: 680px;
+            margin: 0 auto;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .season-chip {
+            display: inline-block;
             margin-top: 20px;
+            padding: 8px 13px;
+            border: 1px solid var(--line);
+            color: var(--gold-bright);
+            background: rgba(226,185,54,.05);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1px;
         }
 
-        .live-label {
-            color: #ff4040;
-            font-weight: bold;
+        .panel {
+            position: relative;
+            margin-top: 22px;
+            padding: 24px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            clip-path: polygon(
+                0 12px, 12px 0,
+                calc(100% - 12px) 0, 100% 12px,
+                100% calc(100% - 12px),
+                calc(100% - 12px) 100%,
+                12px 100%, 0 calc(100% - 12px)
+            );
+        }
+
+        .panel-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .panel-heading h2 {
+            margin: 0;
+            font-size: 16px;
+            letter-spacing: 1.5px;
+        }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+        }
+
+        .live-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--red);
+            box-shadow: 0 0 14px rgba(255,61,61,.8);
+        }
+
+        .broadcast {
+            overflow: hidden;
+            margin-bottom: 24px;
+            background: #000;
+            border: 1px solid rgba(255,255,255,.09);
+            aspect-ratio: 16 / 9;
+        }
+
+        .broadcast iframe {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .broadcast-placeholder {
+            min-height: 260px;
+            display: grid;
+            place-items: center;
+            padding: 30px;
+            text-align: center;
+            color: var(--muted);
+            background:
+                radial-gradient(circle at center, rgba(226,185,54,.08), transparent 55%),
+                #020202;
+        }
+
+        .broadcast-placeholder strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #fff;
             font-size: 18px;
         }
 
-        .players {
+        .match-card {
+            padding: 22px;
+            background: var(--panel-soft);
+            border: 1px solid rgba(255,255,255,.08);
+        }
+
+        .match-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 12px;
+            letter-spacing: .7px;
+            text-transform: uppercase;
+        }
+
+        .match-meta .round {
+            color: var(--gold);
+            font-weight: 900;
+        }
+
+        .scoreboard {
             display: grid;
-            grid-template-columns:
-                1fr 80px 1fr;
+            grid-template-columns: minmax(0,1fr) 100px minmax(0,1fr);
             align-items: center;
             gap: 15px;
-            margin-top: 25px;
+            margin-top: 24px;
         }
 
         .player {
+            min-width: 0;
             padding: 20px;
             background: #080808;
-            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,.07);
             text-align: center;
+        }
+
+        .player-name {
+            overflow-wrap: anywhere;
+            font-size: clamp(16px, 3vw, 24px);
+            font-weight: 900;
         }
 
         .score {
-            font-size: 30px;
-            font-weight: bold;
+            color: var(--gold-bright);
+            font-size: clamp(28px, 6vw, 42px);
+            font-weight: 900;
             text-align: center;
+        }
+
+        .live-state {
+            margin-top: 20px;
+            padding: 12px;
+            border: 1px solid rgba(255,61,61,.25);
+            background: rgba(255,61,61,.05);
+            text-align: center;
+            color: #ffb1b1;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .live-message {
+            margin-top: 12px;
+            color: #ddd;
+            text-align: center;
+            line-height: 1.6;
         }
 
         .empty {
-            margin-top: 30px;
-            padding: 35px;
-            background: #111;
-            border: 1px solid #292929;
-            border-radius: 16px;
+            margin-top: 22px;
+            padding: 45px 25px;
+            background: var(--panel);
+            border: 1px solid var(--line);
             text-align: center;
-            color: #999;
         }
 
-    </style>
+        .empty-icon {
+            font-size: 38px;
+            margin-bottom: 15px;
+        }
 
+        .empty h2 {
+            margin: 0 0 10px;
+            font-size: 20px;
+        }
+
+        .empty p {
+            max-width: 600px;
+            margin: auto;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .links a {
+            padding: 12px 16px;
+            border: 1px solid var(--line);
+            color: var(--gold-bright);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: .7px;
+        }
+
+        .links a:hover {
+            background: rgba(226,185,54,.08);
+        }
+
+        .footer {
+            padding: 30px 20px;
+            border-top: 1px solid #1d1d1d;
+            color: #666;
+            text-align: center;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 700px) {
+            .topbar {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .nav {
+                justify-content: flex-start;
+                width: 100%;
+            }
+
+            .nav a {
+                padding: 9px 8px;
+            }
+
+            .container {
+                width: min(100% - 18px, 1100px);
+                padding-top: 32px;
+            }
+
+            .panel {
+                padding: 16px;
+            }
+
+            .scoreboard {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .score {
+                order: -1;
+            }
+
+            .player {
+                padding: 16px;
+            }
+
+            .broadcast-placeholder {
+                min-height: 210px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
 </head>
 
-<body
+<body>
+<header class="topbar">
+    <a class="brand" href="/">AMINATION <span>ESPORTS</span></a>
 
-    {% if matches %}
-
-        <section
-            id="founder-controlled-live-match"
-            class="admin-section"
-        >
-
-            <h2>
-                🔴 LIVE MATCHES
-            </h2>
-
-            <p>
-                Official live match information is controlled
-                by the Amination Esports Founder.
-            </p>
-
-            {% for match in matches %}
-
-                <div class="activity-card">
-
-                    <h3>
-                        {{ match.round_name }}
-                        — Match #{{ match.id }}
-                    </h3>
-
-                    <p>
-
-                        {% if players.get(match.player1_id) %}
-                            <strong>
-                                {{ players[match.player1_id].name }}
-                            </strong>
-                        {% else %}
-                            TBD
-                        {% endif %}
-
-                        <strong>
-                            {{ match.player1_score or 0 }}
-                            -
-                            {{ match.player2_score or 0 }}
-                        </strong>
-
-                        {% if players.get(match.player2_id) %}
-                            <strong>
-                                {{ players[match.player2_id].name }}
-                            </strong>
-                        {% else %}
-                            TBD
-                        {% endif %}
-
-                    </p>
-
-                    <p>
-                        Status:
-                        <strong>
-                            {{ match.status|upper }}
-                        </strong>
-                    </p>
-
-                    {% if match.started_at %}
-
-                        <p>
-                            Started:
-                            {{ match.started_at.strftime(
-                                "%Y-%m-%d %H:%M"
-                            ) }}
-                        </p>
-
-                    {% endif %}
-
-                    {% if match.status == "finished" %}
-
-                        {% if players.get(match.winner_id) %}
-
-                            <p>
-                                🏆 Winner:
-                                <strong>
-                                    {{ players[match.winner_id].name }}
-                                </strong>
-                            </p>
-
-                        {% endif %}
-
-                    {% endif %}
-
-                </div>
-
-            {% endfor %}
-
-        </section>
-
-    {% else %}
-
-        
-
-    {% endif %}
-
->
-
-<header>
-
-    <div class="brand">
-        AMINATION <span>ESPORTS</span>
-    </div>
-
+    <nav class="nav" aria-label="Primary navigation">
+        <a href="/">Home</a>
+        <a href="/tournament">Tournament</a>
+        <a href="/live" class="active">Live</a>
+        <a href="/standings">Bracket</a>
+        <a href="/players">Players</a>
+        <a href="/login">Login</a>
+    </nav>
 </header>
 
+<main class="container">
 
-<nav>
+    {% if tournament %}
 
-    <a href="{{ url_for('home') }}">Home</a>
-    <a href="{{ url_for('tournament') }}">Tournament</a>
-    <a href="{{ url_for('live') }}">Live</a>
-    <a href="{{ url_for('standings') }}">Standings</a>
-    <a href="{{ url_for('players') }}">Players</a>
-    <a href="{{ url_for('player_login') }}">Login</a>
+    <section class="hero">
+        <div class="eyebrow">Official Broadcast Network</div>
 
-</nav>
+        <h1>LIVE</h1>
 
+        <p>
+            Follow the official Amination eSports match currently controlled
+            by the tournament Founder.
+        </p>
 
-<div class="container">
+        {% if tournament.season_number %}
+        <div class="season-chip">
+            SEASON {{ tournament.season_number }}
+            {% if tournament.live_title %}
+                • {{ tournament.live_title }}
+            {% endif %}
+        </div>
+        {% endif %}
+    </section>
 
-    <h1>
-        🔴 LIVE MATCHES
-    </h1>
+    {% if tournament.live_enabled and tournament.live_embed_url %}
+    <section class="panel">
+        <div class="panel-heading">
+            <h2>
+                {{ tournament.live_title or "OFFICIAL AMINATION BROADCAST" }}
+            </h2>
 
-    <p>
-        Follow Amination matches while they are
-        being played.
-    </p>
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                BROADCAST LIVE
+            </div>
+        </div>
 
+        <div class="broadcast">
+            <iframe
+                src="{{ tournament.live_embed_url }}"
+                title="{{ tournament.live_title or 'Amination eSports live broadcast' }}"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowfullscreen
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+            ></iframe>
+        </div>
+
+        {% if tournament.live_provider %}
+        <div class="match-meta">
+            <span>Provider: {{ tournament.live_provider }}</span>
+            {% if tournament.live_match_id %}
+            <span>Official match #{{ tournament.live_match_id }}</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </section>
+    {% elif tournament.live_enabled %}
+    <section class="panel">
+        <div class="panel-heading">
+            <h2>OFFICIAL BROADCAST</h2>
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                LIVE CONFIGURED
+            </div>
+        </div>
+
+        <div class="broadcast-placeholder">
+            <div>
+                <strong>Broadcast is enabled</strong>
+                The Founder has enabled the live broadcast, but no
+                broadcast embed has been configured yet.
+            </div>
+        </div>
+    </section>
+    {% endif %}
 
     {% if matches %}
-
         {% for match in matches %}
 
-            <div class="live-card">
+        <section class="panel">
+            <div class="panel-heading">
+                <h2>LIVE MATCH</h2>
 
-                <div class="live-label">
-                    🔴 LIVE NOW
+                <div class="live-badge">
+                    <span class="live-dot"></span>
+                    LIVE NOW
+                </div>
+            </div>
+
+            <div class="match-card">
+
+                <div class="match-meta">
+                    <span class="round">
+                        {{ match.round_name or "Tournament Match" }}
+                    </span>
+
+                    <span>
+                        Match #{{ match.match_number or match.id }}
+                    </span>
                 </div>
 
-                <div>
-                    {{ match.round_name or "Tournament Match" }}
-                </div>
-
-
-                <div class="players">
+                <div class="scoreboard">
 
                     <div class="player">
-
-                        <strong>
-                            {{ players[match.player1_id].name }}
-                        </strong>
-
+                        <div class="player-name">
+                            {% if players.get(match.player1_id) %}
+                                {{ players[match.player1_id].name }}
+                            {% else %}
+                                TBD
+                            {% endif %}
+                        </div>
                     </div>
 
-
                     <div class="score">
-
                         {{ match.player1_score or 0 }}
                         -
                         {{ match.player2_score or 0 }}
-
                     </div>
 
-
                     <div class="player">
-
-                        <strong>
-                            {{ players[match.player2_id].name }}
-                        </strong>
-
+                        <div class="player-name">
+                            {% if players.get(match.player2_id) %}
+                                {{ players[match.player2_id].name }}
+                            {% else %}
+                                TBD
+                            {% endif %}
+                        </div>
                     </div>
 
                 </div>
 
+                <div class="live-state">
+                    🔴 {{ (match.live_period or "LIVE")|upper }}
+                    {% if match.live_minute is not none %}
+                        • {{ match.live_minute }}'
+                    {% endif %}
+                </div>
+
+                {% if match.live_message %}
+                <div class="live-message">
+                    {{ match.live_message }}
+                </div>
+                {% endif %}
+
+                {% if match.started_at %}
+                <div class="match-meta" style="margin-top:18px;">
+                    <span>
+                        Started {{ match.started_at.strftime("%Y-%m-%d %H:%M") }}
+                    </span>
+                </div>
+                {% endif %}
+
             </div>
+        </section>
 
         {% endfor %}
+    {% endif %}
+
+    {% if not matches and not tournament.live_enabled %}
+    <section class="empty">
+        <div class="empty-icon">📡</div>
+
+        <h2>NO LIVE BROADCAST</h2>
+
+        <p>
+            There is no Founder-controlled live match or configured broadcast
+            at the moment. When an official match goes live, this page will
+            display its real-time tournament state.
+        </p>
+
+        <div class="links">
+            <a href="/standings">VIEW BRACKET</a>
+            <a href="/tournament">TOURNAMENT</a>
+        </div>
+    </section>
+    {% elif not matches and tournament.live_enabled and not tournament.live_embed_url %}
+    <section class="empty">
+        <div class="empty-icon">📡</div>
+
+        <h2>AWAITING BROADCAST</h2>
+
+        <p>
+            Live broadcasting is enabled for this tournament, but there is
+            currently no broadcast stream configured.
+        </p>
+
+        <div class="links">
+            <a href="/standings">VIEW BRACKET</a>
+        </div>
+    </section>
+    {% endif %}
 
     {% else %}
 
-        <div class="empty">
+    <section class="empty">
+        <div class="empty-icon">◉</div>
 
-            🔴 No matches are live right now.
+        <h2>NO ACTIVE TOURNAMENT</h2>
 
-            <br><br>
+        <p>
+            The Amination eSports tournament network is waiting for the next
+            official competition.
+        </p>
 
-            Check the Tournament and Matches pages
-            for the official schedule and results.
-
+        <div class="links">
+            <a href="/">RETURN HOME</a>
         </div>
+    </section>
 
     {% endif %}
 
-</div>
+</main>
+
+<footer class="footer">
+    AMINATION ESPORTS • FROM IMAGINATION TO REALITY
+</footer>
 
 </body>
-
 </html>
