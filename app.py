@@ -5560,6 +5560,145 @@ def migrate_tournament_schema():
     }, 200
 
 
+# ============================================================
+# TEMPORARY: production TournamentParticipant schema reconciliation.
+# ============================================================
+@app.route("/admin/migrate/tournament-participant-schema", methods=["GET"])
+def migrate_tournament_participant_schema():
+    """
+    Founder-only, additive reconciliation for the TournamentParticipant model.
+
+    Safety rules:
+    - Inspects the existing tournament_participant table first.
+    - Adds ONLY columns currently required by TournamentParticipant.
+    - Never drops or alters existing columns.
+    - Never deletes or rewrites participant records.
+    - Is idempotent: already-present columns are left untouched.
+    - Uses PostgreSQL-only ALTER TABLE operations.
+    """
+    access = founder_required()
+    if access:
+        return access
+
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+
+    if not inspector.has_table("tournament_participant"):
+        return {
+            "success": False,
+            "error": "TournamentParticipant table does not exist."
+        }, 500
+
+    existing = {
+        column["name"]
+        for column in inspector.get_columns("tournament_participant")
+    }
+
+    existing_foreign_keys = {
+        fk.get("name")
+        for fk in inspector.get_foreign_keys("tournament_participant")
+        if fk.get("name")
+    }
+
+    dialect = db.engine.dialect.name
+
+    if dialect != "postgresql":
+        return {
+            "success": False,
+            "error": (
+                f"Unsupported database dialect: {dialect}. "
+                "This production schema migration requires PostgreSQL."
+            )
+        }, 500
+
+    column_sql = {
+        "priority_type": "VARCHAR(40) NOT NULL DEFAULT 'none'",
+        "priority_reason": "VARCHAR(255)",
+        "priority_source_tournament_id": "INTEGER",
+        "availability_status": "VARCHAR(30) NOT NULL DEFAULT 'unknown'",
+        "availability_confirmed_at": "TIMESTAMP",
+        "whatsapp_joined": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "whatsapp_joined_at": "TIMESTAMP",
+        "payment_status": "VARCHAR(30) NOT NULL DEFAULT 'not_required'",
+        "payment_required_amount": "DOUBLE PRECISION DEFAULT 0",
+        "payment_received_amount": "DOUBLE PRECISION DEFAULT 0",
+        "payment_reference": "VARCHAR(150)",
+        "payment_transaction_id": "VARCHAR(255)",
+        "payment_provider": "VARCHAR(100)",
+        "payment_received_at": "TIMESTAMP",
+        "payment_verified_at": "TIMESTAMP",
+        "founder_payment_verified": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "founder_payment_verified_at": "TIMESTAMP",
+        "overpayment_amount": "DOUBLE PRECISION DEFAULT 0",
+        "overpayment_reviewed": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "payment_reversed": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "payment_reversed_at": "TIMESTAMP",
+        "payment_reversal_reason": "TEXT",
+        "refund_requested": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "refund_requested_at": "TIMESTAMP",
+        "refund_approved": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "refund_approved_at": "TIMESTAMP",
+        "refund_amount": "DOUBLE PRECISION DEFAULT 0",
+        "refund_completed": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "refund_completed_at": "TIMESTAMP",
+        "refund_reason": "TEXT",
+        "registered_at": "TIMESTAMP",
+    }
+
+    added = []
+    already_present = []
+
+    try:
+        with db.engine.begin() as conn:
+            for column_name, column_definition in column_sql.items():
+                if column_name in existing:
+                    already_present.append(column_name)
+                    continue
+
+                conn.execute(
+                    text(
+                        "ALTER TABLE tournament_participant "
+                        f"ADD COLUMN {column_name} {column_definition}"
+                    )
+                )
+                added.append(column_name)
+
+            if (
+                "priority_source_tournament_id" not in existing_foreign_keys
+                and "priority_source_tournament_id" not in existing
+            ):
+                conn.execute(
+                    text(
+                        "ALTER TABLE tournament_participant "
+                        "ADD CONSTRAINT "
+                        "fk_tournament_participant_priority_source "
+                        "FOREIGN KEY (priority_source_tournament_id) "
+                        "REFERENCES tournament(id)"
+                    )
+                )
+
+    except Exception as exc:
+        db.session.rollback()
+        return {
+            "success": False,
+            "database": dialect,
+            "error": str(exc),
+            "added_before_failure": added
+        }, 500
+
+    return {
+        "success": True,
+        "database": dialect,
+        "added": added,
+        "already_present": already_present,
+        "message": (
+            "TournamentParticipant schema reconciliation complete. "
+            "No existing participant records were deleted or rewritten."
+        )
+    }, 200
+
+
 @app.route("/admin/migrate/match-player-nullable", methods=["GET"])
 def migrate_match_player_nullable():
     access = founder_required()
