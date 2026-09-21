@@ -6,7 +6,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{DB_PATH}"
 os.environ["SECRET_KEY"] = "clean-tournament-simulation-key"
 
 from app import app, db
-from models import Player, Tournament, Match, PlayerStatistic
+from models import Player, Tournament, TournamentParticipant, Match, PlayerStatistic
 from app import (
     TOURNAMENT_REGISTRATION,
     TOURNAMENT_DRAW_RELEASED,
@@ -54,6 +54,7 @@ with app.app_context():
         entry_fee=0,
         competition_day="Saturday",
         final_day="Sunday",
+        season_number=1,
         status=TOURNAMENT_REGISTRATION,
     )
 
@@ -81,13 +82,31 @@ with app.app_context():
         )
 
         db.session.add(player)
+        db.session.flush()
+
+        participant = TournamentParticipant(
+            tournament_id=tournament.id,
+            player_id=player.id,
+            status="approved",
+        )
+        db.session.add(participant)
 
     db.session.commit()
 
-    players = Player.query.filter_by(
-        application_status="approved",
-        active=True,
-    ).all()
+    players = (
+        db.session.query(Player)
+        .join(
+            TournamentParticipant,
+            TournamentParticipant.player_id == Player.id
+        )
+        .filter(
+            TournamentParticipant.tournament_id == tournament.id,
+            TournamentParticipant.status == "approved",
+            Player.active.is_(True),
+        )
+        .order_by(TournamentParticipant.id.asc())
+        .all()
+    )
 
     print("Approved players:", len(players))
 

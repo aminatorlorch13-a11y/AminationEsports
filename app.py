@@ -1098,6 +1098,18 @@ def live():
             .all()
         )
 
+    broadcast_match = None
+
+    if tournament and tournament.live_enabled and tournament.live_match_id:
+        broadcast_match = next(
+            (
+                match
+                for match in live_matches
+                if match.id == tournament.live_match_id
+            ),
+            None
+        )
+
     players = {
         player.id: player
         for player in Player.query.all()
@@ -1107,6 +1119,7 @@ def live():
         "live.html",
         tournament=tournament,
         matches=live_matches,
+        broadcast_match=broadcast_match,
         players=players
     )
 
@@ -4468,9 +4481,252 @@ def founder_schedule_match(match_id):
     )
 
 
+
+# ============================================================
+# OFFICIAL LIVE BROADCAST PROVIDER VALIDATION
+# ============================================================
+
+SUPPORTED_LIVE_PROVIDERS = {"youtube", "tiktok"}
+
+YOUTUBE_VIDEO_ID_PATTERN = r"^[A-Za-z0-9_-]{11}$"
+TIKTOK_POST_ID_PATTERN = r"^[0-9]+$"
+
+
+def normalize_live_provider_url(provider, raw_url):
+    """
+    Convert a Founder-supplied official provider URL into a safe,
+    provider-specific player URL.
+
+    Never accepts arbitrary iframe destinations.
+    Returns (normalized_url, error_message).
+    """
+    import re
+
+    provider = (provider or "").strip().lower()
+    raw_url = (raw_url or "").strip()
+
+    if provider not in SUPPORTED_LIVE_PROVIDERS:
+        return None, "Unsupported broadcast provider."
+
+    if not raw_url:
+        return None, "A broadcast URL is required."
+
+    parsed = urlparse(raw_url)
+
+    if parsed.scheme.lower() != "https":
+        return None, "Broadcast URLs must use HTTPS."
+
+    hostname = (parsed.hostname or "").lower().rstrip(".")
+
+    if provider == "youtube":
+        allowed_hosts = {
+            "youtube.com",
+            "www.youtube.com",
+            "m.youtube.com",
+            "youtu.be",
+        }
+
+        if hostname not in allowed_hosts:
+            return None, "That is not a supported YouTube URL."
+
+        video_id = None
+
+        if hostname == "youtu.be":
+            candidate = parsed.path.strip("/").split("/")[0]
+            if candidate:
+                video_id = candidate
+
+        elif parsed.path.startswith("/watch"):
+            from urllib.parse import parse_qs
+            video_id = parse_qs(parsed.query).get("v", [None])[0]
+
+        elif parsed.path.startswith("/live/"):
+            parts = parsed.path.split("/")
+            if len(parts) >= 3:
+                video_id = parts[2]
+
+        elif parsed.path.startswith("/embed/"):
+            parts = parsed.path.split("/")
+            if len(parts) >= 3:
+                video_id = parts[2]
+
+        elif parsed.path.startswith("/shorts/"):
+            parts = parsed.path.split("/")
+            if len(parts) >= 3:
+                video_id = parts[2]
+
+        if not video_id or not re.fullmatch(
+            YOUTUBE_VIDEO_ID_PATTERN,
+            video_id
+        ):
+            return None, "Could not identify a valid YouTube video ID."
+
+        return (
+            f"https://www.youtube-nocookie.com/embed/{video_id}",
+            None,
+        )
+
+    if provider == "tiktok":
+        allowed_hosts = {
+            "tiktok.com",
+            "www.tiktok.com",
+            "m.tiktok.com",
+        }
+
+        if hostname not in allowed_hosts:
+            return None, "That is not a supported TikTok URL."
+
+        parts = [part for part in parsed.path.split("/") if part]
+
+        # TikTok's official player supports post/video IDs.
+        # We deliberately do not claim that a TikTok LIVE URL is
+        # an embeddable live broadcast.
+        post_id = None
+
+        if "video" in parts:
+            index = parts.index("video")
+            if index + 1 < len(parts):
+                post_id = parts[index + 1]
+
+        if not post_id or not re.fullmatch(
+            TIKTOK_POST_ID_PATTERN,
+            post_id
+        ):
+            return (
+                None,
+                "That TikTok URL is not an embeddable TikTok video/post."
+            )
+
+        return (
+            f"https://www.tiktok.com/player/v1/{post_id}",
+            None,
+        )
+
+    return None, "Unsupported broadcast provider."
+
+
+def configure_official_live_broadcast(tournament, match, provider, raw_url, title):
+    """
+    Validate and configure the official broadcast for one real match.
+
+    Returns (success, message).
+    Caller owns the transaction.
+    """
+    if tournament is None:
+        return False, "No current tournament exists."
+
+    if match is None:
+        return False, "The selected match does not exist."
+
+    if match.tournament_id != tournament.id:
+        return False, "That match does not belong to the current tournament."
+
+    if match.is_bye:
+        return False, "A BYE match cannot have a live broadcast."
+
+    if match.status == MATCH_FINISHED:
+        return False, "A finished match cannot be configured as live."
+
+    if not match.player1_id or not match.player2_id:
+        return False, "Both players must be present before broadcasting the match."
+
+    normalized_url, error = normalize_live_provider_url(
+        provider,
+        raw_url,
+    )
+
+    if error:
+        return False, error
+
+    title = (title or "").strip()
+
+    if not title:
+        title = (
+            f"{match.round_name or 'Tournament Match'} "
+            f"— Match #{match.match_number or match.id}"
+        )
+
+    if len(title) > 200:
+        return False, "Broadcast title must be 200 characters or fewer."
+
+    tournament.live_enabled = True
+    tournament.live_provider = provider.strip().lower()
+    tournament.live_embed_url = normalized_url
+    tournament.live_title = title
+    tournament.live_match_id = match.id
+
+    return True, "Official broadcast configured successfully."
+
 # ============================================================
 # FOUNDER — LIVE MATCH CONTROL
 # ============================================================
+
+@app.route(
+    "/admin/founder/match/<int:match_id>/broadcast",
+    methods=["POST"]
+)
+def founder_configure_live_broadcast(match_id):
+    access = founder_required()
+    if access:
+        return access
+
+    tournament = current_tournament()
+
+    if not tournament:
+        return "No current tournament exists.", 404
+
+    match = Match.query.filter_by(
+        id=match_id,
+        tournament_id=tournament.id
+    ).first()
+
+    if not match:
+        return "That match does not belong to the current tournament.", 404
+
+    provider = request.form.get("provider", "").strip().lower()
+    broadcast_url = request.form.get("broadcast_url", "").strip()
+    title = request.form.get("broadcast_title", "").strip()
+
+    success, message = configure_official_live_broadcast(
+        tournament=tournament,
+        match=match,
+        provider=provider,
+        raw_url=broadcast_url,
+        title=title,
+    )
+
+    if not success:
+        return message, 400
+
+    db.session.commit()
+
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route(
+    "/admin/founder/broadcast/disable",
+    methods=["POST"]
+)
+def founder_disable_live_broadcast():
+    access = founder_required()
+    if access:
+        return access
+
+    tournament = current_tournament()
+
+    if not tournament:
+        return "No current tournament exists.", 404
+
+    tournament.live_enabled = False
+    tournament.live_provider = None
+    tournament.live_embed_url = None
+    tournament.live_title = None
+    tournament.live_match_id = None
+
+    db.session.commit()
+
+    return redirect(url_for("admin_dashboard"))
+
 
 @app.route(
     "/admin/founder/match/<int:match_id>/live",
@@ -4542,6 +4798,16 @@ def founder_live_match_control(match_id):
             if other_match.status == MATCH_LIVE:
                 other_match.status = MATCH_SCHEDULED
 
+            # A broadcast belongs to one authoritative match.
+            # Starting another match must never leave the previous
+            # match publicly marked as live.
+            if tournament.live_match_id == other_match.id:
+                tournament.live_enabled = False
+                tournament.live_provider = None
+                tournament.live_embed_url = None
+                tournament.live_title = None
+                tournament.live_match_id = None
+
         match.is_live = True
         match.status = MATCH_LIVE
 
@@ -4579,6 +4845,13 @@ def founder_live_match_control(match_id):
             ), 409
 
         match.is_live = False
+
+        if tournament.live_match_id == match.id:
+            tournament.live_enabled = False
+            tournament.live_provider = None
+            tournament.live_embed_url = None
+            tournament.live_title = None
+            tournament.live_match_id = None
 
         if match.status == MATCH_LIVE:
             match.status = MATCH_SCHEDULED
@@ -4685,6 +4958,9 @@ def founder_live_match_control(match_id):
         match.status = MATCH_FINISHED
         match.finished_at = datetime.utcnow()
 
+        # A completed match cannot remain the public broadcast.
+        # The tournament-level broadcast state must follow the
+        # authoritative match lifecycle.
         # ====================================================
         # GET TOURNAMENT
         # ====================================================
@@ -4692,6 +4968,13 @@ def founder_live_match_control(match_id):
             Tournament,
             match.tournament_id
         )
+
+        if tournament and tournament.live_match_id == match.id:
+            tournament.live_enabled = False
+            tournament.live_provider = None
+            tournament.live_embed_url = None
+            tournament.live_title = None
+            tournament.live_match_id = None
 
         # ====================================================
         # ADVANCE WINNER TO NEXT ROUND

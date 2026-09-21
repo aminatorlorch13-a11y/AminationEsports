@@ -2177,6 +2177,150 @@
 
 </div>
 
+                          <!-- OFFICIAL BROADCAST CONFIGURATION -->
+                          <div style="
+                              margin-top:15px;
+                              padding:15px;
+                              border:1px solid rgba(255,215,0,0.22);
+                              border-radius:10px;
+                          ">
+                              <h4>📡 OFFICIAL MATCH BROADCAST</h4>
+
+                              {% if tournament.live_match_id == match.id and tournament.live_enabled %}
+                                  <p>
+                                      <strong>ACTIVE BROADCAST:</strong>
+                                      {{ tournament.live_provider|upper }}
+                                      {% if tournament.live_title %}
+                                          — {{ tournament.live_title }}
+                                      {% endif %}
+                                  </p>
+                              {% else %}
+                                  <p>
+                                      Configure the official viewer stream for this
+                                      match. Only Founder-approved provider URLs
+                                      are accepted.
+                                  </p>
+                              {% endif %}
+
+                              <form
+                                  method="POST"
+                                  action="{{ url_for(
+                                      'founder_configure_live_broadcast',
+                                      match_id=match.id
+                                  ) }}"
+                              >
+                                  <label>
+                                      <strong>Provider</strong>
+                                  </label>
+
+                                  <select
+                                      name="provider"
+                                      required
+                                      style="
+                                          width:100%;
+                                          box-sizing:border-box;
+                                          margin-top:8px;
+                                          margin-bottom:10px;
+                                      "
+                                  >
+                                      <option value="">Select provider</option>
+
+                                      <option
+                                          value="youtube"
+                                          {% if tournament.live_match_id == match.id and tournament.live_provider == "youtube" %}
+                                              selected
+                                          {% endif %}
+                                      >
+                                          YouTube
+                                      </option>
+
+                                      <option
+                                          value="tiktok"
+                                          {% if tournament.live_match_id == match.id and tournament.live_provider == "tiktok" %}
+                                              selected
+                                          {% endif %}
+                                      >
+                                          TikTok
+                                      </option>
+                                  </select>
+
+                                  <label>
+                                      <strong>
+                                          YouTube video/live URL or TikTok video URL
+                                      </strong>
+                                  </label>
+
+                                  <input
+                                      type="url"
+                                      name="broadcast_url"
+                                      placeholder="https://www.youtube.com/watch?v=..."
+                                      required
+                                      style="
+                                          width:100%;
+                                          box-sizing:border-box;
+                                          margin-top:8px;
+                                          margin-bottom:10px;
+                                      "
+                                  >
+
+                                  <label>
+                                      <strong>Broadcast title</strong>
+                                  </label>
+
+                                  <input
+                                      type="text"
+                                      name="broadcast_title"
+                                      maxlength="200"
+                                      value="{% if tournament.live_match_id == match.id and tournament.live_title %}{{ tournament.live_title }}{% endif %}"
+                                      placeholder="Amination eSports — Official Match"
+                                      style="
+                                          width:100%;
+                                          box-sizing:border-box;
+                                          margin-top:8px;
+                                          margin-bottom:10px;
+                                      "
+                                  >
+
+                                  <button
+                                      type="submit"
+                                      class="button"
+                                      style="
+                                          border:none;
+                                          cursor:pointer;
+                                          width:100%;
+                                      "
+                                      onclick="return confirm(
+                                          'Configure this as the official public broadcast?'
+                                      );"
+                                  >
+                                      📡 CONFIGURE OFFICIAL BROADCAST
+                                  </button>
+                              </form>
+
+                              {% if tournament.live_match_id == match.id and tournament.live_enabled %}
+                              <form
+                                  method="POST"
+                                  action="{{ url_for('founder_disable_live_broadcast') }}"
+                                  style="margin-top:10px;"
+                              >
+                                  <button
+                                      type="submit"
+                                      class="button"
+                                      style="
+                                          border:none;
+                                          cursor:pointer;
+                                          width:100%;
+                                      "
+                                      onclick="return confirm(
+                                          'Disable the official public broadcast?'
+                                      );"
+                                  >
+                                      🚫 DISABLE BROADCAST
+                                  </button>
+                              </form>
+                              {% endif %}
+                          </div>
+
                           <!-- START LIVE MATCH -->
 
                           <form

@@ -35,6 +35,7 @@ with app.app_context():
     tournament = Tournament(
         name=f"8R44 Safety Test {ts}",
         max_players=16,
+        season_number=999999,
         status=TOURNAMENT_COMPLETED,
         completed_at=datetime.utcnow(),
         champion_id=None,
