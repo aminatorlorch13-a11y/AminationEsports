@@ -330,6 +330,14 @@ class TournamentParticipant(db.Model):
         nullable=False
     )
 
+    # Linked global Player record.
+    # TournamentParticipant remains season-specific; this relationship
+    # only resolves the Player referenced by player_id.
+    player = db.relationship(
+        "Player",
+        foreign_keys=[player_id]
+    )
+
     # Tournament-specific team/squad name
     team_name = db.Column(
         db.String(150),
