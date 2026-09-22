@@ -1455,9 +1455,17 @@ def player_profile(player_id):
             player_id=player.id
         ).first()
 
-    player_match = get_player_match(
-        player.id,
-        tournament.id if tournament else None
+    # Player profiles show match/score information only for an active
+    # tournament. Completed seasons remain historical records and must
+    # never appear as the player's current match.
+    player_match = (
+        get_player_match(
+            player.id,
+            tournament.id
+        )
+        if tournament
+        and tournament.status != TOURNAMENT_COMPLETED
+        else None
     )
 
     players = {
