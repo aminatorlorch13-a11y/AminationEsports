@@ -8,6 +8,7 @@ import traceback
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from sqlalchemy import func, inspect, or_, text
+from sqlalchemy.exc import IntegrityError
 
 from config import Config
 from highlight_storage import (
@@ -190,6 +191,128 @@ def current_tournament():
         )
         .first()
     )
+
+
+def create_next_tournament_season_if_needed(completed_tournament):
+    """
+    Create the next numbered tournament after a completed season.
+
+    The operation is idempotent:
+    - completed seasons are never reopened;
+    - only the authoritative latest numbered season can roll over;
+    - an existing newer numbered season prevents duplicates;
+    - the new season opens in registration.
+    """
+    if not completed_tournament:
+        return None
+
+    season_number = completed_tournament.season_number
+    if season_number is None:
+        return None
+
+    latest = current_tournament()
+
+    if not latest or latest.id != completed_tournament.id:
+        return None
+
+    if completed_tournament.status != TOURNAMENT_COMPLETED:
+        return None
+
+    next_season_number = season_number + 1
+
+    existing_next = (
+        Tournament.query
+        .filter_by(season_number=next_season_number)
+        .order_by(Tournament.id.desc())
+        .first()
+    )
+
+    if existing_next:
+        return existing_next
+
+    newer = (
+        Tournament.query
+        .filter(
+            Tournament.season_number.isnot(None),
+            Tournament.season_number > season_number,
+        )
+        .order_by(
+            Tournament.season_number.desc(),
+            Tournament.id.desc(),
+        )
+        .first()
+    )
+
+    if newer:
+        return newer
+
+    capacity = int(completed_tournament.max_players or 0)
+
+    if capacity < 2 or capacity & (capacity - 1):
+        raise ValueError(
+            "Cannot automatically create the next season because "
+            "the completed tournament capacity is not a power of two."
+        )
+
+    new_tournament = Tournament(
+        name=f"Amination FC Season {next_season_number}",
+        status=TOURNAMENT_REGISTRATION,
+        max_players=capacity,
+        entry_fee=completed_tournament.entry_fee,
+        payment_enabled=completed_tournament.payment_enabled,
+        currency=completed_tournament.currency,
+        international_enabled=completed_tournament.international_enabled,
+        competition_day=completed_tournament.competition_day,
+        final_day=completed_tournament.final_day,
+        season_number=next_season_number,
+        whatsapp_group_link=completed_tournament.whatsapp_group_link,
+        live_enabled=False,
+        live_provider=None,
+        live_embed_url=None,
+        live_title=None,
+        live_match_id=None,
+        payment_instructions=completed_tournament.payment_instructions,
+        payment_deadline=None,
+        availability_deadline=None,
+        completed_at=None,
+        champion_id=None,
+        runner_up_id=None,
+    )
+
+    try:
+        with db.session.begin_nested():
+            db.session.add(new_tournament)
+            db.session.flush()
+    except IntegrityError:
+        existing_next = (
+            Tournament.query
+            .filter_by(season_number=next_season_number)
+            .order_by(Tournament.id.desc())
+            .first()
+        )
+
+        if existing_next:
+            return existing_next
+
+        raise
+
+    db.session.add(
+        AdminAction(
+            action="tournament_season_auto_created",
+            old_status=completed_tournament.status,
+            new_status=new_tournament.status,
+            notes=(
+                f"System automatically created Season "
+                f"{next_season_number} after completion of "
+                f"Season {completed_tournament.season_number}. "
+                f"Source tournament ID={completed_tournament.id}; "
+                f"new tournament ID={new_tournament.id}."
+            ),
+            created_at=datetime.utcnow(),
+        )
+    )
+
+    return new_tournament
 
 
 def tournament_bracket_capacity(player_count):
@@ -1987,6 +2110,211 @@ def register():
 
 
 # ============================================================
+# ============================================================
+# EXISTING PLAYER — CURRENT TOURNAMENT REGISTRATION
+# ============================================================
+
+@app.route("/register-current-tournament")
+def register_current_tournament():
+    """
+    Register an already-authenticated player for the current tournament.
+
+    This is tournament participation, not account creation.
+    """
+    player_id = session.get("player_id")
+
+    if not player_id:
+        return redirect(url_for("player_login"))
+
+    player = Player.query.get(player_id)
+
+    if not player:
+        session.pop("player_id", None)
+        return redirect(url_for("player_login"))
+
+    tournament = current_tournament()
+
+    if not tournament:
+        return (
+            "Registration is currently unavailable because "
+            "there is no tournament."
+        ), 503
+
+    if tournament.status != TOURNAMENT_REGISTRATION:
+        return (
+            "Registration is currently closed because "
+            "the current tournament is no longer open for registration."
+        ), 409
+
+    existing = TournamentParticipant.query.filter_by(
+        tournament_id=tournament.id,
+        player_id=player.id
+    ).first()
+
+    if existing:
+        if existing.status == "withdrawn":
+            existing.status = "pending"
+            existing.registered_at = datetime.utcnow()
+
+            db.session.add(existing)
+            db.session.commit()
+
+            return redirect(
+                url_for(
+                    "player_profile",
+                    player_id=player.id
+                )
+            )
+
+        if existing.status == "pending":
+            return (
+                "You are already pending approval for the current tournament."
+            ), 409
+
+        if existing.status in {
+            "approved",
+            "waitlist",
+            "active",
+            "champion",
+            "runner_up"
+        }:
+            return (
+                "You are already registered for the current tournament."
+            ), 409
+
+        return (
+            "You already have a participation record for the current "
+            "tournament. Please contact Amination eSports if you need "
+            "that record reviewed."
+        ), 409
+
+    priority_type = "none"
+    priority_reason = None
+    priority_source_tournament_id = None
+
+    previous_season = (
+        Tournament.query
+        .filter(
+            Tournament.season_number.isnot(None),
+            Tournament.season_number < tournament.season_number,
+            Tournament.status == TOURNAMENT_COMPLETED,
+        )
+        .order_by(
+            Tournament.season_number.desc(),
+            Tournament.id.desc(),
+        )
+        .first()
+    )
+
+    if previous_season:
+        if previous_season.champion_id == player.id:
+            priority_type = "champion"
+            priority_reason = (
+                f"Returning champion from {previous_season.name}."
+            )
+            priority_source_tournament_id = previous_season.id
+
+        elif previous_season.runner_up_id == player.id:
+            priority_type = "runner_up"
+            priority_reason = (
+                f"Returning runner-up from {previous_season.name}."
+            )
+            priority_source_tournament_id = previous_season.id
+
+    payment_required = (
+        tournament.payment_enabled
+        and float(tournament.entry_fee or 0) > 0
+    )
+
+    participant = TournamentParticipant(
+        tournament_id=tournament.id,
+        player_id=player.id,
+        team_name=player.team_name,
+        status="pending",
+        priority_type=priority_type,
+        priority_reason=priority_reason,
+        priority_source_tournament_id=priority_source_tournament_id,
+        availability_status="unknown",
+        payment_status=(
+            "unpaid"
+            if payment_required
+            else "not_required"
+        ),
+        payment_required_amount=(
+            float(tournament.entry_fee)
+            if payment_required
+            else 0
+        ),
+        payment_received_amount=0,
+        founder_payment_verified=False,
+        overpayment_amount=0,
+        overpayment_reviewed=False,
+        payment_reversed=False,
+        refund_requested=False,
+        refund_approved=False,
+        refund_amount=0,
+        refund_completed=False,
+        registered_at=datetime.utcnow(),
+    )
+
+    try:
+        with db.session.begin_nested():
+            db.session.add(participant)
+            db.session.flush()
+    except IntegrityError:
+        existing = TournamentParticipant.query.filter_by(
+            tournament_id=tournament.id,
+            player_id=player.id
+        ).first()
+
+        if existing:
+            if existing.status == "pending":
+                return (
+                    "You are already pending approval for the current tournament."
+                ), 409
+
+            if existing.status in {
+                "approved",
+                "waitlist",
+                "active",
+                "champion",
+                "runner_up"
+            }:
+                return (
+                    "You are already registered for the current tournament."
+                ), 409
+
+            return (
+                "You already have a participation record for the current "
+                "tournament. Please contact Amination eSports if you need "
+                "that record reviewed."
+            ), 409
+
+        db.session.rollback()
+        traceback.print_exc()
+        return (
+            "We couldn't complete your tournament registration right now. "
+            "Please try again. If the problem continues, please contact "
+            "Amination eSports."
+        ), 500
+    except Exception:
+        db.session.rollback()
+        traceback.print_exc()
+        return (
+            "We couldn't complete your tournament registration right now. "
+            "Please try again. If the problem continues, please contact "
+            "Amination eSports."
+        ), 500
+
+    db.session.commit()
+
+    return redirect(
+        url_for(
+            "player_profile",
+            player_id=player.id
+        )
+    )
+
 # REGISTRATION SUCCESS
 # ============================================================
 
@@ -2713,9 +3041,7 @@ def change_tournament_participant_status(participant_id):
     if access:
         return access
 
-    tournament = Tournament.query.order_by(
-        Tournament.id.desc()
-    ).first()
+    tournament = current_tournament()
 
     if not tournament:
         return "No tournament exists.", 404
@@ -5487,6 +5813,10 @@ def confirm_tournament_champion(tournament, final_match):
             created_by="System"
         )
 
+        # Season completion is authoritative. The completed season
+        # remains historical and immutable; the next numbered season
+        # opens automatically inside this transaction.
+        create_next_tournament_season_if_needed(tournament)
     return existing_hall
 
 

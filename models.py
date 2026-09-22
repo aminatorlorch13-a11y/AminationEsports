@@ -306,6 +306,13 @@ class Tournament(db.Model):
         nullable=True
     )
 
+    __table_args__ = (
+        db.UniqueConstraint(
+            "season_number",
+            name="uq_tournament_season_number"
+        ),
+    )
+
 
 # ============================================================
 # TOURNAMENT PARTICIPATION
@@ -560,6 +567,14 @@ class TournamentParticipant(db.Model):
     registered_at = db.Column(
         db.DateTime,
         default=datetime.utcnow
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "tournament_id",
+            "player_id",
+            name="uq_tournament_participant_tournament_player"
+        ),
     )
 
 
