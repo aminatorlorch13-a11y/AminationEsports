@@ -1,4 +1,11 @@
+import os
+import tempfile
 from datetime import datetime
+
+_test_tmpdir = tempfile.TemporaryDirectory()
+_test_db = os.path.join(_test_tmpdir.name, "8r46.sqlite")
+os.environ["DATABASE_URL"] = f"sqlite:///{_test_db}"
+
 from app import (
     app,
     db,
@@ -16,6 +23,7 @@ print("=" * 60)
 app.config["TESTING"] = True
 
 with app.app_context():
+    db.create_all()
 
     ts = int(datetime.utcnow().timestamp())
 

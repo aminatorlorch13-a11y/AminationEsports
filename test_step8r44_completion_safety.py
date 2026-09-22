@@ -1,4 +1,11 @@
+import os
+import tempfile
 from datetime import datetime
+
+_test_tmpdir = tempfile.TemporaryDirectory()
+_test_db = os.path.join(_test_tmpdir.name, "8r44.sqlite")
+os.environ["DATABASE_URL"] = f"sqlite:///{_test_db}"
+
 from app import (
     app,
     db,
@@ -8,6 +15,9 @@ from app import (
     MATCH_FINISHED,
     TOURNAMENT_COMPLETED,
 )
+
+with app.app_context():
+    db.create_all()
 
 print("=" * 60)
 print("STEP 8R.44 — COMPLETION SAFETY TEST")

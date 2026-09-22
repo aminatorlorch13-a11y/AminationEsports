@@ -1,0 +1,3273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Champions Vault — Amination eSports</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+            background: #020202;
+            color: #f5f5f5;
+            font-family: Arial, Helvetica, sans-serif;
+            overflow-x: hidden;
+        }
+
+        body {
+            min-height: 100vh;
+        }
+
+        button {
+            font: inherit;
+        }
+
+        /* =========================================================
+           VAULT STAGE
+           ========================================================= */
+
+        .vault-stage {
+            position: relative;
+            min-height: 100vh;
+            overflow: hidden;
+            background:
+                radial-gradient(
+                    ellipse at 50% 48%,
+                    rgba(255, 190, 60, 0.025) 0%,
+                    rgba(0, 0, 0, 0.98) 52%,
+                    #000 100%
+                );
+            perspective: 1800px;
+        }
+
+        .vault-stage::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(
+                    ellipse at center,
+                    transparent 35%,
+                    rgba(0, 0, 0, 0.75) 82%,
+                    #000 100%
+                );
+            z-index: 20;
+        }
+
+        .vault-stage::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.16;
+            background-image:
+                radial-gradient(circle at 20% 20%, #fff 0 0.5px, transparent 0.8px),
+                radial-gradient(circle at 70% 65%, #fff 0 0.4px, transparent 0.7px),
+                radial-gradient(circle at 40% 85%, #fff 0 0.3px, transparent 0.6px);
+            background-size: 97px 113px, 137px 151px, 173px 191px;
+            z-index: 21;
+        }
+
+        .vault-camera {
+            position: relative;
+            width: min(1500px, 100%);
+            min-height: 100vh;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform-style: preserve-3d;
+        }
+
+        /* =========================================================
+           INTRO / CONTROL
+           ========================================================= */
+
+        .vault-intro {
+            position: absolute;
+            z-index: 100;
+            left: 50%;
+            bottom: 7%;
+            transform: translateX(-50%);
+            text-align: center;
+            transition:
+                opacity 1.5s ease,
+                transform 1.5s ease;
+        }
+
+        .vault-intro.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, 25px);
+        }
+
+        .vault-kicker {
+            margin-bottom: 15px;
+            color: rgba(255, 205, 105, 0.72);
+            font-size: 10px;
+            letter-spacing: 0.48em;
+            text-transform: uppercase;
+        }
+
+        .vault-enter {
+            min-width: 230px;
+            min-height: 50px;
+            padding: 13px 25px;
+            border: 1px solid rgba(220, 178, 86, 0.72);
+            border-radius: 2px;
+            color: #f3d99a;
+            background:
+                linear-gradient(
+                    180deg,
+                    rgba(35, 29, 18, 0.9),
+                    rgba(8, 7, 5, 0.95)
+                );
+            box-shadow:
+                inset 0 1px rgba(255, 255, 255, 0.08),
+                0 0 30px rgba(197, 143, 40, 0.08);
+            cursor: pointer;
+            letter-spacing: 0.28em;
+            font-size: 11px;
+            text-transform: uppercase;
+            transition: all 0.4s ease;
+        }
+
+        .vault-enter:hover {
+            border-color: #e9c56e;
+            box-shadow:
+                inset 0 1px rgba(255, 255, 255, 0.12),
+                0 0 45px rgba(220, 174, 68, 0.18);
+        }
+
+        .vault-enter:focus-visible {
+            outline: 2px solid #e8c36d;
+            outline-offset: 5px;
+        }
+
+        /* =========================================================
+           PHYSICAL VAULT BODY
+           ========================================================= */
+
+        .vault-container {
+            position: relative;
+            width: min(1120px, 94vw);
+            aspect-ratio: 1.62 / 1;
+            transform-style: preserve-3d;
+            opacity: 0;
+            transform: translateZ(-300px) scale(0.84);
+            transition:
+                opacity 4s ease,
+                transform 7s cubic-bezier(0.2, 0.65, 0.15, 1);
+        }
+
+        .vault-container.visible {
+            opacity: 1;
+            transform: translateZ(0) scale(1);
+        }
+
+        /*
+         * Deep chamber behind the door.
+         */
+        .vault-chamber {
+            position: absolute;
+            inset: 3%;
+            overflow: hidden;
+            border-radius: 7px;
+            background:
+                radial-gradient(
+                    ellipse at 50% 45%,
+                    rgba(205, 154, 57, 0.10),
+                    rgba(3, 3, 3, 0.98) 58%
+                ),
+                #010101;
+            border: 22px solid #111;
+            box-shadow:
+                inset 0 0 0 5px #292929,
+                inset 0 0 70px #000,
+                inset 0 0 180px rgba(0, 0, 0, 0.95),
+                0 30px 100px #000;
+            transform: translateZ(-80px);
+        }
+
+        .vault-chamber::before {
+            content: "";
+            position: absolute;
+            inset: 18px;
+            border: 2px solid rgba(197, 158, 83, 0.12);
+            box-shadow:
+                inset 0 0 45px rgba(0, 0, 0, 0.9),
+                0 0 35px rgba(0, 0, 0, 0.9);
+        }
+
+        .vault-light {
+            position: absolute;
+            left: 50%;
+            top: 48%;
+            width: 75%;
+            height: 70%;
+            transform: translate(-50%, -50%);
+            background:
+                radial-gradient(
+                    ellipse,
+                    rgba(255, 215, 126, 0.52),
+                    rgba(188, 124, 27, 0.12) 32%,
+                    transparent 70%
+                );
+            opacity: 0;
+            filter: blur(18px);
+            transition: opacity 7s ease;
+            pointer-events: none;
+        }
+
+        .vault-container.archive-lit .vault-light {
+            opacity: 1;
+        }
+
+        /* =========================================================
+           CHAMPIONS ARCHIVE — ACTUALLY INSIDE
+           ========================================================= */
+
+
+        /* ============================================================
+           CHAMPIONS ARCHIVE — DEEP VAULT POLISH
+           Visual-only. Database remains authoritative.
+           ============================================================ */
+
+        .vault-container {
+            min-height: 900px;
+            perspective: 2200px;
+        }
+
+        .vault-chamber {
+            min-height: 760px;
+            padding: 90px 7vw 120px;
+            overflow: hidden;
+            transform-style: preserve-3d;
+        }
+
+        .vault-chamber::after {
+            content: "";
+            position: absolute;
+            inset: 5% 4%;
+            pointer-events: none;
+            border: 1px solid rgba(255, 208, 88, 0.08);
+            box-shadow:
+                inset 0 0 100px rgba(0, 0, 0, 0.95),
+                inset 0 0 30px rgba(255, 196, 55, 0.06);
+            transform: translateZ(20px);
+        }
+
+        .archive {
+            width: min(1500px, 92vw);
+            min-height: 580px;
+            margin: 0 auto;
+            padding: 70px clamp(24px, 5vw, 90px) 90px;
+            position: relative;
+            transform:
+                translateZ(80px)
+                scale(0.94);
+            transform-origin: center center;
+            transition:
+                transform 3.2s cubic-bezier(.16, .82, .24, 1),
+                opacity 2.4s ease,
+                filter 2.4s ease;
+        }
+
+        .vault-container.archive-open .archive {
+            transform:
+                translateZ(130px)
+                scale(1);
+        }
+
+        .archive::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(
+                    90deg,
+                    rgba(255,255,255,0.025),
+                    transparent 18%,
+                    transparent 82%,
+                    rgba(255,255,255,0.02)
+                ),
+                radial-gradient(
+                    ellipse at center,
+                    rgba(255, 205, 90, 0.12),
+                    transparent 62%
+                );
+            border: 1px solid rgba(255, 207, 88, 0.16);
+            box-shadow:
+                inset 0 0 90px rgba(0,0,0,.82),
+                inset 0 0 24px rgba(255,190,40,.08),
+                0 0 70px rgba(0,0,0,.75);
+        }
+
+        .archive::after {
+            content: "";
+            position: absolute;
+            left: 5%;
+            right: 5%;
+            bottom: 22px;
+            height: 2px;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 210, 100, 0.22),
+                rgba(255, 230, 150, 0.5),
+                rgba(255, 210, 100, 0.22),
+                transparent
+            );
+            box-shadow: 0 0 18px rgba(255, 198, 60, 0.18);
+        }
+
+        .archive-heading {
+            position: relative;
+            z-index: 2;
+            margin-bottom: 58px;
+            text-align: center;
+            transform: translateZ(40px);
+        }
+
+        .archive-heading small {
+            display: block;
+            margin-bottom: 13px;
+            letter-spacing: .42em;
+            font-size: clamp(.62rem, 1vw, .82rem);
+            color: rgba(255, 216, 118, .62);
+        }
+
+        .archive-heading strong {
+            display: block;
+            font-size: clamp(1.5rem, 3.4vw, 3.2rem);
+            letter-spacing: .18em;
+            font-weight: 700;
+            color: #fff2bd;
+            text-shadow:
+                0 0 14px rgba(255, 211, 92, .24),
+                0 2px 18px rgba(0,0,0,.9);
+        }
+
+        .champion-records {
+            position: relative;
+            z-index: 3;
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(min(310px, 100%), 1fr));
+            gap: clamp(24px, 3vw, 46px);
+            perspective: 1600px;
+        }
+
+        .champion-record {
+            position: relative;
+            min-height: 285px;
+            padding: 30px 30px 28px;
+            overflow: hidden;
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(255,255,255,.065),
+                    rgba(255,255,255,.018) 28%,
+                    rgba(0,0,0,.58) 100%
+                );
+            border: 1px solid rgba(255, 213, 112, .25);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,.08),
+                inset 0 -25px 45px rgba(0,0,0,.42),
+                0 24px 55px rgba(0,0,0,.55);
+            transform:
+                translate3d(0, 30px, -80px)
+                rotateX(2deg);
+            opacity: 0;
+            filter: brightness(.55);
+        }
+
+        .vault-container.archive-open .champion-record {
+            animation:
+                archiveRecordReveal 2.2s cubic-bezier(.16,.82,.24,1) forwards;
+        }
+
+        .vault-container.archive-open
+        .champion-record:nth-child(2) {
+            animation-delay: .45s;
+        }
+
+        .vault-container.archive-open
+        .champion-record:nth-child(3) {
+            animation-delay: .9s;
+        }
+
+        .vault-container.archive-open
+        .champion-record:nth-child(4) {
+            animation-delay: 1.35s;
+        }
+
+        .champion-record::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(
+                    120deg,
+                    transparent 0%,
+                    transparent 38%,
+                    rgba(255,255,255,.07) 48%,
+                    transparent 58%,
+                    transparent 100%
+                );
+            transform: translateX(-120%);
+            animation: archiveMetalSheen 7s ease-in-out infinite;
+        }
+
+        .champion-record::after {
+            content: "";
+            position: absolute;
+            inset: 9px;
+            pointer-events: none;
+            border: 1px solid rgba(255, 210, 95, .07);
+        }
+
+        .champion-record .season,
+        .champion-record .champion,
+        .champion-record .record-details,
+        .champion-record .record-meta {
+            position: relative;
+            z-index: 2;
+        }
+
+        .champion-record .season {
+            display: inline-flex;
+            align-items: center;
+            min-height: 34px;
+            padding: 0 13px;
+            margin-bottom: 22px;
+            border-left: 2px solid rgba(255, 210, 95, .8);
+            background: rgba(255, 203, 79, .06);
+            color: rgba(255, 224, 147, .82);
+            font-size: .72rem;
+            letter-spacing: .18em;
+        }
+
+        .champion-record .champion {
+            margin-bottom: 24px;
+            font-size: clamp(1.2rem, 2vw, 1.8rem);
+            line-height: 1.1;
+            color: #fff4c9;
+            text-shadow: 0 2px 14px rgba(0,0,0,.9);
+        }
+
+        .record-details {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .record-detail {
+            padding: 12px 13px;
+            background: rgba(0,0,0,.3);
+            border: 1px solid rgba(255,255,255,.045);
+        }
+
+        .record-detail span {
+            display: block;
+            margin-bottom: 5px;
+            color: rgba(255,255,255,.42);
+            font-size: .64rem;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+
+        .record-detail strong {
+            display: block;
+            color: rgba(255,237,180,.9);
+            font-size: .9rem;
+            overflow-wrap: anywhere;
+        }
+
+        .record-meta {
+            margin-top: 22px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,.06);
+            color: rgba(255,255,255,.38);
+            font-size: .68rem;
+            letter-spacing: .08em;
+        }
+
+        @keyframes archiveRecordReveal {
+            0% {
+                opacity: 0;
+                filter: brightness(.35) blur(3px);
+                transform:
+                    translate3d(0, 42px, -130px)
+                    rotateX(5deg);
+            }
+
+            55% {
+                opacity: 1;
+                filter: brightness(.8) blur(.4px);
+            }
+
+            100% {
+                opacity: 1;
+                filter: brightness(1) blur(0);
+                transform:
+                    translate3d(0, 0, 0)
+                    rotateX(0deg);
+            }
+        }
+
+        @keyframes archiveMetalSheen {
+            0%, 58% {
+                transform: translateX(-120%);
+            }
+
+            78%, 100% {
+                transform: translateX(120%);
+            }
+        }
+
+        @media (max-width: 700px) {
+            .vault-container {
+                min-height: 760px;
+            }
+
+            .vault-chamber {
+                min-height: 650px;
+                padding: 55px 16px 80px;
+            }
+
+            .archive {
+                width: 100%;
+                padding: 42px 16px 60px;
+            }
+
+            .champion-records {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .champion-record {
+                min-height: 260px;
+                padding: 24px 22px;
+            }
+
+            .archive-heading {
+                margin-bottom: 38px;
+            }
+
+            .record-details {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .archive,
+            .champion-record {
+                transition: none;
+                animation: none !important;
+                transform: none;
+                opacity: 1;
+                filter: none;
+            }
+
+            .champion-record::before {
+                animation: none;
+            }
+        }
+
+        .archive {
+            position: absolute;
+            inset: 6% 7%;
+            padding: 4%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 20px;
+            align-content: center;
+            overflow: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(215, 174, 86, 0.35) transparent;
+            opacity: 0;
+            transform: translateZ(-40px) scale(0.97);
+            transition:
+                opacity 4s ease 2s,
+                transform 5s ease 2s;
+        }
+
+        .vault-container.archive-open .archive {
+            opacity: 1;
+            transform: translateZ(0) scale(1);
+        }
+
+        .archive-heading {
+            grid-column: 1 / -1;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .archive-heading small {
+            display: block;
+            margin-bottom: 9px;
+            color: rgba(221, 187, 113, 0.62);
+            font-size: 9px;
+            letter-spacing: 0.5em;
+            text-transform: uppercase;
+        }
+
+        .archive-heading strong {
+            color: #f4dc9c;
+            font-size: clamp(20px, 3vw, 38px);
+            letter-spacing: 0.08em;
+            font-weight: 500;
+        }
+
+        .champion-record {
+            position: relative;
+            min-height: 190px;
+            padding: 23px;
+            overflow: hidden;
+            border: 1px solid rgba(201, 164, 89, 0.35);
+            border-radius: 3px;
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(50, 43, 29, 0.72),
+                    rgba(7, 7, 6, 0.94) 55%,
+                    rgba(21, 18, 13, 0.9)
+                );
+            box-shadow:
+                inset 0 1px rgba(255, 255, 255, 0.07),
+                inset 0 0 35px rgba(0, 0, 0, 0.75),
+                0 12px 30px rgba(0, 0, 0, 0.7);
+            opacity: 0;
+            transform:
+                translateY(30px)
+                translateZ(-25px);
+        }
+
+        .vault-container.archive-open .champion-record {
+            animation: recordReveal 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .champion-record:nth-child(2) { animation-delay: 0.4s !important; }
+        .champion-record:nth-child(3) { animation-delay: 0.8s !important; }
+        .champion-record:nth-child(4) { animation-delay: 1.2s !important; }
+        .champion-record:nth-child(5) { animation-delay: 1.6s !important; }
+        .champion-record:nth-child(6) { animation-delay: 2s !important; }
+        .champion-record:nth-child(7) { animation-delay: 2.4s !important; }
+        .champion-record:nth-child(8) { animation-delay: 2.8s !important; }
+
+        @keyframes recordReveal {
+            0% {
+                opacity: 0;
+                transform: translateY(30px) translateZ(-25px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) translateZ(0);
+            }
+        }
+
+        .record-season {
+            color: #d8b96c;
+            font-size: 9px;
+            letter-spacing: 0.38em;
+            text-transform: uppercase;
+        }
+
+        .record-title {
+            margin: 11px 0 18px;
+            color: #fff0bd;
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .record-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+            font-size: 11px;
+        }
+
+        .record-line span:first-child {
+            color: rgba(255, 255, 255, 0.42);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .record-line span:last-child {
+            color: rgba(255, 255, 255, 0.88);
+            text-align: right;
+        }
+
+        .record-star {
+            position: absolute;
+            right: 18px;
+            top: 15px;
+            color: #e7c56f;
+            font-size: 20px;
+            text-shadow: 0 0 20px rgba(231, 197, 111, 0.55);
+        }
+
+        .empty-archive {
+            grid-column: 1 / -1;
+            padding: 60px 20px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.45);
+            letter-spacing: 0.08em;
+        }
+
+        /* =========================================================
+           MASSIVE STEEL DOOR
+           ========================================================= */
+
+        .vault-door {
+            position: absolute;
+            inset: 0;
+            z-index: 40;
+            transform-style: preserve-3d;
+            transform-origin: 13% 50%;
+            transition:
+                transform 13s cubic-bezier(0.22, 0.61, 0.18, 1);
+        }
+
+        .vault-door.opening {
+            transform:
+                rotateY(-78deg)
+                translateX(-7%);
+            transition-duration: 13s;
+        }
+
+        .door-body {
+            position: absolute;
+            inset: 0;
+            border-radius: 9px;
+            background:
+                linear-gradient(
+                    145deg,
+                    #656565 0%,
+                    #202020 9%,
+                    #090909 18%,
+                    #414141 30%,
+                    #111 48%,
+                    #595959 67%,
+                    #171717 80%,
+                    #303030 100%
+                );
+            border: 24px solid #292929;
+            box-shadow:
+                inset 0 0 0 3px #777,
+                inset 0 0 0 9px #171717,
+                inset 0 0 65px #000,
+                inset 0 0 130px rgba(0, 0, 0, 0.88),
+                18px 25px 55px rgba(0, 0, 0, 0.9);
+            transform: translateZ(50px);
+            overflow: hidden;
+        }
+
+        .door-body::before {
+            content: "";
+            position: absolute;
+            inset: 20px;
+            border: 7px solid #171717;
+            box-shadow:
+                inset 0 0 0 2px #686868,
+                inset 0 0 35px #000,
+                0 0 0 2px #050505;
+        }
+
+        .door-body::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(
+                    110deg,
+                    transparent 0 25%,
+                    rgba(255, 255, 255, 0.06) 29%,
+                    transparent 34% 60%,
+                    rgba(255, 255, 255, 0.04) 64%,
+                    transparent 69%
+                );
+            opacity: 0.45;
+        }
+
+        /* =========================================================
+           CENTRAL LOCK / WHEEL
+           ========================================================= */
+
+        .vault-wheel {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: min(31vw, 320px);
+            aspect-ratio: 1;
+            transform: translate(-50%, -50%) translateZ(85px);
+            border-radius: 50%;
+            border: 17px solid #282828;
+            background:
+                radial-gradient(
+                    circle at 35% 30%,
+                    #858585 0%,
+                    #393939 18%,
+                    #111 40%,
+                    #484848 66%,
+                    #0a0a0a 100%
+                );
+            box-shadow:
+                inset 0 0 0 4px #8a8a8a,
+                inset 0 0 0 13px #171717,
+                inset 0 0 30px #000,
+                0 15px 40px #000;
+            transition:
+                transform 12s cubic-bezier(0.22, 0.61, 0.18, 1);
+        }
+
+        .vault-wheel.turning {
+            transform:
+                translate(-50%, -50%)
+                translateZ(85px)
+                rotate(125deg);
+        }
+
+        /*
+         * REALISTIC VAULT WHEEL — STAGED MECHANICAL MOVEMENT
+         *
+         * The wheel does not behave like a continuous UI spinner.
+         * Each stage represents physical torque being transferred
+         * through the locking mechanism.
+         */
+        .vault-wheel.wheel-step-1 {
+            transform:
+                translate(-50%, -50%)
+                translateZ(85px)
+                rotate(35deg);
+            transition:
+                transform 1.9s cubic-bezier(.18,.72,.22,1);
+        }
+
+        .vault-wheel.wheel-step-2 {
+            transform:
+                translate(-50%, -50%)
+                translateZ(85px)
+                rotate(80deg);
+            transition:
+                transform 2.25s cubic-bezier(.18,.72,.22,1);
+        }
+
+        .vault-wheel.wheel-step-3 {
+            transform:
+                translate(-50%, -50%)
+                translateZ(85px)
+                rotate(125deg);
+            transition:
+                transform 2.8s cubic-bezier(.14,.76,.18,1);
+        }
+
+        .wheel-ring {
+            position: absolute;
+            inset: 14%;
+            border: 7px solid #171717;
+            border-radius: 50%;
+            box-shadow:
+                inset 0 0 0 2px #676767,
+                inset 0 0 20px #000;
+        }
+
+        .wheel-hub {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 29%;
+            aspect-ratio: 1;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 35% 30%, #8a8a8a, #272727 42%, #050505);
+            border: 7px solid #1b1b1b;
+            box-shadow:
+                inset 0 0 0 2px #777,
+                inset 0 0 20px #000;
+        }
+
+        .wheel-spoke {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 78%;
+            height: 14px;
+            border-radius: 20px;
+            background:
+                linear-gradient(
+                    180deg,
+                    #868686,
+                    #222 40%,
+                    #0a0a0a 70%,
+                    #5a5a5a
+                );
+            transform-origin: center;
+            box-shadow:
+                0 2px 8px #000,
+                inset 0 1px rgba(255,255,255,.25);
+        }
+
+        .spoke-1 {
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        .spoke-2 {
+            transform: translate(-50%, -50%) rotate(60deg);
+        }
+
+        .spoke-3 {
+            transform: translate(-50%, -50%) rotate(120deg);
+        }
+
+        /* =========================================================
+           RADIAL LOCKING PINS
+           ========================================================= */
+
+        .locking-system {
+            position: absolute;
+            inset: 0;
+            transform: translateZ(105px);
+            pointer-events: none;
+        }
+
+        /*
+         * REALISTIC VAULT LOCKING PINS
+         *
+         * These are treated as heavy mechanical locking bars,
+         * not flat decorative UI elements.
+         */
+        .lock-pin {
+            position: absolute;
+            width: 18%;
+            height: 35px;
+            border-radius: 4px;
+
+            background:
+                linear-gradient(
+                    180deg,
+                    #c0c0c0 0%,
+                    #686868 12%,
+                    #252525 34%,
+                    #090909 68%,
+                    #4f4f4f 88%,
+                    #151515 100%
+                );
+
+            border: 2px solid #111;
+
+            box-shadow:
+                0 7px 15px rgba(0,0,0,.88),
+                0 0 0 1px rgba(255,255,255,.06),
+                inset 0 2px 2px rgba(255,255,255,.28),
+                inset 0 -3px 4px rgba(0,0,0,.8);
+
+            transform-style: preserve-3d;
+
+            transition:
+                transform 1.85s cubic-bezier(.16,.72,.18,1),
+                filter .35s ease,
+                box-shadow .35s ease;
+        }
+
+        /*
+         * Dark mechanical sleeve behind each locking bar.
+         */
+        .lock-pin::before {
+            content: "";
+            position: absolute;
+            left: -10px;
+            right: -10px;
+            top: 6px;
+            height: 21px;
+
+            border-radius: 3px;
+
+            background:
+                linear-gradient(
+                    180deg,
+                    #555 0%,
+                    #171717 35%,
+                    #050505 70%,
+                    #343434 100%
+                );
+
+            border: 1px solid #090909;
+
+            box-shadow:
+                inset 0 2px 2px rgba(255,255,255,.12),
+                inset 0 -3px 4px rgba(0,0,0,.9),
+                0 2px 5px rgba(0,0,0,.85);
+
+            transform: translateZ(-12px);
+            z-index: -1;
+        }
+
+        /*
+         * Heavy end cap / locking head.
+         */
+        .lock-pin::after {
+            content: "";
+            position: absolute;
+            right: -17px;
+            top: 3px;
+            width: 22px;
+            height: 27px;
+
+            border-radius: 3px;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    #111,
+                    #555 38%,
+                    #1a1a1a 72%,
+                    #080808
+                );
+
+            border: 2px solid #0b0b0b;
+
+            box-shadow:
+                inset 1px 0 rgba(255,255,255,.18),
+                inset -3px 0 4px rgba(0,0,0,.85),
+                3px 4px 8px rgba(0,0,0,.8);
+        }
+
+        .pin-top {
+            left: 41%;
+            top: 12%;
+        }
+
+        .pin-bottom {
+            left: 41%;
+            bottom: 12%;
+        }
+
+        .pin-left {
+            left: 11%;
+            top: 48%;
+            transform: rotate(90deg);
+        }
+
+        .pin-right {
+            right: 11%;
+            top: 48%;
+            transform: rotate(90deg);
+        }
+
+        /*
+         * Release states.
+         *
+         * The bar retracts beyond the door face while the
+         * mechanical sleeve remains visually anchored.
+         */
+        .pin-top.released {
+            transform: translateY(-82px) translateZ(4px);
+            filter: brightness(.82);
+            box-shadow:
+                0 12px 20px rgba(0,0,0,.92),
+                0 0 0 1px rgba(255,255,255,.04),
+                inset 0 2px 2px rgba(255,255,255,.18),
+                inset 0 -3px 4px rgba(0,0,0,.9);
+        }
+
+        .pin-bottom.released {
+            transform: translateY(82px) translateZ(4px);
+            filter: brightness(.82);
+            box-shadow:
+                0 12px 20px rgba(0,0,0,.92),
+                0 0 0 1px rgba(255,255,255,.04),
+                inset 0 2px 2px rgba(255,255,255,.18),
+                inset 0 -3px 4px rgba(0,0,0,.9);
+        }
+
+        .pin-left.released {
+            transform: rotate(90deg) translateY(-82px) translateZ(4px);
+            filter: brightness(.82);
+            box-shadow:
+                0 12px 20px rgba(0,0,0,.92),
+                0 0 0 1px rgba(255,255,255,.04),
+                inset 0 2px 2px rgba(255,255,255,.18),
+                inset 0 -3px 4px rgba(0,0,0,.9);
+        }
+
+        .pin-right.released {
+            transform: rotate(90deg) translateY(82px) translateZ(4px);
+            filter: brightness(.82);
+            box-shadow:
+                0 12px 20px rgba(0,0,0,.92),
+                0 0 0 1px rgba(255,255,255,.04),
+                inset 0 2px 2px rgba(255,255,255,.18),
+                inset 0 -3px 4px rgba(0,0,0,.9);
+        }
+
+        /* =========================================================
+           BOLTS AROUND THE DOOR
+           ========================================================= */
+
+        .door-bolts {
+            position: absolute;
+            inset: 0;
+            transform: translateZ(115px);
+            pointer-events: none;
+        }
+
+        /*
+         * REALISTIC DOOR BOLT HARDWARE
+         *
+         * These are structural fasteners seated into the vault
+         * door rather than flat decorative circles.
+         */
+        .bolt {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background:
+                radial-gradient(
+                    circle at 31% 27%,
+                    #d1d1d1 0%,
+                    #858585 14%,
+                    #3b3b3b 38%,
+                    #111 68%,
+                    #050505 100%
+                );
+            border: 2px solid #111;
+            box-shadow:
+                0 4px 5px rgba(0,0,0,.92),
+                0 0 0 3px #080808,
+                0 0 0 5px rgba(62,62,62,.72),
+                0 7px 13px rgba(0,0,0,.8),
+                inset 2px 2px 2px rgba(255,255,255,.2),
+                inset -3px -4px 5px rgba(0,0,0,.9);
+            transform: translateZ(118px);
+        }
+
+        .bolt::before {
+            content: "";
+            position: absolute;
+            inset: 4px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,.16);
+            box-shadow:
+                inset 0 2px 2px rgba(255,255,255,.13),
+                inset 0 -3px 4px rgba(0,0,0,.88);
+            pointer-events: none;
+        }
+
+        .bolt::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) translateZ(2px);
+            background:
+                radial-gradient(
+                    circle at 35% 30%,
+                    #777,
+                    #181818 58%,
+                    #050505 100%
+                );
+            border: 1px solid #050505;
+            box-shadow:
+                inset 1px 1px 1px rgba(255,255,255,.12),
+                0 1px 2px rgba(0,0,0,.9);
+            pointer-events: none;
+        }
+
+        .bolt:nth-child(1) { left: 5%; top: 8%; }
+        .bolt:nth-child(2) { left: 50%; top: 4%; transform: translateX(-50%) translateZ(118px); }
+        .bolt:nth-child(3) { right: 5%; top: 8%; }
+        .bolt:nth-child(4) { left: 5%; bottom: 8%; }
+        .bolt:nth-child(5) { left: 50%; bottom: 4%; transform: translateX(-50%) translateZ(118px); }
+        .bolt:nth-child(6) { right: 5%; bottom: 8%; }
+
+        /* =========================================================
+           STATUS / CINEMATIC CAPTION
+           ========================================================= */
+
+        .vault-status {
+            position: absolute;
+            z-index: 90;
+            left: 50%;
+            top: 6%;
+            transform: translateX(-50%);
+            width: 90%;
+            text-align: center;
+            color: rgba(237, 205, 135, 0.66);
+            font-size: 10px;
+            letter-spacing: 0.45em;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .vault-status.active {
+            opacity: 1;
+        }
+
+        .vault-status span {
+            display: inline-block;
+            padding: 9px 18px;
+            border-bottom: 1px solid rgba(209, 169, 83, 0.22);
+        }
+
+        /* =========================================================
+           FLASH / BOOM
+           ========================================================= */
+
+        .vault-flash {
+            position: absolute;
+            z-index: 110;
+            inset: 0;
+            background:
+                radial-gradient(
+                    circle,
+                    rgba(255, 238, 176, 0.95),
+                    rgba(255, 193, 61, 0.4) 28%,
+                    transparent 70%
+                );
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .vault-flash.fire {
+            animation: vaultFlash 2.3s cubic-bezier(.2,.7,.2,1) forwards;
+        }
+
+        @keyframes vaultFlash {
+            0% { opacity: 0; }
+            9% { opacity: 1; }
+            20% { opacity: .62; }
+            100% { opacity: 0; }
+        }
+
+        .vault-shock {
+            position: absolute;
+            inset: 0;
+            z-index: 109;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .vault-shock.fire {
+            animation: shock 1.8s ease-out forwards;
+        }
+
+        @keyframes shock {
+            0% {
+                opacity: .9;
+                transform: scale(.94);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.04);
+            }
+        }
+
+        /* =========================================================
+           RESPONSIVE
+           ========================================================= */
+
+        @media (max-width: 700px) {
+            .vault-stage {
+                min-height: 100svh;
+            }
+
+            .vault-container {
+                width: 96vw;
+                aspect-ratio: 0.95 / 1;
+            }
+
+            .vault-wheel {
+                width: 36vw;
+                min-width: 145px;
+            }
+
+            .lock-pin {
+                height: 24px;
+            }
+
+            .archive {
+                inset: 7% 6%;
+                grid-template-columns: 1fr;
+                gap: 12px;
+                padding: 4%;
+            }
+
+            .champion-record {
+                min-height: 160px;
+            }
+
+            .vault-status {
+                top: 3%;
+                font-size: 8px;
+                letter-spacing: .28em;
+            }
+
+            .vault-enter {
+                min-width: 210px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .vault-container,
+            .vault-door,
+            .vault-wheel,
+            .lock-pin,
+            .archive,
+            .champion-record {
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<main class="vault-stage" id="vaultStage">
+
+    <div class="vault-camera">
+
+        <div class="vault-container" id="vaultContainer">
+
+            <!-- THE DARK CHAMBER -->
+            <section class="vault-chamber" aria-label="Champions archive vault interior">
+                <div class="vault-light"></div>
+
+                <div class="archive" id="championArchive">
+
+                    <div class="archive-heading">
+                        <small>Amination eSports</small>
+                        <strong>Champions Archive</strong>
+                    </div>
+
+                    {% if hall_records %}
+
+                        {% for record in hall_records %}
+                        {% set tournament = tournaments.get(record.tournament_id) %}
+                        {% set champion = players.get(record.player_id) %}
+
+                        <article class="champion-record">
+
+                            <div class="record-star">★</div>
+
+                            <div class="record-season">
+                                {% if record.season_number %}
+                                    Season {{ record.season_number }}
+                                {% else %}
+                                    Championship Record
+                                {% endif %}
+                            </div>
+
+                            <div class="record-title">
+                                {{ champion.fc_username if champion else 'Champion' }}
+                            </div>
+
+                            <div class="record-line">
+                                <span>Tournament</span>
+                                <span>{{ record.tournament_name }}</span>
+                            </div>
+
+                            <div class="record-line">
+                                <span>Final</span>
+                                <span>{{ record.final_score or '—' }}</span>
+                            </div>
+
+                            <div class="record-line">
+                                <span>Team</span>
+                                <span>{{ record.team_name or '—' }}</span>
+                            </div>
+
+                            <div class="record-line">
+                                <span>Matches</span>
+                                <span>{{ record.matches_played if record.matches_played is not none else '—' }}</span>
+                            </div>
+
+                            <div class="record-line">
+                                <span>Wins</span>
+                                <span>{{ record.wins if record.wins is not none else '—' }}</span>
+                            </div>
+
+                            <div class="record-line">
+                                <span>Goals</span>
+                                <span>{{ record.goals_scored if record.goals_scored is not none else '—' }}</span>
+                            </div>
+
+                        </article>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <div class="empty-archive">
+                            No championship records have been sealed in the vault yet.
+                        </div>
+
+                    {% endif %}
+
+                </div>
+            </section>
+
+            <!-- MASSIVE VAULT DOOR -->
+            <section class="vault-door" id="vaultDoor" aria-hidden="true">
+
+                <div class="door-body"></div>
+
+                <div class="locking-system">
+                    <div class="lock-pin pin-top" id="pinTop"></div>
+                    <div class="lock-pin pin-right" id="pinRight"></div>
+                    <div class="lock-pin pin-bottom" id="pinBottom"></div>
+                    <div class="lock-pin pin-left" id="pinLeft"></div>
+                </div>
+
+                <div class="door-bolts">
+                    <div class="bolt"></div>
+                    <div class="bolt"></div>
+                    <div class="bolt"></div>
+                    <div class="bolt"></div>
+                    <div class="bolt"></div>
+                    <div class="bolt"></div>
+                </div>
+
+                <div class="vault-wheel" id="vaultWheel">
+                    <div class="wheel-ring"></div>
+                    <div class="wheel-spoke spoke-1"></div>
+                    <div class="wheel-spoke spoke-2"></div>
+                    <div class="wheel-spoke spoke-3"></div>
+                    <div class="wheel-hub"></div>
+                </div>
+
+            </section>
+
+        </div>
+    </div>
+
+    <div class="vault-status" id="vaultStatus">
+        <span id="vaultStatusText">ARCHIVE SEALED</span>
+    </div>
+
+    <div class="vault-intro" id="vaultIntro">
+        <div class="vault-kicker">Amination eSports · Champions Vault</div>
+        <button class="vault-enter" id="openVaultButton" type="button">
+            Enter Champions Vault
+        </button>
+    </div>
+
+    <div class="vault-flash" id="vaultFlash"></div>
+    <div class="vault-shock" id="vaultShock"></div>
+
+</main>
+
+<script>
+(function () {
+    "use strict";
+
+    const vault = document.getElementById("vaultContainer");
+    const door = document.getElementById("vaultDoor");
+    const wheel = document.getElementById("vaultWheel");
+    const intro = document.getElementById("vaultIntro");
+    const button = document.getElementById("openVaultButton");
+    const status = document.getElementById("vaultStatus");
+    const statusText = document.getElementById("vaultStatusText");
+    const flash = document.getElementById("vaultFlash");
+    const shock = document.getElementById("vaultShock");
+
+    const pinTop = document.getElementById("pinTop");
+    const pinRight = document.getElementById("pinRight");
+    const pinBottom = document.getElementById("pinBottom");
+    const pinLeft = document.getElementById("pinLeft");
+
+    let running = false;
+    let audioContext = null;
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function updateStatus(text) {
+        statusText.textContent = text;
+    }
+
+    /*
+     * =============================================================
+     * PROCEDURAL INDUSTRIAL AUDIO
+     *
+     * No external audio file is required.
+     * The sounds are generated locally in the browser.
+     * Audio starts only after the user presses the button so that
+     * mobile browser autoplay restrictions are respected.
+     * =============================================================
+     */
+
+    function getAudio() {
+        if (!audioContext) {
+            const AudioContextClass =
+                window.AudioContext ||
+                window.webkitAudioContext;
+
+            if (!AudioContextClass) {
+                return null;
+            }
+
+            audioContext = new AudioContextClass();
+        }
+
+        if (audioContext.state === "suspended") {
+            audioContext.resume().catch(() => {});
+        }
+
+        return audioContext;
+    }
+
+    function gainNode(ctx, value) {
+        const gain = ctx.createGain();
+        gain.gain.value = value;
+        gain.connect(ctx.destination);
+        return gain;
+    }
+
+    /*
+ * =============================================================
+ * VAULT AUDIO REALISM v2
+ * =============================================================
+ *
+ * Procedural industrial steel sound design.
+ *
+ * Each mechanical event is constructed from:
+ *   1. structural low-frequency impact
+ *   2. broadband metal transient
+ *   3. resonant steel bands
+ *   4. mechanical scrape / travel
+ *   5. controlled decay
+ *
+ * This is procedural sound design, not a recording of a real vault.
+ * =============================================================
+ */
+
+function vaultAudioNoise(ctx, duration, amplitude = 0.2) {
+    const length = Math.max(
+        1,
+        Math.floor(ctx.sampleRate * duration)
+    );
+
+    const buffer = ctx.createBuffer(
+        1,
+        length,
+        ctx.sampleRate
+    );
+
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length; i++) {
+        const t = i / length;
+        const envelope = Math.pow(1 - t, 1.7);
+
+        data[i] =
+            (Math.random() * 2 - 1) *
+            envelope *
+            amplitude;
+    }
+
+    return buffer;
+}
+
+function vaultAudioMaster(ctx) {
+    const compressor = ctx.createDynamicsCompressor();
+
+    compressor.threshold.setValueAtTime(
+        -18,
+        ctx.currentTime
+    );
+
+    compressor.knee.setValueAtTime(
+        18,
+        ctx.currentTime
+    );
+
+    compressor.ratio.setValueAtTime(
+        5,
+        ctx.currentTime
+    );
+
+    compressor.attack.setValueAtTime(
+        0.003,
+        ctx.currentTime
+    );
+
+    compressor.release.setValueAtTime(
+        0.22,
+        ctx.currentTime
+    );
+
+    compressor.connect(ctx.destination);
+
+    return compressor;
+}
+
+function vaultImpact(intensity = 1, options = {}) {
+    const ctx = getAudio();
+
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const duration = options.duration || 1.25;
+    const master = vaultAudioMaster(ctx);
+
+    /*
+     * Structural mass.
+     */
+    const mass = ctx.createOscillator();
+    const massGain = ctx.createGain();
+
+    mass.type = "sine";
+
+    mass.frequency.setValueAtTime(
+        options.massFrequency || 54,
+        now
+    );
+
+    mass.frequency.exponentialRampToValueAtTime(
+        options.massEnd || 24,
+        now + duration * 0.72
+    );
+
+    massGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    massGain.gain.exponentialRampToValueAtTime(
+        0.34 * intensity,
+        now + 0.008
+    );
+
+    massGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + duration
+    );
+
+    mass.connect(massGain);
+    massGain.connect(master);
+
+    mass.start(now);
+    mass.stop(now + duration + 0.05);
+
+    /*
+     * Hard impact transient.
+     */
+    const noise = ctx.createBufferSource();
+    const noiseFilter = ctx.createBiquadFilter();
+    const noiseGain = ctx.createGain();
+
+    noise.buffer = vaultAudioNoise(
+        ctx,
+        Math.min(duration, 0.8),
+        0.9
+    );
+
+    noiseFilter.type = "bandpass";
+
+    noiseFilter.frequency.setValueAtTime(
+        options.impactFrequency || 1450,
+        now
+    );
+
+    noiseFilter.Q.setValueAtTime(
+        0.85,
+        now
+    );
+
+    noiseGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    noiseGain.gain.exponentialRampToValueAtTime(
+        0.30 * intensity,
+        now + 0.004
+    );
+
+    noiseGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 0.24
+    );
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(master);
+
+    noise.start(now);
+
+    /*
+     * Steel resonance.
+     */
+    const resonanceFrequencies =
+        options.resonances || [310, 470, 760];
+
+    resonanceFrequencies.forEach(
+        (frequency, index) => {
+            const resonance = ctx.createOscillator();
+            const resonanceGain = ctx.createGain();
+
+            resonance.type = "triangle";
+
+            resonance.frequency.setValueAtTime(
+                frequency,
+                now + 0.012
+            );
+
+            resonance.frequency.exponentialRampToValueAtTime(
+                frequency * 0.72,
+                now + duration
+            );
+
+            resonanceGain.gain.setValueAtTime(
+                0.0001,
+                now
+            );
+
+            resonanceGain.gain.exponentialRampToValueAtTime(
+                (0.075 - index * 0.012) * intensity,
+                now + 0.018
+            );
+
+            resonanceGain.gain.exponentialRampToValueAtTime(
+                0.0001,
+                now + duration
+            );
+
+            resonance.connect(resonanceGain);
+            resonanceGain.connect(master);
+
+            resonance.start(now);
+            resonance.stop(now + duration + 0.05);
+        }
+    );
+
+    /*
+     * Secondary metal body.
+     */
+    const bodyNoise = ctx.createBufferSource();
+    const bodyFilter = ctx.createBiquadFilter();
+    const bodyGain = ctx.createGain();
+
+    bodyNoise.buffer = vaultAudioNoise(
+        ctx,
+        Math.min(duration, 0.95),
+        0.55
+    );
+
+    bodyFilter.type = "lowpass";
+
+    bodyFilter.frequency.setValueAtTime(
+        900,
+        now
+    );
+
+    bodyFilter.frequency.exponentialRampToValueAtTime(
+        170,
+        now + duration * 0.75
+    );
+
+    bodyGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    bodyGain.gain.exponentialRampToValueAtTime(
+        0.15 * intensity,
+        now + 0.018
+    );
+
+    bodyGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + duration
+    );
+
+    bodyNoise.connect(bodyFilter);
+    bodyFilter.connect(bodyGain);
+    bodyGain.connect(master);
+
+    bodyNoise.start(now);
+}
+
+function vaultMetalHit(intensity = 1, options = {}) {
+    const ctx = getAudio();
+
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const master = vaultAudioMaster(ctx);
+    const duration = options.duration || 0.7;
+    const frequency = options.frequency || 1100;
+
+    const noise = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    noise.buffer = vaultAudioNoise(
+        ctx,
+        duration,
+        0.95
+    );
+
+    filter.type = "bandpass";
+
+    filter.frequency.setValueAtTime(
+        frequency,
+        now
+    );
+
+    filter.Q.setValueAtTime(
+        1.05,
+        now
+    );
+
+    gain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.26 * intensity,
+        now + 0.003
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + duration
+    );
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(master);
+
+    noise.start(now);
+
+    const ring = ctx.createOscillator();
+    const ringGain = ctx.createGain();
+
+    ring.type = "triangle";
+
+    ring.frequency.setValueAtTime(
+        frequency,
+        now
+    );
+
+    ring.frequency.exponentialRampToValueAtTime(
+        frequency * 0.48,
+        now + duration
+    );
+
+    ringGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    ringGain.gain.exponentialRampToValueAtTime(
+        0.10 * intensity,
+        now + 0.006
+    );
+
+    ringGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + duration
+    );
+
+    ring.connect(ringGain);
+    ringGain.connect(master);
+
+    ring.start(now);
+    ring.stop(now + duration + 0.03);
+}
+
+function metallicClunk(intensity = 1) {
+    vaultMetalHit(
+        intensity,
+        {
+            duration: 0.58,
+            frequency: 1250
+        }
+    );
+
+    vaultImpact(
+        intensity * 0.58,
+        {
+            duration: 0.82,
+            massFrequency: 62,
+            massEnd: 27,
+            impactFrequency: 980,
+            resonances: [240, 390]
+        }
+    );
+}
+
+function vaultPinRelease(intensity = 1) {
+    const ctx = getAudio();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const master = vaultAudioMaster(ctx);
+    const safeIntensity = Math.max(0.25, Math.min(1.5, intensity));
+
+    /*
+     * Heavy steel locking pin:
+     * - broadband impact instead of a tonal "pew"
+     * - low mechanical body
+     * - short steel clink
+     * - physical travel/scrape
+     * - hard end-stop
+     */
+
+    const impactNoise = ctx.createBufferSource();
+    const impactFilter = ctx.createBiquadFilter();
+    const impactGain = ctx.createGain();
+
+    impactNoise.buffer = vaultAudioNoise(
+        ctx,
+        0.32,
+        0.9
+    );
+
+    impactFilter.type = "bandpass";
+    impactFilter.frequency.setValueAtTime(
+        1450,
+        now
+    );
+    impactFilter.frequency.exponentialRampToValueAtTime(
+        420,
+        now + 0.12
+    );
+    impactFilter.Q.setValueAtTime(
+        0.42,
+        now
+    );
+
+    impactGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+    impactGain.gain.exponentialRampToValueAtTime(
+        0.34 * safeIntensity,
+        now + 0.006
+    );
+    impactGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 0.19
+    );
+
+    impactNoise.connect(impactFilter);
+    impactFilter.connect(impactGain);
+    impactGain.connect(master);
+
+    impactNoise.start(now);
+    impactNoise.stop(now + 0.25);
+
+    const body = ctx.createOscillator();
+    const bodyGain = ctx.createGain();
+    const bodyFilter = ctx.createBiquadFilter();
+
+    body.type = "triangle";
+
+    body.frequency.setValueAtTime(
+        92,
+        now
+    );
+    body.frequency.exponentialRampToValueAtTime(
+        42,
+        now + 0.24
+    );
+
+    bodyFilter.type = "lowpass";
+    bodyFilter.frequency.setValueAtTime(
+        330,
+        now
+    );
+    bodyFilter.Q.setValueAtTime(
+        0.55,
+        now
+    );
+
+    bodyGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+    bodyGain.gain.exponentialRampToValueAtTime(
+        0.20 * safeIntensity,
+        now + 0.012
+    );
+    bodyGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 0.34
+    );
+
+    body.connect(bodyFilter);
+    bodyFilter.connect(bodyGain);
+    bodyGain.connect(master);
+
+    body.start(now);
+    body.stop(now + 0.4);
+
+    /*
+     * The pin physically drags against its housing.
+     * This is intentionally noisy and short rather than tonal.
+     */
+    setTimeout(() => {
+        const t = ctx.currentTime;
+
+        const scrape = ctx.createBufferSource();
+        const scrapeFilter = ctx.createBiquadFilter();
+        const scrapeGain = ctx.createGain();
+
+        scrape.buffer = vaultAudioNoise(
+            ctx,
+            0.58,
+            0.72
+        );
+
+        scrapeFilter.type = "bandpass";
+        scrapeFilter.frequency.setValueAtTime(
+            720,
+            t
+        );
+        scrapeFilter.frequency.exponentialRampToValueAtTime(
+            190,
+            t + 0.43
+        );
+        scrapeFilter.Q.setValueAtTime(
+            0.38,
+            t
+        );
+
+        scrapeGain.gain.setValueAtTime(
+            0.0001,
+            t
+        );
+        scrapeGain.gain.exponentialRampToValueAtTime(
+            0.22 * safeIntensity,
+            t + 0.025
+        );
+        scrapeGain.gain.exponentialRampToValueAtTime(
+            0.0001,
+            t + 0.51
+        );
+
+        scrape.connect(scrapeFilter);
+        scrapeFilter.connect(scrapeGain);
+        scrapeGain.connect(master);
+
+        scrape.start(t);
+        scrape.stop(t + 0.57);
+    }, 95);
+
+    /*
+     * Final mechanical KLANG / CHUNK when the locking piece
+     * reaches the released position.
+     */
+    setTimeout(() => {
+        const t = ctx.currentTime;
+
+        const clinkNoise = ctx.createBufferSource();
+        const clinkFilter = ctx.createBiquadFilter();
+        const clinkGain = ctx.createGain();
+
+        clinkNoise.buffer = vaultAudioNoise(
+            ctx,
+            0.26,
+            0.75
+        );
+
+        clinkFilter.type = "bandpass";
+        clinkFilter.frequency.setValueAtTime(
+            2100,
+            t
+        );
+        clinkFilter.frequency.exponentialRampToValueAtTime(
+            620,
+            t + 0.16
+        );
+        clinkFilter.Q.setValueAtTime(
+            0.62,
+            t
+        );
+
+        clinkGain.gain.setValueAtTime(
+            0.0001,
+            t
+        );
+        clinkGain.gain.exponentialRampToValueAtTime(
+            0.27 * safeIntensity,
+            t + 0.004
+        );
+        clinkGain.gain.exponentialRampToValueAtTime(
+            0.0001,
+            t + 0.18
+        );
+
+        clinkNoise.connect(clinkFilter);
+        clinkFilter.connect(clinkGain);
+        clinkGain.connect(master);
+
+        clinkNoise.start(t);
+        clinkNoise.stop(t + 0.22);
+
+        const stop = ctx.createOscillator();
+        const stopGain = ctx.createGain();
+
+        stop.type = "triangle";
+        stop.frequency.setValueAtTime(
+            118,
+            t
+        );
+        stop.frequency.exponentialRampToValueAtTime(
+            54,
+            t + 0.22
+        );
+
+        stopGain.gain.setValueAtTime(
+            0.0001,
+            t
+        );
+        stopGain.gain.exponentialRampToValueAtTime(
+            0.16 * safeIntensity,
+            t + 0.008
+        );
+        stopGain.gain.exponentialRampToValueAtTime(
+            0.0001,
+            t + 0.29
+        );
+
+        stop.connect(stopGain);
+        stopGain.connect(master);
+
+        stop.start(t);
+        stop.stop(t + 0.34);
+    }, 560);
+}
+
+function vaultSealBreakSound() {
+    vaultImpact(
+        1.45,
+        {
+            duration: 1.45,
+            massFrequency: 42,
+            massEnd: 19,
+            impactFrequency: 680,
+            resonances: [170, 310, 560]
+        }
+    );
+
+    setTimeout(() => {
+        vaultMetalHit(
+            1.25,
+            {
+                duration: 0.9,
+                frequency: 520
+            }
+        );
+    }, 95);
+
+    setTimeout(() => {
+        const ctx = getAudio();
+
+        if (!ctx) return;
+
+        const master = vaultAudioMaster(ctx);
+        const source = ctx.createBufferSource();
+        const filter = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+
+        source.buffer = vaultAudioNoise(
+            ctx,
+            1.8,
+            0.48
+        );
+
+        filter.type = "highpass";
+
+        filter.frequency.setValueAtTime(
+            900,
+            ctx.currentTime
+        );
+
+        gain.gain.setValueAtTime(
+            0.0001,
+            ctx.currentTime
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+            0.09,
+            ctx.currentTime + 0.08
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+            0.0001,
+            ctx.currentTime + 1.55
+        );
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(master);
+
+        source.start();
+    }, 180);
+}
+
+function vaultWheelClick(intensity = 1) {
+    const ctx = getAudio();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const master = vaultAudioMaster(ctx);
+    const safeIntensity = Math.max(0.25, Math.min(1.6, intensity));
+
+    /*
+     * Heavy steel ratchet tooth.
+     *
+     * No sustained pitch.
+     * No sci-fi zap.
+     * The character comes from:
+     *   transient + low mass + short steel resonance.
+     */
+
+    const clack = ctx.createBufferSource();
+    const clackFilter = ctx.createBiquadFilter();
+    const clackGain = ctx.createGain();
+
+    clack.buffer = vaultAudioNoise(
+        ctx,
+        0.20,
+        0.95
+    );
+
+    clackFilter.type = "bandpass";
+    clackFilter.frequency.setValueAtTime(
+        1250,
+        now
+    );
+    clackFilter.frequency.exponentialRampToValueAtTime(
+        360,
+        now + 0.105
+    );
+    clackFilter.Q.setValueAtTime(
+        0.48,
+        now
+    );
+
+    clackGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+    clackGain.gain.exponentialRampToValueAtTime(
+        0.40 * safeIntensity,
+        now + 0.003
+    );
+    clackGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 0.13
+    );
+
+    clack.connect(clackFilter);
+    clackFilter.connect(clackGain);
+    clackGain.connect(master);
+
+    clack.start(now);
+    clack.stop(now + 0.18);
+
+    const mass = ctx.createOscillator();
+    const massGain = ctx.createGain();
+    const massFilter = ctx.createBiquadFilter();
+
+    mass.type = "triangle";
+    mass.frequency.setValueAtTime(
+        76,
+        now
+    );
+    mass.frequency.exponentialRampToValueAtTime(
+        34,
+        now + 0.20
+    );
+
+    massFilter.type = "lowpass";
+    massFilter.frequency.setValueAtTime(
+        300,
+        now
+    );
+
+    massGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+    massGain.gain.exponentialRampToValueAtTime(
+        0.24 * safeIntensity,
+        now + 0.006
+    );
+    massGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 0.25
+    );
+
+    mass.connect(massFilter);
+    massFilter.connect(massGain);
+    massGain.connect(master);
+
+    mass.start(now);
+    mass.stop(now + 0.3);
+
+    /*
+     * Tiny steel ring after the tooth engages.
+     */
+    const ring = ctx.createOscillator();
+    const ringGain = ctx.createGain();
+
+    ring.type = "sine";
+    ring.frequency.setValueAtTime(
+        980,
+        now
+    );
+    ring.frequency.exponentialRampToValueAtTime(
+        560,
+        now + 0.20
+    );
+
+    ringGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+    ringGain.gain.exponentialRampToValueAtTime(
+        0.075 * safeIntensity,
+        now + 0.004
+    );
+    ringGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 0.20
+    );
+
+    ring.connect(ringGain);
+    ringGain.connect(master);
+
+    ring.start(now);
+    ring.stop(now + 0.25);
+}
+
+function vaultWheelDrive(duration = 1.4) {
+    const ctx = getAudio();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const master = vaultAudioMaster(ctx);
+
+    const safeDuration = Math.max(
+        0.4,
+        Math.min(6, Number(duration) || 1.4)
+    );
+
+    /*
+     * Continuous heavy mechanical load.
+     * The individual ratchet teeth are deliberately irregular
+     * so the wheel feels hand-driven rather than like a loop.
+     */
+
+    const motor = ctx.createOscillator();
+    const motorGain = ctx.createGain();
+    const motorFilter = ctx.createBiquadFilter();
+
+    motor.type = "triangle";
+
+    motor.frequency.setValueAtTime(
+        31,
+        now
+    );
+    motor.frequency.linearRampToValueAtTime(
+        22,
+        now + safeDuration
+    );
+
+    motorFilter.type = "lowpass";
+    motorFilter.frequency.setValueAtTime(
+        240,
+        now
+    );
+
+    motorGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+    motorGain.gain.linearRampToValueAtTime(
+        0.12,
+        now + 0.16
+    );
+    motorGain.gain.linearRampToValueAtTime(
+        0.0001,
+        now + safeDuration
+    );
+
+    motor.connect(motorFilter);
+    motorFilter.connect(motorGain);
+    motorGain.connect(master);
+
+    motor.start(now);
+    motor.stop(now + safeDuration + 0.05);
+
+    const load = ctx.createBufferSource();
+    const loadFilter = ctx.createBiquadFilter();
+    const loadGain = ctx.createGain();
+
+    load.buffer = vaultAudioNoise(
+        ctx,
+        safeDuration,
+        0.52
+    );
+
+    loadFilter.type = "lowpass";
+    loadFilter.frequency.setValueAtTime(
+        320,
+        now
+    );
+    loadFilter.frequency.linearRampToValueAtTime(
+        105,
+        now + safeDuration
+    );
+
+    loadGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+    loadGain.gain.linearRampToValueAtTime(
+        0.11,
+        now + 0.16
+    );
+    loadGain.gain.linearRampToValueAtTime(
+        0.0001,
+        now + safeDuration
+    );
+
+    load.connect(loadFilter);
+    loadFilter.connect(loadGain);
+    loadGain.connect(master);
+
+    load.start(now);
+    load.stop(now + safeDuration);
+
+    /*
+     * Ratchet teeth.
+     *
+     * 9 clicks over 1.7 s / 2.0 s feels like a large wheel
+     * engaging a heavy locking mechanism. Small timing offsets
+     * prevent a robotic metronome effect.
+     */
+    const clickCount = Math.max(
+        4,
+        Math.min(14, Math.round(safeDuration * 5))
+    );
+
+    const offsets = [];
+    for (let i = 0; i < clickCount; i += 1) {
+        const base = safeDuration * (i + 1) / (clickCount + 1);
+        const jitter = Math.sin((i + 1) * 2.41) * 0.035;
+        offsets.push(
+            Math.max(
+                0.08,
+                Math.min(
+                    safeDuration - 0.04,
+                    base + jitter
+                )
+            )
+        );
+    }
+
+    offsets.forEach((offset, index) => {
+        setTimeout(() => {
+            const strength =
+                0.72 +
+                (index % 3) * 0.08;
+
+            vaultWheelClick(strength);
+        }, Math.round(offset * 1000));
+    });
+}
+
+function hydraulicRelease() {
+    const ctx = getAudio();
+
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const master = vaultAudioMaster(ctx);
+
+    const pressure = ctx.createOscillator();
+    const pressureGain = ctx.createGain();
+
+    pressure.type = "sine";
+
+    pressure.frequency.setValueAtTime(
+        44,
+        now
+    );
+
+    pressure.frequency.exponentialRampToValueAtTime(
+        18,
+        now + 2.8
+    );
+
+    pressureGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    pressureGain.gain.exponentialRampToValueAtTime(
+        0.16,
+        now + 0.18
+    );
+
+    pressureGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 2.8
+    );
+
+    pressure.connect(pressureGain);
+    pressureGain.connect(master);
+
+    pressure.start(now);
+    pressure.stop(now + 3);
+
+    const hiss = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    hiss.buffer = vaultAudioNoise(
+        ctx,
+        2.7,
+        0.42
+    );
+
+    filter.type = "bandpass";
+
+    filter.frequency.setValueAtTime(
+        850,
+        now
+    );
+
+    filter.frequency.exponentialRampToValueAtTime(
+        320,
+        now + 2.5
+    );
+
+    filter.Q.setValueAtTime(
+        0.5,
+        now
+    );
+
+    gain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.095,
+        now + 0.16
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 2.7
+    );
+
+    hiss.connect(filter);
+    filter.connect(gain);
+    gain.connect(master);
+
+    hiss.start(now);
+}
+
+function metalGrind(duration = 6) {
+    const ctx = getAudio();
+
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const master = vaultAudioMaster(ctx);
+
+    const source = ctx.createBufferSource();
+    const low = ctx.createBiquadFilter();
+    const mid = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    source.buffer = vaultAudioNoise(
+        ctx,
+        duration,
+        0.72
+    );
+
+    low.type = "lowpass";
+
+    low.frequency.setValueAtTime(
+        520,
+        now
+    );
+
+    low.frequency.linearRampToValueAtTime(
+        160,
+        now + duration
+    );
+
+    mid.type = "bandpass";
+
+    mid.frequency.setValueAtTime(
+        240,
+        now
+    );
+
+    mid.frequency.linearRampToValueAtTime(
+        110,
+        now + duration
+    );
+
+    mid.Q.setValueAtTime(
+        0.65,
+        now
+    );
+
+    gain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    gain.gain.linearRampToValueAtTime(
+        0.18,
+        now + 0.75
+    );
+
+    gain.gain.linearRampToValueAtTime(
+        0.0001,
+        now + duration
+    );
+
+    source.connect(low);
+    low.connect(mid);
+    mid.connect(gain);
+    gain.connect(master);
+
+    source.start(now);
+
+    const groan = ctx.createOscillator();
+    const groanGain = ctx.createGain();
+
+    groan.type = "sine";
+
+    groan.frequency.setValueAtTime(
+        31,
+        now
+    );
+
+    groan.frequency.linearRampToValueAtTime(
+        21,
+        now + duration
+    );
+
+    groanGain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    groanGain.gain.linearRampToValueAtTime(
+        0.11,
+        now + 0.9
+    );
+
+    groanGain.gain.linearRampToValueAtTime(
+        0.0001,
+        now + duration
+    );
+
+    groan.connect(groanGain);
+    groanGain.connect(master);
+
+    groan.start(now);
+    groan.stop(now + duration + 0.05);
+}
+
+function vaultBoom() {
+    vaultImpact(
+        2.1,
+        {
+            duration: 3.1,
+            massFrequency: 48,
+            massEnd: 16,
+            impactFrequency: 430,
+            resonances: [120, 220, 360]
+        }
+    );
+
+    setTimeout(() => {
+        vaultMetalHit(
+            1.55,
+            {
+                duration: 1.65,
+                frequency: 290
+            }
+        );
+    }, 85);
+
+    setTimeout(() => {
+        const ctx = getAudio();
+
+        if (!ctx) return;
+
+        const master = vaultAudioMaster(ctx);
+        const now = ctx.currentTime;
+
+        [92, 145, 205].forEach(
+            (frequency, index) => {
+                const ring = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                ring.type = "sine";
+
+                ring.frequency.setValueAtTime(
+                    frequency,
+                    now
+                );
+
+                ring.frequency.exponentialRampToValueAtTime(
+                    frequency * 0.88,
+                    now + 3.8
+                );
+
+                gain.gain.setValueAtTime(
+                    0.0001,
+                    now
+                );
+
+                gain.gain.exponentialRampToValueAtTime(
+                    0.095 - index * 0.018,
+                    now + 0.04
+                );
+
+                gain.gain.exponentialRampToValueAtTime(
+                    0.0001,
+                    now + 3.8
+                );
+
+                ring.connect(gain);
+                gain.connect(master);
+
+                ring.start(now);
+                ring.stop(now + 3.9);
+            }
+        );
+    }, 70);
+}
+
+
+/* -----------------------------------------------------------
+   CHAMPIONS CELEBRATION THEME
+   Additive only: does not replace vault mechanical audio.
+   ----------------------------------------------------------- */
+
+let vaultChampionsThemeStarted = false;
+let vaultChampionsThemeTimer = null;
+let vaultChampionsThemeNodes = [];
+
+function vaultChampionsTheme() {
+    if (vaultChampionsThemeStarted) {
+        return;
+    }
+
+    vaultChampionsThemeStarted = true;
+
+    const ctx = vaultAudioContext;
+    if (!ctx) {
+        return;
+    }
+
+    const now = ctx.currentTime;
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.075, now + 1.8);
+
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-18, now);
+    compressor.knee.setValueAtTime(18, now);
+    compressor.ratio.setValueAtTime(3, now);
+    compressor.attack.setValueAtTime(0.012, now);
+    compressor.release.setValueAtTime(0.35, now);
+
+    master.connect(compressor);
+    compressor.connect(ctx.destination);
+
+    vaultChampionsThemeNodes.push(master, compressor);
+
+    /*
+     * The theme is deliberately built around a simple
+     * accomplishment motif:
+     *
+     *   D  -  F#  -  A  -  B
+     *   A  -  B   -  D  -  F#
+     *
+     * It rises instead of behaving like an arcade/game loop.
+     */
+
+    const tempo = 78;
+    const beat = 60 / tempo;
+
+    function noteFrequency(semitonesFromD4) {
+        return 293.6648 * Math.pow(2, semitonesFromD4 / 12);
+    }
+
+    function createVoice(
+        frequency,
+        start,
+        duration,
+        level,
+        waveform,
+        attack,
+        release
+    ) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = waveform;
+        osc.frequency.setValueAtTime(frequency, start);
+
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(2400, start);
+        filter.Q.setValueAtTime(0.7, start);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(
+            Math.max(level, 0.0002),
+            start + attack
+        );
+
+        gain.gain.setValueAtTime(
+            Math.max(level * 0.72, 0.0002),
+            start + Math.max(attack, 0.08)
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+            0.0001,
+            start + duration + release
+        );
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(master);
+
+        osc.start(start);
+        osc.stop(start + duration + release + 0.05);
+
+        vaultChampionsThemeNodes.push(osc, gain, filter);
+    }
+
+    function softDrum(start, frequency, level, duration) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(frequency, start);
+        osc.frequency.exponentialRampToValueAtTime(
+            Math.max(frequency * 0.58, 28),
+            start + duration
+        );
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(
+            Math.max(level, 0.0002),
+            start + 0.012
+        );
+        gain.gain.exponentialRampToValueAtTime(
+            0.0001,
+            start + duration
+        );
+
+        osc.connect(gain);
+        gain.connect(master);
+
+        osc.start(start);
+        osc.stop(start + duration + 0.03);
+
+        vaultChampionsThemeNodes.push(osc, gain);
+    }
+
+    function playPhrase(start) {
+        /*
+         * Main accomplishment motif.
+         * The staggered entrance gives it a cinematic,
+         * human-fanfare feel rather than a game-loop feel.
+         */
+
+        const motif = [
+            [0, 0.00, 0.72],
+            [4, 0.82, 0.58],
+            [7, 1.54, 0.62],
+            [9, 2.30, 0.92],
+
+            [7, 3.48, 0.55],
+            [9, 4.18, 0.55],
+            [12, 4.86, 0.72],
+            [16, 5.72, 1.22],
+        ];
+
+        for (const [semi, offset, duration] of motif) {
+            const t = start + offset * beat;
+
+            createVoice(
+                noteFrequency(semi),
+                t,
+                duration * beat,
+                0.28,
+                "triangle",
+                0.06,
+                0.34
+            );
+
+            createVoice(
+                noteFrequency(semi - 12),
+                t + 0.018,
+                duration * beat,
+                0.12,
+                "sine",
+                0.08,
+                0.42
+            );
+        }
+
+        /*
+         * Warm sustained harmony under the motif.
+         */
+        const chords = [
+            [[0, 4, 7], 0],
+            [[5, 9, 12], 2.7],
+            [[7, 11, 14], 5.1],
+        ];
+
+        for (const [notes, offset] of chords) {
+            const chordStart = start + offset * beat;
+
+            for (const semi of notes) {
+                createVoice(
+                    noteFrequency(semi - 12),
+                    chordStart,
+                    2.35 * beat,
+                    0.055,
+                    "sine",
+                    0.55,
+                    0.85
+                );
+            }
+        }
+
+        /*
+         * Very restrained cinematic pulse.
+         * It supports the achievement without becoming
+         * an esports/game beat.
+         */
+        softDrum(start, 74, 0.12, 0.34 * beat);
+        softDrum(start + 2 * beat, 58, 0.085, 0.42 * beat);
+        softDrum(start + 4 * beat, 74, 0.10, 0.34 * beat);
+        softDrum(start + 6 * beat, 58, 0.075, 0.44 * beat);
+    }
+
+    const phraseLength = 7.4 * beat;
+
+    playPhrase(now + 0.15);
+
+    /*
+     * Two additional phrases keep the music alive while the
+     * Champions Vault is being viewed, but each phrase is
+     * softer than the entrance.
+     */
+    const secondStart = now + phraseLength + 0.8;
+
+    vaultChampionsThemeTimer = setTimeout(() => {
+        if (!vaultChampionsThemeStarted) {
+            return;
+        }
+
+        playPhrase(secondStart);
+    }, Math.max(0, (secondStart - ctx.currentTime) * 1000));
+
+    const fadeTime = now + phraseLength * 2 + 1.2;
+
+    master.gain.setTargetAtTime(
+        0.0001,
+        fadeTime,
+        1.8
+    );
+
+    setTimeout(() => {
+        for (const node of vaultChampionsThemeNodes) {
+            try {
+                if (node.stop) {
+                    node.stop();
+                }
+            } catch (_) {
+                /* Already stopped. */
+            }
+
+            try {
+                if (node.disconnect) {
+                    node.disconnect();
+                }
+            } catch (_) {
+                /* Already disconnected. */
+            }
+        }
+
+        vaultChampionsThemeNodes = [];
+        vaultChampionsThemeTimer = null;
+        vaultChampionsThemeStarted = false;
+    }, Math.max(0, (fadeTime - ctx.currentTime + 2.5) * 1000));
+}
+
+
+
+/*
+     * =============================================================
+     * CINEMATIC SEQUENCE
+     * =============================================================
+     */
+
+    async function openVault() {
+        if (running) return;
+        running = true;
+
+        getAudio();
+
+        button.disabled = true;
+        intro.classList.add("hidden");
+
+        /*
+         * Let the audience sit in darkness before anything happens.
+         */
+        await sleep(1800);
+
+        vault.classList.add("visible");
+        status.classList.add("active");
+
+        updateStatus("VAULT IDENTIFIED");
+
+        await sleep(4500);
+
+        /*
+         * CENTRAL WHEEL
+         */
+        updateStatus("PRIMARY LOCK ENGAGING");
+
+        metallicClunk(1.15);
+        await sleep(950);
+
+        /*
+         * WHEEL STAGE 01 — INITIAL TORQUE
+         */
+        updateStatus("PRIMARY LOCK — TORQUE BUILDING");
+
+        vaultWheelDrive(1.45);
+        wheel.classList.add("wheel-step-1");
+
+        await sleep(2050);
+
+        /*
+         * WHEEL STAGE 02 — GEAR TRANSFER
+         */
+        updateStatus("PRIMARY LOCK — GEAR TRANSFER");
+
+        vaultWheelClick(1.05);
+        await sleep(650);
+
+        vaultWheelDrive(1.7);
+        wheel.classList.add("wheel-step-2");
+
+        await sleep(2450);
+
+        /*
+         * WHEEL STAGE 03 — FINAL ENGAGEMENT
+         */
+        updateStatus("PRIMARY LOCK — FINAL ENGAGEMENT");
+
+        vaultWheelClick(1.2);
+        await sleep(700);
+
+        vaultWheelDrive(2.0);
+        wheel.classList.add("wheel-step-3");
+
+        await sleep(3000);
+
+        /*
+         * FINAL MECHANICAL LOCK.
+         */
+        vaultWheelClick(1.5);
+        metallicClunk(1.45);
+
+        await sleep(1200);
+
+        /*
+         * LOCK 1
+         */
+        updateStatus("LOCKING PIN 01 — RELEASE");
+
+        metallicClunk(1.25);
+        await sleep(800);
+
+        /*
+         * PIN 01 — mechanical travel begins.
+         * The sound starts with the physical CSS movement.
+         */
+        pinTop.classList.add("released");
+        vaultPinRelease(1.0);
+
+        await sleep(3100);
+
+        /*
+         * LOCK 2
+         */
+        updateStatus("LOCKING PIN 02 — RELEASE");
+
+        metallicClunk(1.35);
+        await sleep(800);
+
+        /*
+         * PIN 02 — mechanical travel begins.
+         */
+        pinRight.classList.add("released");
+        vaultPinRelease(1.05);
+
+        await sleep(3100);
+
+        /*
+         * LOCK 3
+         */
+        updateStatus("LOCKING PIN 03 — RELEASE");
+
+        metallicClunk(1.4);
+        await sleep(800);
+
+        /*
+         * PIN 03 — mechanical travel begins.
+         */
+        pinBottom.classList.add("released");
+        vaultPinRelease(1.1);
+
+        await sleep(3100);
+
+        /*
+         * LOCK 4
+         */
+        updateStatus("LOCKING PIN 04 — RELEASE");
+
+        metallicClunk(1.5);
+        await sleep(800);
+
+        /*
+         * PIN 04 — final mechanical travel.
+         */
+        pinLeft.classList.add("released");
+        vaultPinRelease(1.18);
+
+        await sleep(3600);
+
+        /*
+         * ALL LOCKS FREE.
+         */
+        updateStatus("ALL MECHANICAL LOCKS RELEASED");
+
+        hydraulicRelease();
+        await sleep(2200);
+
+        updateStatus("DOOR SEAL — PRESSURE RELEASE");
+
+        vaultSealBreakSound();
+        door.classList.add("seal-breaking");
+
+        await sleep(1250);
+
+        updateStatus("VAULT DOOR — WEIGHT ENGAGED");
+
+        metalGrind(13);
+        await sleep(1100);
+
+        door.classList.add("opening");
+
+        await sleep(11100);
+
+        updateStatus("INNER CHAMBER REVEALED");
+
+        await sleep(2500);
+
+        /*
+         * GOLD LIGHT BEGINS.
+         */
+        vault.classList.add("archive-lit");
+
+        updateStatus("CHAMPIONS ARCHIVE — AWAKENING");
+
+        await sleep(5200);
+
+        /*
+         * Final dramatic pause.
+         */
+        updateStatus("ARCHIVE UNSEALED");
+
+        await sleep(2200);
+
+        /*
+         * BOOM.
+         */
+        vaultBoom();
+
+            // Additive Champions Vault accomplishment theme.
+            await sleep(650);
+            try {
+            vaultChampionsTheme();
+        } catch (error) {
+            console.warn("Champions celebration theme failed; continuing vault reveal.", error);
+        }
+flash.classList.remove("fire");
+        shock.classList.remove("fire");
+
+        void flash.offsetWidth;
+        void shock.offsetWidth;
+
+        flash.classList.add("fire");
+        shock.classList.add("fire");
+
+        await sleep(1200);
+
+        vault.classList.add("archive-open");
+
+        updateStatus("CHAMPIONS VAULT — OPEN");
+
+        await sleep(4500);
+
+        status.classList.remove("active");
+    }
+
+    button.addEventListener("click", openVault);
+
+})();
+</script>
+
+</body>
+</html>

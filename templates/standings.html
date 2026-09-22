@@ -492,6 +492,67 @@
             animation: drawScan 700ms ease-out forwards;
         }
 
+        /*
+         * CINEMATIC PLAYER MATERIALIZATION
+         *
+         * The player row already exists in the authoritative Match
+         * record. This animation only reveals its identity visually.
+         */
+        .player-row.draw-player-reveal {
+            z-index: 3;
+            animation:
+                drawPlayerMaterialize 620ms
+                cubic-bezier(.16,.82,.24,1)
+                both;
+        }
+
+        .player-row.draw-player-reveal .player-name {
+            text-shadow:
+                0 0 6px rgba(226,185,54,.22),
+                0 0 14px rgba(226,185,54,.14);
+        }
+
+        @keyframes drawPlayerMaterialize {
+            0% {
+                opacity: 0;
+                transform:
+                    translateX(-14px)
+                    scale(.96);
+                filter:
+                    brightness(2.1)
+                    blur(3px);
+            }
+
+            35% {
+                opacity: 1;
+                transform:
+                    translateX(5px)
+                    scale(1.015);
+                filter:
+                    brightness(1.7)
+                    blur(1px);
+            }
+
+            65% {
+                transform:
+                    translateX(-2px)
+                    scale(1.005);
+                filter:
+                    brightness(1.25)
+                    blur(0);
+            }
+
+            100% {
+                opacity: 1;
+                transform:
+                    translateX(0)
+                    scale(1);
+                filter:
+                    brightness(1)
+                    blur(0);
+            }
+        }
+
         #bracket-canvas.draw-complete .champion-node {
             opacity: 1;
         }
@@ -523,6 +584,17 @@
             .match.draw-reveal::after {
                 animation: none;
                 opacity: 0;
+            }
+
+            .player-row.draw-player-reveal {
+                animation: none;
+                opacity: 1;
+                transform: none;
+                filter: none;
+            }
+
+            .player-row.draw-player-reveal .player-name {
+                text-shadow: none;
             }
         }
 
@@ -1406,7 +1478,364 @@
                 padding-right: 12px;
             }
         }
-    </style>
+
+
+/* AMINATION BRACKET POLISH v1 */
+
+/*
+ * Visual-only presentation layer.
+ * Does NOT change tournament data, draw order, match state,
+ * player assignment, replay events, or champion logic.
+ */
+
+.bracket-viewport {
+    position: relative;
+    isolation: isolate;
+    background:
+        radial-gradient(
+            circle at 50% 8%,
+            rgba(226,185,54,.075),
+            transparent 34%
+        ),
+        linear-gradient(
+            180deg,
+            rgba(8,8,10,.96),
+            rgba(2,2,4,.985)
+        );
+    border: 1px solid rgba(226,185,54,.16);
+    box-shadow:
+        inset 0 0 55px rgba(226,185,54,.035),
+        inset 0 1px 0 rgba(255,255,255,.035),
+        0 0 32px rgba(0,0,0,.42);
+}
+
+.bracket-viewport::before,
+.bracket-viewport::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.bracket-viewport::before {
+    background:
+        linear-gradient(
+            rgba(255,255,255,.018) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            rgba(255,255,255,.014) 1px,
+            transparent 1px
+        );
+    background-size: 32px 32px;
+    mask-image: linear-gradient(
+        to bottom,
+        rgba(0,0,0,.9),
+        transparent 90%
+    );
+    opacity: .7;
+}
+
+.bracket-viewport::after {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(226,185,54,.08),
+            transparent
+        );
+    transform: translateX(-100%);
+    animation: bracketSweep 8s ease-in-out infinite;
+    opacity: .45;
+}
+
+.bracket-canvas {
+    position: relative;
+    z-index: 1;
+}
+
+.round {
+    position: relative;
+}
+
+.round-header {
+    position: relative;
+    overflow: hidden;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    border: 1px solid rgba(226,185,54,.20);
+    background:
+        linear-gradient(
+            90deg,
+            rgba(226,185,54,.08),
+            rgba(255,255,255,.025),
+            rgba(226,185,54,.08)
+        );
+    box-shadow:
+        inset 0 0 18px rgba(226,185,54,.025),
+        0 0 18px rgba(226,185,54,.035);
+}
+
+.round-header::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e2b936;
+    box-shadow:
+        0 0 8px rgba(226,185,54,.75),
+        0 0 18px rgba(226,185,54,.35);
+}
+
+.round-header::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 35%;
+    left: -40%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,.18),
+        transparent
+    );
+    animation: headerSweep 5.5s ease-in-out infinite;
+}
+
+.match {
+    position: relative;
+    overflow: hidden;
+    border-color: rgba(226,185,54,.16);
+    background:
+        linear-gradient(
+            145deg,
+            rgba(19,19,23,.96),
+            rgba(6,6,9,.985)
+        );
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.035),
+        inset 0 0 22px rgba(226,185,54,.018),
+        0 0 0 1px rgba(0,0,0,.35);
+    transition:
+        border-color .28s ease,
+        box-shadow .28s ease,
+        transform .28s ease;
+}
+
+.match::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(
+            115deg,
+            transparent 0 42%,
+            rgba(226,185,54,.045) 50%,
+            transparent 58%
+        );
+    transform: translateX(-120%);
+    transition: transform .65s ease;
+}
+
+.match:hover {
+    border-color: rgba(226,185,54,.42);
+    box-shadow:
+        inset 0 0 24px rgba(226,185,54,.035),
+        0 0 18px rgba(226,185,54,.075);
+    transform: translateY(-1px);
+}
+
+.match:hover::before {
+    transform: translateX(120%);
+}
+
+.match.live {
+    border-color: rgba(226,185,54,.72);
+    box-shadow:
+        inset 0 0 28px rgba(226,185,54,.055),
+        0 0 18px rgba(226,185,54,.16),
+        0 0 42px rgba(226,185,54,.045);
+}
+
+.match.live::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 1px solid rgba(226,185,54,.32);
+    animation: liveEdgePulse 1.7s ease-in-out infinite;
+}
+
+.match.finished {
+    border-color: rgba(226,185,54,.22);
+}
+
+.match.bye {
+    border-color: rgba(226,185,54,.11);
+    background:
+        linear-gradient(
+            135deg,
+            rgba(226,185,54,.025),
+            rgba(5,5,8,.96)
+        );
+}
+
+.player-row {
+    transition:
+        background .25s ease,
+        text-shadow .25s ease;
+}
+
+.player-row:hover {
+    background: rgba(226,185,54,.035);
+}
+
+.player-name.winner {
+    text-shadow:
+        0 0 7px rgba(226,185,54,.34),
+        0 0 18px rgba(226,185,54,.12);
+}
+
+.player-name.loser {
+    opacity: .55;
+}
+
+.player-name.bye {
+    text-shadow:
+        0 0 7px rgba(226,185,54,.24);
+}
+
+.match.draw-reveal {
+    box-shadow:
+        inset 0 0 30px rgba(226,185,54,.055),
+        0 0 24px rgba(226,185,54,.09);
+}
+
+.match.draw-reveal::before {
+    transform: translateX(120%);
+}
+
+.winner-flight-layer {
+    filter:
+        drop-shadow(0 0 7px rgba(226,185,54,.75))
+        drop-shadow(0 0 20px rgba(226,185,54,.22));
+}
+
+.winner-flight {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,255,255,.96),
+            #e2b936,
+            transparent
+        );
+    box-shadow:
+        0 0 8px rgba(226,185,54,.8),
+        0 0 24px rgba(226,185,54,.34);
+}
+
+.champion-node {
+    position: relative;
+    isolation: isolate;
+    border-color: rgba(226,185,54,.28);
+    background:
+        radial-gradient(
+            circle at 50% 42%,
+            rgba(226,185,54,.10),
+            transparent 58%
+        ),
+        linear-gradient(
+            145deg,
+            rgba(22,20,12,.97),
+            rgba(4,4,7,.985)
+        );
+    box-shadow:
+        inset 0 0 35px rgba(226,185,54,.045),
+        0 0 28px rgba(226,185,54,.09),
+        0 0 70px rgba(226,185,54,.035);
+}
+
+.champion-node::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    pointer-events: none;
+    border: 1px solid rgba(226,185,54,.08);
+    background:
+        linear-gradient(
+            135deg,
+            transparent 40%,
+            rgba(226,185,54,.055) 50%,
+            transparent 60%
+        );
+    animation: championSheen 5s ease-in-out infinite;
+}
+
+@keyframes bracketSweep {
+    0%, 45% {
+        transform: translateX(-100%);
+    }
+    65%, 100% {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes headerSweep {
+    0%, 55% {
+        left: -40%;
+    }
+    75%, 100% {
+        left: 110%;
+    }
+}
+
+@keyframes liveEdgePulse {
+    0%, 100% {
+        opacity: .35;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes championSheen {
+    0%, 100% {
+        opacity: .25;
+        transform: translateX(-8%);
+    }
+    50% {
+        opacity: .8;
+        transform: translateX(8%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bracket-viewport::after,
+    .round-header::after,
+    .match::before,
+    .match.live::after,
+    .champion-node::before {
+        animation: none;
+    }
+
+    .match,
+    .player-row {
+        transition: none;
+    }
+
+    .match:hover {
+        transform: none;
+    }
+}
+
+</style>
 </head>
 
 <body>
@@ -1420,6 +1849,7 @@
         <a href="/live">Live</a>
         <a href="/standings" class="active">Bracket</a>
         <a href="/players">Players</a>
+        <a href="/hall-of-fame">Hall of Fame</a>
         <a href="/login">Login</a>
     </nav>
 </header>
@@ -2731,6 +3161,7 @@
             canvas.classList.add(
                 "draw-complete"
             );
+
             return true;
         }
 
@@ -2754,8 +3185,12 @@
                 : matches;
 
         /*
-         * The official draw reveals Round 1 first.
-         * These are real Match records from the tournament.
+         * TOURNAMENT_DRAW is authoritative.
+         *
+         * The official randomized assignments already exist in
+         * the Match records created by draw_tournament().
+         *
+         * Replay never generates another draw.
          */
         for (
             let index = 0;
@@ -2769,19 +3204,114 @@
                 continue;
             }
 
+            const matchId =
+                match.dataset.matchId;
+
+            const baseline =
+                replayBaseline.matches.get(
+                    matchId
+                );
+
+            if (!baseline) {
+                continue;
+            }
+
+            const firstRow =
+                match.querySelector(
+                    ".player-row.first"
+                );
+
+            const secondRow =
+                match.querySelector(
+                    ".player-row.second"
+                );
+
+            /*
+             * Reveal the match slot first.
+             */
             match.classList.add(
                 "draw-reveal"
             );
 
             if (!reducedMotion) {
-                await wait(110);
+                await wait(180);
+            }
+
+            /*
+             * Reveal player one from the stored Match record.
+             */
+            if (
+                baseline.firstPlayerId &&
+                firstRow
+            ) {
+                firstRow.classList.add(
+                    "draw-player-reveal"
+                );
+
+                setReplayPlayer(
+                    firstRow,
+                    baseline.firstName,
+                    baseline.firstPlayerId
+                );
+
+                if (!reducedMotion) {
+                    await wait(260);
+                }
+            }
+
+            /*
+             * Reveal player two from the stored Match record.
+             */
+            if (
+                baseline.secondPlayerId &&
+                secondRow
+            ) {
+                secondRow.classList.add(
+                    "draw-player-reveal"
+                );
+
+                setReplayPlayer(
+                    secondRow,
+                    baseline.secondName,
+                    baseline.secondPlayerId
+                );
+
+                if (!reducedMotion) {
+                    await wait(260);
+                }
+            }
+
+            /*
+             * Keep BYE matches visually distinct.
+             * A BYE is not a normal match and is never treated
+             * as a player-vs-player result.
+             */
+            if (baseline.isBye) {
+                match.classList.add("bye");
+
+                setReplayStatus(
+                    match,
+                    "BYE"
+                );
+            } else {
+                setReplayStatus(
+                    match,
+                    "PENDING"
+                );
+            }
+
+            if (!reducedMotion) {
+                await wait(140);
             }
         }
 
         /*
-         * The remaining tree already exists in the authoritative
-         * bracket. Reveal its structure after Round 1.
-         * Feeder slots remain TBD until PLAYER_ADVANCED events.
+         * The complete downstream bracket tree already exists
+         * in the authoritative Match records.
+         *
+         * Reveal that structure after Round 1, but leave its
+         * player slots as TBD until PLAYER_ADVANCED events
+         * provide the actual winners.
          */
         for (
             let index = 0;
@@ -3521,7 +4051,6 @@
 
         replayBaseline.matches.forEach(
             function (baseline, matchId) {
-
                 const match =
                     findMatch(matchId);
 
@@ -3533,7 +4062,9 @@
                     "live",
                     "finished",
                     "flight-source",
-                    "flight-target"
+                    "flight-target",
+                    "draw-reveal",
+                    "draw-player-reveal"
                 );
 
                 const firstRow =
@@ -3547,56 +4078,37 @@
                     );
 
                 /*
-                 * Round 1 is the draw result. The current event
-                 * ledger records TOURNAMENT_DRAW, but does not yet
-                 * contain MATCH_CREATED/player-placement events.
+                 * Replay always starts from a clean visual bracket.
                  *
-                 * Therefore Round 1 participants remain visible
-                 * while all feeder rounds return to TBD.
+                 * The official draw already exists in the Match records.
+                 * Every player identity is temporarily hidden here.
+                 *
+                 * revealTournamentDraw() will then reveal the
+                 * authoritative Round 1 assignments in draw order.
+                 *
+                 * This is visual-only:
+                 * - no database state changes
+                 * - no new random draw
+                 * - no player reassignment
                  */
-                const hasSource =
-                    Boolean(
-                        match.dataset.source1 ||
-                        match.dataset.source2
-                    );
+                setReplayPlayer(
+                    firstRow,
+                    null,
+                    null
+                );
 
-                if (hasSource) {
-
-                    setReplayPlayer(
-                        firstRow,
-                        null,
-                        null
-                    );
-
-                    setReplayPlayer(
-                        secondRow,
-                        null,
-                        null
-                    );
-
-                } else {
-
-                    setReplayPlayer(
-                        firstRow,
-                        baseline.firstPlayerId
-                            ? baseline.firstName
-                            : null,
-                        baseline.firstPlayerId
-                    );
-
-                    setReplayPlayer(
-                        secondRow,
-                        baseline.secondPlayerId
-                            ? baseline.secondName
-                            : null,
-                        baseline.secondPlayerId
-                    );
-                }
+                setReplayPlayer(
+                    secondRow,
+                    null,
+                    null
+                );
 
                 /*
-                 * BYE structure remains visible in Round 1.
-                 * Its participant remains attached to the slot.
+                 * BYE structure remains identifiable during replay.
+                 * The player itself is revealed later by the draw animation.
                  */
+                match.classList.remove("bye");
+
                 if (baseline.isBye) {
                     setReplayStatus(
                         match,
@@ -3604,11 +4116,7 @@
                     );
 
                     match.classList.add("bye");
-
                 } else {
-
-                    match.classList.remove("bye");
-
                     setReplayStatus(
                         match,
                         "PENDING"
@@ -3634,7 +4142,6 @@
             }
         }
     }
-
 
     async function loadTournamentReplay() {
 

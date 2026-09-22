@@ -44,7 +44,8 @@ from models import (
     FounderMessage,
     Highlight,
     AnalyticsEvent,
-    TournamentEvent
+    TournamentEvent,
+    HallOfChampion
 )
 
 from payment_service import (
@@ -444,9 +445,52 @@ def build_round_one_pairings(players, capacity=None):
     return pairings
 
 
-def get_player_match(player_id):
+def get_player_match(player_id, tournament_id=None):
+    """
+    Return a player's match from the requested tournament only.
+
+    Player accounts are permanent across seasons, while matches are
+    tournament-specific. Current-season profile views must never
+    display an older season's match.
+    """
     if not player_id:
         return None
+
+    player_filter = or_(
+        Match.player1_id == player_id,
+        Match.player2_id == player_id
+    )
+
+    tournament_filter = (
+        [Match.tournament_id == tournament_id]
+        if tournament_id is not None
+        else []
+    )
+
+    active_match = Match.query.filter(
+        player_filter,
+        Match.status.in_(
+            [
+                MATCH_SCHEDULED,
+                MATCH_IN_PROGRESS,
+                MATCH_LIVE
+            ]
+        ),
+        *tournament_filter
+    ).order_by(
+        Match.id.desc()
+    ).first()
+
+    if active_match:
+        return active_match
+
+    return Match.query.filter(
+        player_filter,
+        *tournament_filter
+    ).order_by(
+        Match.id.desc()
+    ).first()
+
 
     active_match = Match.query.filter(
         or_(
@@ -1310,6 +1354,74 @@ def tournament_events_api(tournament_id):
     }, 200
 
 
+@app.route("/hall-of-fame")
+def hall_of_fame():
+    """
+    Public Champions Vault.
+
+    Hall records are created automatically by the authoritative
+    champion-confirmation transaction. This route is read-only:
+    it never creates, edits, deletes, or repairs Hall records.
+    """
+    hall_records = (
+        HallOfChampion.query
+        .join(Tournament, HallOfChampion.tournament_id == Tournament.id)
+        .filter(Tournament.status == TOURNAMENT_COMPLETED)
+        .order_by(
+            HallOfChampion.season_number.asc(),
+            HallOfChampion.id.asc()
+        )
+        .all()
+    )
+
+    champion_ids = {
+        record.player_id
+        for record in hall_records
+        if record.player_id is not None
+    }
+
+    runner_up_ids = set()
+
+    tournaments = {}
+    if hall_records:
+        tournament_ids = {
+            record.tournament_id
+            for record in hall_records
+            if record.tournament_id is not None
+        }
+
+        tournaments = {
+            tournament.id: tournament
+            for tournament in Tournament.query.filter(
+                Tournament.id.in_(tournament_ids)
+            ).all()
+        }
+
+        runner_up_ids = {
+            tournament.runner_up_id
+            for tournament in tournaments.values()
+            if tournament.runner_up_id is not None
+        }
+
+    player_ids = champion_ids | runner_up_ids
+
+    players = {}
+    if player_ids:
+        players = {
+            player.id: player
+            for player in Player.query.filter(
+                Player.id.in_(player_ids)
+            ).all()
+        }
+
+    return render_template(
+        "hall_of_fame.html",
+        hall_records=hall_records,
+        tournaments=tournaments,
+        players=players
+    )
+
+
 @app.route("/players")
 def players():
 
@@ -1332,8 +1444,20 @@ def player_profile(player_id):
         player_id
     )
 
+    # Player identity is permanent. Tournament participation and
+    # matches are specific to the current season.
+    tournament = current_tournament()
+    season_participant = None
+
+    if tournament:
+        season_participant = TournamentParticipant.query.filter_by(
+            tournament_id=tournament.id,
+            player_id=player.id
+        ).first()
+
     player_match = get_player_match(
-        player.id
+        player.id,
+        tournament.id if tournament else None
     )
 
     players = {
@@ -1344,10 +1468,11 @@ def player_profile(player_id):
     return render_template(
         "player_profile.html",
         player=player,
+        tournament=tournament,
+        season_participant=season_participant,
         player_match=player_match,
         players=players
     )
-
 
 @app.route("/matches")
 def matches():
@@ -1708,8 +1833,9 @@ def register():
 
             if existing_participant:
                 return (
-                    "This player is already registered "
-                    "for this tournament."
+                    "You are already registered for this season. "
+                    "Your application is currently "
+                    f"{existing_participant.status}."
                 ), 409
 
             player = registration_player

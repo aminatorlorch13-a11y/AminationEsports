@@ -104,11 +104,6 @@
             color: #e2b936;
         }
 
-        .empty-star {
-            color: #555;
-            cursor: pointer;
-        }
-
         .star-note {
             color: #aaa;
             font-size: 14px;
@@ -268,7 +263,7 @@
         <div class="stars-box">
 
             <div class="profile-title">
-                ⭐ CHAMPIONSHIP STATUS
+                ⭐ AMINATION STARS
             </div>
 
 
@@ -285,15 +280,7 @@
                 {% endfor %}
 
 
-                {% for i in range(5 - player.championship_stars) %}
 
-                    <span
-                        class="empty-star"
-                        onclick="showStarMessage()">
-                        ☆
-                    </span>
-
-                {% endfor %}
 
 
             </div>
@@ -301,7 +288,7 @@
 
             <div>
 
-                Stars earned:
+                Amination Stars earned:
 
                 <strong>
                     {{ player.championship_stars }}
@@ -312,8 +299,7 @@
 
             <div class="star-note">
 
-                Stars are awarded by Amination
-                after championship victories.
+                Amination Stars are permanent recognition earned through championship achievement. There is no maximum number of Stars.
 
             </div>
 
@@ -499,8 +485,15 @@
 
                     <br><br>
 
-                    Please check your profile before Friday
-                    for the official tournament draw.
+                    {% if tournament and tournament.status == "registration" %}
+                        The official Season {{ tournament.season_number }}
+                        draw has not been released yet.
+                    {% elif tournament %}
+                        Your Season {{ tournament.season_number }}
+                        match has not been assigned yet.
+                    {% else %}
+                        No current tournament match is available.
+                    {% endif %}
 
                 </div>
 
@@ -533,7 +526,12 @@
                 <br>
 
                 Your next important date is
-                <strong>Friday — Draw Day.</strong>
+                {% if tournament and tournament.status == "registration" %}
+                    Season {{ tournament.season_number }} draw is
+                    awaiting official release.
+                {% elif tournament %}
+                    Season {{ tournament.season_number }} draw has been released.
+                {% endif %}
 
 
             {% elif player.application_status == "waitlist" %}
@@ -598,7 +596,7 @@
                 class="button"
                 href="{{ url_for('register') }}">
 
-                📝 REGISTER FOR TOURNAMENT
+                📝 REGISTER FOR THIS SEASON
 
             </a>
 
@@ -613,7 +611,7 @@
         <div class="notice">
 
             <strong>
-                📅 IMPORTANT: CHECK YOUR PROFILE BEFORE FRIDAY
+                📋 SEASON {{ tournament.season_number }} REGISTRATION
             </strong>
 
 
@@ -635,7 +633,7 @@
 
 
             <strong>
-                🎲 FRIDAY IS DRAW DAY
+                🎲 OFFICIAL DRAW STATUS
             </strong>
 
 
@@ -664,7 +662,7 @@
                 <br><br>
 
                 Your opponent will appear here once the
-                Friday draw has been completed.
+                The official draw has been completed.
 
                 <br><br>
 
@@ -689,7 +687,7 @@
 function showStarMessage() {
 
     alert(
-        "⭐ Reserved for stars you've earned.\n\n" +
+        "⭐ Amination Stars represent championship recognition.\n\n" +
         "Win Amination tournaments to earn " +
         "Championship Stars."
     );

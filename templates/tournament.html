@@ -237,6 +237,24 @@
             matches and results.
         </p>
 
+        {% if tournament and tournament.status == "registration" %}
+            <a
+                href="{{ url_for('register') }}"
+                style="
+                    display:inline-block;
+                    margin-top:12px;
+                    padding:14px 22px;
+                    background:#e2b936;
+                    color:#000;
+                    text-decoration:none;
+                    border-radius:10px;
+                    font-weight:bold;
+                "
+            >
+                📝 REGISTER FOR SEASON {{ tournament.season_number }}
+            </a>
+        {% endif %}
+
     </div>
 
 
@@ -732,7 +750,7 @@
             </p>
 
             <p>
-                Check back before Friday.
+                The official draw will appear here once it is released.
             </p>
 
         </div>
