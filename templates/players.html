@@ -121,6 +121,610 @@
             color: #aaa;
         }
 
+
+/* ============================================================
+   AMINATION ESPORTS — PUBLIC VISUAL SYSTEM
+   Visual polish layer: depth, hierarchy, broadcast realism.
+   ============================================================ */
+
+:root {
+    --ae-black: #050505;
+    --ae-black-2: #080808;
+    --ae-panel: #0d0d0d;
+    --ae-panel-2: #121212;
+    --ae-panel-3: #171717;
+    --ae-border: rgba(255,255,255,.09);
+    --ae-border-strong: rgba(212,175,55,.28);
+    --ae-gold: #d4af37;
+    --ae-gold-bright: #f0cf62;
+    --ae-gold-soft: rgba(212,175,55,.12);
+    --ae-text: #f5f5f5;
+    --ae-muted: #969696;
+    --ae-dim: #656565;
+    --ae-red: #ff4b4b;
+    --ae-green: #63d391;
+    --ae-blue: #65a9ff;
+}
+
+/* ---------- GLOBAL DEPTH ---------- */
+
+body {
+    background:
+        radial-gradient(circle at 50% -10%, rgba(212,175,55,.10), transparent 32%),
+        radial-gradient(circle at 100% 55%, rgba(255,255,255,.025), transparent 28%),
+        linear-gradient(180deg, #030303 0%, #070707 42%, #050505 100%);
+    color: var(--ae-text);
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    opacity: .24;
+    background-image:
+        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+    background-size: 44px 44px;
+}
+
+/* ---------- BRAND / NAV ---------- */
+
+header {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0)),
+        rgba(3,3,3,.94);
+    box-shadow: 0 10px 35px rgba(0,0,0,.35);
+}
+
+.brand {
+    letter-spacing: 2px !important;
+    text-transform: uppercase;
+}
+
+.brand span {
+    color: var(--ae-gold) !important;
+}
+
+nav {
+    background: rgba(4,4,4,.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 12px 30px rgba(0,0,0,.22);
+}
+
+nav a {
+    position: relative;
+    color: #aaa !important;
+    transition: color .2s ease, background .2s ease, transform .2s ease;
+    border-radius: 7px;
+}
+
+nav a:hover {
+    color: #fff !important;
+    background: rgba(255,255,255,.045);
+    transform: translateY(-1px);
+}
+
+nav a::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 2px;
+    height: 2px;
+    background: var(--ae-gold);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform .2s ease;
+    border-radius: 999px;
+}
+
+nav a:hover::after {
+    transform: scaleX(1);
+}
+
+/* ---------- BUTTONS ---------- */
+
+.button,
+.profile-button {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(212,175,55,.45);
+    background:
+        linear-gradient(180deg, #ebc950 0%, #c79e2c 100%);
+    box-shadow:
+        0 8px 24px rgba(212,175,55,.12),
+        inset 0 1px rgba(255,255,255,.35);
+    transition:
+        transform .2s ease,
+        box-shadow .2s ease,
+        filter .2s ease;
+}
+
+.button::before,
+.profile-button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -120%;
+    width: 70%;
+    height: 100%;
+    background: linear-gradient(
+        100deg,
+        transparent,
+        rgba(255,255,255,.28),
+        transparent
+    );
+    transform: skewX(-20deg);
+    transition: left .55s ease;
+}
+
+.button:hover,
+.profile-button:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.06);
+    box-shadow:
+        0 12px 30px rgba(212,175,55,.18),
+        inset 0 1px rgba(255,255,255,.4);
+}
+
+.button:hover::before,
+.profile-button:hover::before {
+    left: 140%;
+}
+
+.button.secondary {
+    background: rgba(255,255,255,.025) !important;
+    border-color: rgba(255,255,255,.15) !important;
+    color: #f5f5f5 !important;
+    box-shadow: inset 0 1px rgba(255,255,255,.05);
+}
+
+/* ---------- PANELS / CARDS ---------- */
+
+.card,
+.player-card,
+.profile-card,
+.access-card,
+.draw-status,
+.round,
+.match-card,
+.info-box,
+.status,
+.notice,
+.draw-box,
+.empty,
+.highlights-empty,
+.highlight-card {
+    position: relative;
+    background:
+        linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.012) 45%, rgba(0,0,0,.12)),
+        var(--ae-panel);
+    border-color: var(--ae-border) !important;
+    box-shadow:
+        0 18px 45px rgba(0,0,0,.28),
+        inset 0 1px rgba(255,255,255,.035);
+}
+
+.card::before,
+.player-card::before,
+.profile-card::before,
+.access-card::before,
+.draw-status::before,
+.round::before,
+.match-card::before,
+.info-box::before,
+.status::before,
+.notice::before,
+.draw-box::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 18px;
+    right: 18px;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(212,175,55,.32),
+        transparent
+    );
+    opacity: .8;
+}
+
+/* ---------- SECTION HEADINGS ---------- */
+
+h1,
+h2,
+h3 {
+    letter-spacing: -.02em;
+}
+
+h1 {
+    text-shadow: 0 4px 25px rgba(0,0,0,.5);
+}
+
+.container {
+    position: relative;
+}
+
+/* ---------- HOME ---------- */
+
+.hero {
+    background:
+        linear-gradient(
+            90deg,
+            rgba(3,3,3,.96) 0%,
+            rgba(3,3,3,.72) 52%,
+            rgba(3,3,3,.48) 100%
+        );
+    box-shadow: inset 0 -80px 100px rgba(0,0,0,.45);
+}
+
+.hero::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(212,175,55,.55),
+        transparent
+    );
+}
+
+.tag,
+.highlights-eyebrow,
+.live-badge {
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.tag::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: var(--ae-gold);
+    box-shadow: 0 0 12px rgba(212,175,55,.7);
+}
+
+.access-card {
+    border-radius: 18px !important;
+}
+
+.highlights-section {
+    position: relative;
+}
+
+.highlight-card {
+    transition:
+        transform .25s ease,
+        border-color .25s ease,
+        box-shadow .25s ease;
+}
+
+.highlight-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(212,175,55,.28) !important;
+    box-shadow:
+        0 22px 55px rgba(0,0,0,.4),
+        0 0 0 1px rgba(212,175,55,.05);
+}
+
+.highlight-card video {
+    filter: saturate(.92) contrast(1.04);
+}
+
+/* ---------- TOURNAMENT ---------- */
+
+.title {
+    padding: 35px 20px 25px;
+}
+
+.title h1 {
+    text-transform: uppercase;
+    letter-spacing: -.04em;
+}
+
+.draw-status {
+    overflow: hidden;
+}
+
+.draw-status strong {
+    letter-spacing: 1.5px;
+}
+
+.bracket {
+    position: relative;
+    padding: 8px 0 25px;
+}
+
+.round {
+    overflow: hidden;
+    min-height: 100px;
+}
+
+.round-title {
+    position: relative;
+    padding: 10px 8px 15px;
+    text-transform: uppercase;
+}
+
+.round-title::after {
+    content: "";
+    display: block;
+    width: 42px;
+    height: 2px;
+    margin: 8px auto 0;
+    background: var(--ae-gold);
+    box-shadow: 0 0 12px rgba(212,175,55,.28);
+}
+
+.match-card {
+    transition:
+        transform .2s ease,
+        border-color .2s ease,
+        box-shadow .2s ease;
+}
+
+.match-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(212,175,55,.23) !important;
+    box-shadow:
+        0 15px 35px rgba(0,0,0,.38),
+        inset 0 1px rgba(255,255,255,.05);
+}
+
+.match-header {
+    background:
+        linear-gradient(90deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.player-row {
+    min-height: 50px;
+    transition: background .18s ease;
+}
+
+.player-row:hover {
+    background: rgba(212,175,55,.035);
+}
+
+.player-name {
+    min-width: 0;
+}
+
+.score {
+    min-width: 30px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.live {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--ae-red) !important;
+    text-shadow: 0 0 12px rgba(255,75,75,.35);
+}
+
+.live::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 9px currentColor;
+}
+
+.finished {
+    color: var(--ae-green) !important;
+}
+
+.scheduled {
+    color: #777 !important;
+}
+
+/* ---------- PLAYERS ---------- */
+
+.player-grid {
+    align-items: stretch;
+}
+
+.player-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 255px;
+    overflow: hidden;
+    transition:
+        transform .22s ease,
+        border-color .22s ease,
+        box-shadow .22s ease;
+}
+
+.player-card::after {
+    content: "";
+    position: absolute;
+    right: -30px;
+    bottom: -45px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 1px solid rgba(212,175,55,.08);
+    box-shadow: 0 0 0 14px rgba(212,175,55,.025);
+    pointer-events: none;
+}
+
+.player-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(212,175,55,.28) !important;
+    box-shadow:
+        0 24px 50px rgba(0,0,0,.4),
+        0 0 30px rgba(212,175,55,.045);
+}
+
+.player-id {
+    display: inline-flex;
+    width: fit-content;
+    padding: 5px 9px;
+    border-radius: 5px;
+    background: rgba(212,175,55,.08);
+    border: 1px solid rgba(212,175,55,.14);
+    letter-spacing: 1px;
+    font-size: 11px;
+}
+
+.player-card h2 {
+    font-size: 25px;
+    line-height: 1.15;
+}
+
+.info {
+    position: relative;
+}
+
+.info strong {
+    color: #eee;
+}
+
+.profile-button {
+    margin-top: auto !important;
+}
+
+/* ---------- PLAYER PROFILE ---------- */
+
+.profile-card {
+    overflow: hidden;
+}
+
+.profile-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ae-gold) !important;
+    font-size: 12px !important;
+    letter-spacing: 2px !important;
+    text-transform: uppercase;
+}
+
+.profile-card h1 {
+    font-size: clamp(38px, 7vw, 58px);
+    line-height: 1;
+    margin-bottom: 30px;
+}
+
+.stars-box {
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(
+            circle at 50% 0%,
+            rgba(212,175,55,.12),
+            transparent 55%
+        ),
+        #080808 !important;
+    border-color: rgba(212,175,55,.16) !important;
+    box-shadow:
+        inset 0 1px rgba(255,255,255,.04),
+        0 18px 40px rgba(0,0,0,.25);
+}
+
+.stars-box::before {
+    content: "";
+    position: absolute;
+    left: 15%;
+    right: 15%;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(212,175,55,.65),
+        transparent
+    );
+}
+
+.stars {
+    text-shadow:
+        0 0 10px rgba(212,175,55,.35),
+        0 0 25px rgba(212,175,55,.12);
+}
+
+.earned-star {
+    color: var(--ae-gold-bright) !important;
+}
+
+.status {
+    border-left: 2px solid rgba(212,175,55,.5) !important;
+}
+
+.notice {
+    border-left: 2px solid var(--ae-gold) !important;
+}
+
+.draw-box {
+    border-color: rgba(212,175,55,.16) !important;
+}
+
+.small-text {
+    color: #858585 !important;
+}
+
+/* ---------- FOOTER ---------- */
+
+footer {
+    background: rgba(0,0,0,.35);
+    letter-spacing: .5px;
+}
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 800px) {
+    body::before {
+        background-size: 34px 34px;
+        opacity: .16;
+    }
+
+    .hero {
+        min-height: 560px !important;
+    }
+
+    .hero h1 {
+        font-size: clamp(44px, 14vw, 76px);
+    }
+
+    .button,
+    .profile-button {
+        min-height: 46px;
+    }
+
+    .match-card:hover,
+    .player-card:hover,
+    .highlight-card:hover {
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+
     </style>
 
 </head>
