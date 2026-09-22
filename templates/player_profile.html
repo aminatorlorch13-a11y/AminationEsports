@@ -1193,13 +1193,11 @@ footer {
         <!-- REGISTER -->
         <!-- ================================= -->
 
-        {% if tournament and tournament.status == "registration" and not season_participant %}
-            <a
+        <a
                 class="button"
                 href="{{ url_for('register') }}">
                 📝 REGISTER FOR CURRENT TOURNAMENT
             </a>
-        {% endif %}
 
 
         <!-- ================================= -->
