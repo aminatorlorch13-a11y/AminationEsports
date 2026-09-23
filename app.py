@@ -2134,11 +2134,67 @@ def register_current_tournament():
 
     tournament = current_tournament()
 
-    if not tournament:
+    # Production bootstrap:
+    # If no numbered tournament exists, establish the next real
+    # registration season so existing players can register directly
+    # from their profile. This is idempotent and only creates Season 2.
+    if tournament is None:
+        existing_season_two = (
+            Tournament.query
+            .filter(Tournament.season_number == 2)
+            .order_by(Tournament.id.desc())
+            .first()
+        )
+
+        if existing_season_two is not None:
+            tournament = existing_season_two
+        else:
+            tournament = Tournament(
+                name="Amination FC Season 2",
+                status=TOURNAMENT_REGISTRATION,
+                max_players=DEFAULT_MAX_PLAYERS,
+                entry_fee=0,
+                payment_enabled=False,
+                currency="ZAR",
+                international_enabled=True,
+                competition_day="Saturday",
+                final_day="Sunday",
+                season_number=2,
+                live_enabled=False,
+                live_provider=None,
+                live_embed_url=None,
+                live_title=None,
+                live_match_id=None,
+                payment_instructions=None,
+                payment_deadline=None,
+                availability_deadline=None,
+                completed_at=None,
+                champion_id=None,
+                runner_up_id=None,
+            )
+
+            try:
+                with db.session.begin_nested():
+                    db.session.add(tournament)
+                    db.session.flush()
+            except IntegrityError:
+                db.session.rollback()
+                tournament = (
+                    Tournament.query
+                    .filter(Tournament.season_number == 2)
+                    .order_by(Tournament.id.desc())
+                    .first()
+                )
+                if tournament is None:
+                    raise
+
+            db.session.commit()
+
+    if tournament.status != TOURNAMENT_REGISTRATION:
         return (
-            "Registration is currently unavailable because "
-            "there is no tournament."
-        ), 503
+            "Registration is currently closed because "
+            "the current tournament is no longer open for registration."
+        ), 409
 
     if tournament.status != TOURNAMENT_REGISTRATION:
         return (
