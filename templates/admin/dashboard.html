@@ -38,14 +38,24 @@
         }
 
         .admin-nav {
-            display: grid;
-            grid-template-columns:
-                repeat(auto-fit, minmax(130px, 1fr));
+            display: flex;
             gap: 10px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
             margin-bottom: 35px;
+            padding: 8px 2px 12px;
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
         }
 
         .admin-nav a {
+            flex: 0 0 auto;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
             text-decoration: none;
             text-align: center;
         }
@@ -153,64 +163,19 @@
 
         <div class="founder-badge">
             👑 FOUNDER ACCESS
-        </div>
-
-        <h1>
-            AMINATION
-            <br>
-            CONTROL CENTER
-        </h1>
-
-        <p>
-            Private tournament administration
-        </p>
-
-    </section>
-
-
-    <!-- ================================= -->
-    <!-- NAVIGATION -->
-    <!-- ================================= -->
-
-    <nav class="admin-nav">
-
-        <a class="button"
-           href="#overview">
-            📊 Overview
-        </a>
-
-        <a class="button"
-           href="#players">
-            👥 Players
-        </a>
-
-        <a class="button"
-           href="#messages">
-            💬 Messages
-        </a>
-
-        <a class="button"
-           href="#tournament">
-            🏆 Tournament
-        </a>
-
-        <a class="button"
-           href="#live">
-            🔴 Live
-        </a>
-
-        <a class="button"
-           href="#activity">
-            📜 Activity
-        </a>
-
-
-        <a href="#highlights">🎬 Highlights</a>
+      <nav class="admin-nav" aria-label="Founder Control Center navigation">
+        <a class="button" href="#overview">📊 Overview</a>
+        <a class="button" href="#players">👥 Players</a>
+        <a class="button" href="#tournament">🏆 Tournament</a>
+        <a class="button" href="#live">🔴 Live</a>
+        <a class="button" href="#current-season-registrations">✅ Approvals</a>
+        <a class="button" href="#founder-live-match-control">⚽ Matches</a>
+        <a class="button" href="/hall-of-fame">🏆 Vault</a>
+        <a class="button" href="#website-analytics">📈 Analytics</a>
+        <a class="button" href="#tournament-controls">⚙️ Controls</a>
     </nav>
 
-
-    <!-- ================================= -->
-    <!-- OVERVIEW -->
+<!-- OVERVIEW -->
     <!-- ================================= -->
 
     <section id="overview"
