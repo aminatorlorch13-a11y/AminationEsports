@@ -60,6 +60,39 @@
             text-align: center;
         }
 
+        /* Founder Control Center focused-section mode */
+        .admin-section[data-founder-panel="true"] {
+            scroll-margin-top: 24px;
+        }
+
+        .founder-panel-back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            margin: 0 0 20px;
+            padding: 10px 16px;
+            border: 1px solid rgba(255, 215, 0, 0.45);
+            border-radius: 10px;
+            background: rgba(255, 215, 0, 0.06);
+            color: inherit;
+            text-decoration: none;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        .founder-panel-back:hover {
+            background: rgba(255, 215, 0, 0.12);
+        }
+
+        body.founder-focused .admin-section[data-founder-panel="true"] {
+            display: none;
+        }
+
+        body.founder-focused .admin-section[data-founder-panel="true"].founder-panel-active {
+            display: block;
+        }
+
         .admin-section {
             margin-bottom: 45px;
         }
@@ -166,6 +199,7 @@
       <nav class="admin-nav" aria-label="Founder Control Center navigation">
         <a class="button" href="#overview">📊 Overview</a>
         <a class="button" href="#players">👥 Players</a>
+        <a class="button" href="#messages">💬 Messages</a>
         <a class="button" href="#tournament">🏆 Tournament</a>
         <a class="button" href="#live">🔴 Live</a>
         <a class="button" href="#current-season-registrations">✅ Approvals</a>
@@ -173,7 +207,11 @@
         <a class="button" href="/hall-of-fame">🏆 Vault</a>
         <a class="button" href="#website-analytics">📈 Analytics</a>
         <a class="button" href="#tournament-controls">⚙️ Controls</a>
-    </nav>
+        <a class="button" href="#highlights">🎬 Highlights</a>
+        <a class="button" href="#public-announcements">📢 Announcements</a>
+        <a class="button" href="#activity">📜 Activity</a>
+        <a class="button" href="#player-administration">🛠️ Player Admin</a>
+      </nav>
 
 <!-- OVERVIEW -->
     <!-- ================================= -->
@@ -2978,6 +3016,137 @@
 
 </footer>
 
+
+    <script>
+    (function () {
+        "use strict";
+
+        const nav = document.querySelector(".admin-nav");
+
+        if (!nav) {
+            return;
+        }
+
+        const navigableIds = new Set([
+            "overview",
+            "players",
+            "messages",
+            "tournament",
+            "live",
+            "current-season-registrations",
+            "founder-live-match-control",
+            "website-analytics",
+            "tournament-controls",
+            "highlights",
+            "public-announcements",
+            "activity",
+            "player-administration"
+        ]);
+
+        const sections = Array.from(
+            document.querySelectorAll(".admin-section[id]")
+        ).filter((section) => navigableIds.has(section.id));
+
+        if (!sections.length) {
+            return;
+        }
+
+        const sectionIds = new Set(
+            sections.map((section) => section.id)
+        );
+
+        sections.forEach((section) => {
+            section.dataset.founderPanel = "true";
+
+            if (!section.querySelector(".founder-panel-back")) {
+                const back = document.createElement("a");
+                back.className = "founder-panel-back";
+                back.href = "#overview";
+                back.textContent = "← Back to Founder Control Center";
+                section.insertBefore(back, section.firstChild);
+            }
+        });
+
+        function showSection(id, updateHash) {
+            const targetId = sectionIds.has(id) ? id : "overview";
+
+            document.body.classList.add("founder-focused");
+
+            sections.forEach((section) => {
+                section.classList.toggle(
+                    "founder-panel-active",
+                    section.id === targetId
+                );
+            });
+
+            if (
+                updateHash &&
+                window.location.hash !== "#" + targetId
+            ) {
+                history.replaceState(
+                    null,
+                    "",
+                    "#" + targetId
+                );
+            }
+
+            const target = document.getElementById(targetId);
+
+            if (target) {
+                window.scrollTo({
+                    top: Math.max(0, target.offsetTop - 16),
+                    behavior: "smooth"
+                });
+            }
+        }
+
+        nav.addEventListener("click", function (event) {
+            const link = event.target.closest("a[href^='#']");
+
+            if (!link) {
+                return;
+            }
+
+            const id = link.getAttribute("href").slice(1);
+
+            if (!sectionIds.has(id)) {
+                return;
+            }
+
+            event.preventDefault();
+            showSection(id, true);
+        });
+
+        sections.forEach((section) => {
+            section.addEventListener("click", function (event) {
+                const back = event.target.closest(".founder-panel-back");
+
+                if (!back) {
+                    return;
+                }
+
+                event.preventDefault();
+                showSection("overview", true);
+            });
+        });
+
+        window.addEventListener("hashchange", function () {
+            const id = window.location.hash.slice(1);
+
+            if (sectionIds.has(id)) {
+                showSection(id, false);
+            }
+        });
+
+        const initialId = window.location.hash.slice(1);
+
+        if (sectionIds.has(initialId)) {
+            showSection(initialId, false);
+        } else {
+            showSection("overview", false);
+        }
+    })();
+    </script>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

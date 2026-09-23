@@ -2922,9 +2922,19 @@ def admin_dashboard():
     }
 
 
-    tournament = Tournament.query.order_by(
-        Tournament.id.desc()
-    ).first()
+    tournament = current_tournament()
+
+    # Founder dashboard fallback:
+    # If no numbered current tournament exists, show the latest
+    # tournament so completed/legacy records remain visible.
+    if tournament is None:
+        tournament = (
+            Tournament.query
+            .order_by(
+                Tournament.id.desc()
+            )
+            .first()
+        )
 
     # --------------------------------------------------------
     # CURRENT-SEASON PARTICIPATION COUNTS
