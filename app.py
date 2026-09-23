@@ -2948,82 +2948,157 @@ def get_analytics_trend(range_key="7d"):
 # ============================================================
 @app.route("/founder/diagnostics/current-registration")
 def founder_current_registration_diagnostic():
+    """
+    TEMPORARY READ-ONLY production diagnostic.
+    Remove immediately after diagnosis.
+    """
     access = founder_required()
     if access:
         return access
-    team_query = "rivals_pro35"
 
     tournament = current_tournament()
 
-    player = (
-        Player.query
-        .filter(db.func.lower(Player.team_name) == team_query.lower())
-        .order_by(Player.id.desc())
-        .first()
+    if tournament is None:
+        return """
+        <h1>Temporary Registration Diagnostic</h1>
+        <p><strong>Current tournament:</strong> NONE</p>
+        """
+
+    participants = (
+        TournamentParticipant.query
+        .filter_by(tournament_id=tournament.id)
+        .order_by(TournamentParticipant.id.asc())
+        .all()
     )
 
-    participants = []
-    if tournament is not None:
-        participants = (
-            TournamentParticipant.query
-            .filter_by(tournament_id=tournament.id)
-            .order_by(TournamentParticipant.id.desc())
-            .all()
+    players = Player.query.order_by(Player.id.asc()).all()
+
+    participant_status_counts = {}
+    for participant in participants:
+        participant_status_counts[participant.status] = (
+            participant_status_counts.get(participant.status, 0) + 1
         )
 
-    matching_participants = []
-    if player is not None:
-        matching_participants = [
-            participant
-            for participant in participants
-            if participant.player_id == player.id
-        ]
-
-    lines = [
-        "<h1>Temporary Registration Diagnostic</h1>",
-        f"<p><strong>Current tournament:</strong> "
-        f"{tournament.name if tournament else 'NONE'} "
-        f"(ID: {tournament.id if tournament else 'NONE'}, "
-        f"season: {tournament.season_number if tournament else 'NONE'}, "
-        f"status: {tournament.status if tournament else 'NONE'})</p>",
-        f"<p><strong>Player team search:</strong> {team_query}</p>",
-        f"<p><strong>Player found:</strong> "
-        f"{'YES' if player else 'NO'}</p>",
-    ]
-
-    if player:
-        lines.extend([
-            f"<p><strong>Player ID:</strong> {player.id}</p>",
-            f"<p><strong>Name:</strong> {player.name}</p>",
-            f"<p><strong>FC username:</strong> {player.fc_username}</p>",
-            f"<p><strong>Team name:</strong> {player.team_name}</p>",
-            f"<p><strong>Global application status:</strong> "
-            f"{player.application_status}</p>",
-            f"<p><strong>Participant records in current tournament:</strong> "
-            f"{len(matching_participants)}</p>",
-        ])
-
-        for participant in matching_participants:
-            lines.extend([
-                "<hr>",
-                f"<p><strong>Participant ID:</strong> {participant.id}</p>",
-                f"<p><strong>Tournament ID:</strong> {participant.tournament_id}</p>",
-                f"<p><strong>Status:</strong> {participant.status}</p>",
-                f"<p><strong>Participant team:</strong> {participant.team_name}</p>",
-                f"<p><strong>Registered at:</strong> {participant.registered_at}</p>",
-            ])
-    else:
-        lines.append(
-            "<p><strong>No Player row matched that exact team name.</strong></p>"
+    player_application_counts = {}
+    for player in players:
+        status = player.application_status or "none"
+        player_application_counts[status] = (
+            player_application_counts.get(status, 0) + 1
         )
 
-    if tournament:
-        lines.append(
-            f"<p><strong>Total current-tournament participants:</strong> "
-            f"{len(participants)}</p>"
+    rows = []
+
+    for participant in participants:
+        player = participant.player
+
+        rows.append(
+            f"""
+            <tr>
+                <td>{participant.id}</td>
+                <td>{player.id if player else "NO PLAYER"}</td>
+                <td>{player.name if player else "NO PLAYER"}</td>
+                <td>{player.fc_username if player else "NO PLAYER"}</td>
+                <td>{player.team_name if player else "NO PLAYER"}</td>
+                <td>{participant.status}</td>
+                <td>{participant.registered_at}</td>
+                <td>{player.application_status if player else "NO PLAYER"}</td>
+            </tr>
+            """
         )
 
-    return "".join(lines)
+    status_rows = "".join(
+        f"<li><strong>{status}:</strong> {count}</li>"
+        for status, count in sorted(participant_status_counts.items())
+    )
+
+    application_rows = "".join(
+        f"<li><strong>{status}:</strong> {count}</li>"
+        for status, count in sorted(player_application_counts.items())
+    )
+
+    return f"""
+    <!doctype html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Temporary Registration Diagnostic</title>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                background: #111;
+                color: #eee;
+                padding: 24px;
+            }}
+            table {{
+                border-collapse: collapse;
+                width: 100%;
+                margin-top: 20px;
+            }}
+            th, td {{
+                border: 1px solid #555;
+                padding: 8px;
+                text-align: left;
+            }}
+            th {{
+                background: #222;
+            }}
+            .summary {{
+                margin: 16px 0;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>Temporary Registration Diagnostic</h1>
+
+        <div class="summary">
+            <p><strong>Current tournament:</strong>
+                {tournament.name}
+                (ID: {tournament.id},
+                season: {tournament.season_number},
+                status: {tournament.status})
+            </p>
+
+            <p><strong>Total current-tournament applications:</strong>
+                {len(participants)}
+            </p>
+
+            <p><strong>Total Player records:</strong>
+                {len(players)}
+            </p>
+        </div>
+
+        <h2>Current-Tournament Application Status Counts</h2>
+        <ul>
+            {status_rows or "<li>None</li>"}
+        </ul>
+
+        <h2>Global Player Application Status Counts</h2>
+        <ul>
+            {application_rows or "<li>None</li>"}
+        </ul>
+
+        <h2>Every Current-Tournament Application</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Participant ID</th>
+                    <th>Player ID</th>
+                    <th>Name</th>
+                    <th>FC Username</th>
+                    <th>Team Name</th>
+                    <th>Season Status</th>
+                    <th>Registered At</th>
+                    <th>Global Application Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {"".join(rows) or "<tr><td colspan='8'>No applications</td></tr>"}
+            </tbody>
+        </table>
+    </body>
+    </html>
+    """
 
 
 def admin_dashboard():
