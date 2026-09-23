@@ -2947,7 +2947,7 @@ def get_analytics_trend(range_key="7d"):
 # Remove immediately after production diagnosis.
 # ============================================================
 @app.route("/founder/diagnostics/current-registration")
-@founder_required
+@founder_required()
 def founder_current_registration_diagnostic():
     team_query = "rivals_pro35"
 
