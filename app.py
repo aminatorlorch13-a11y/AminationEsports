@@ -2941,6 +2941,89 @@ def get_analytics_trend(range_key="7d"):
 # ============================================================
 
 @app.route("/admin/dashboard")
+
+# ============================================================
+# TEMP CURRENT REGISTRATION DIAGNOSTIC — READ ONLY
+# Remove immediately after production diagnosis.
+# ============================================================
+@app.route("/founder/diagnostics/current-registration")
+@founder_required
+def founder_current_registration_diagnostic():
+    team_query = "rivals_pro35"
+
+    tournament = current_tournament()
+
+    player = (
+        Player.query
+        .filter(db.func.lower(Player.team_name) == team_query.lower())
+        .order_by(Player.id.desc())
+        .first()
+    )
+
+    participants = []
+    if tournament is not None:
+        participants = (
+            TournamentParticipant.query
+            .filter_by(tournament_id=tournament.id)
+            .order_by(TournamentParticipant.id.desc())
+            .all()
+        )
+
+    matching_participants = []
+    if player is not None:
+        matching_participants = [
+            participant
+            for participant in participants
+            if participant.player_id == player.id
+        ]
+
+    lines = [
+        "<h1>Temporary Registration Diagnostic</h1>",
+        f"<p><strong>Current tournament:</strong> "
+        f"{tournament.name if tournament else 'NONE'} "
+        f"(ID: {tournament.id if tournament else 'NONE'}, "
+        f"season: {tournament.season_number if tournament else 'NONE'}, "
+        f"status: {tournament.status if tournament else 'NONE'})</p>",
+        f"<p><strong>Player team search:</strong> {team_query}</p>",
+        f"<p><strong>Player found:</strong> "
+        f"{'YES' if player else 'NO'}</p>",
+    ]
+
+    if player:
+        lines.extend([
+            f"<p><strong>Player ID:</strong> {player.id}</p>",
+            f"<p><strong>Name:</strong> {player.name}</p>",
+            f"<p><strong>FC username:</strong> {player.fc_username}</p>",
+            f"<p><strong>Team name:</strong> {player.team_name}</p>",
+            f"<p><strong>Global application status:</strong> "
+            f"{player.application_status}</p>",
+            f"<p><strong>Participant records in current tournament:</strong> "
+            f"{len(matching_participants)}</p>",
+        ])
+
+        for participant in matching_participants:
+            lines.extend([
+                "<hr>",
+                f"<p><strong>Participant ID:</strong> {participant.id}</p>",
+                f"<p><strong>Tournament ID:</strong> {participant.tournament_id}</p>",
+                f"<p><strong>Status:</strong> {participant.status}</p>",
+                f"<p><strong>Participant team:</strong> {participant.team_name}</p>",
+                f"<p><strong>Registered at:</strong> {participant.registered_at}</p>",
+            ])
+    else:
+        lines.append(
+            "<p><strong>No Player row matched that exact team name.</strong></p>"
+        )
+
+    if tournament:
+        lines.append(
+            f"<p><strong>Total current-tournament participants:</strong> "
+            f"{len(participants)}</p>"
+        )
+
+    return "".join(lines)
+
+
 def admin_dashboard():
 
     access = founder_required()
