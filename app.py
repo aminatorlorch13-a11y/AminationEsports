@@ -2940,7 +2940,6 @@ def get_analytics_trend(range_key="7d"):
 # FOUNDER DASHBOARD
 # ============================================================
 
-@app.route("/admin/dashboard")
 
 # ============================================================
 # TEMP CURRENT REGISTRATION DIAGNOSTIC — READ ONLY
@@ -3101,6 +3100,7 @@ def founder_current_registration_diagnostic():
     """
 
 
+@app.route("/admin/dashboard")
 def admin_dashboard():
 
     access = founder_required()
