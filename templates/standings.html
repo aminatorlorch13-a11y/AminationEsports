@@ -13,6 +13,21 @@
     </title>
 
     <style>
+        .bracket-explainer {
+            margin: 0 0 1.5rem;
+            padding: 1.4rem;
+            border: 1px solid rgba(255, 215, 0, 0.14);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .bracket-explainer p {
+            max-width: 820px;
+            margin: 0.65rem 0 0;
+            line-height: 1.65;
+            opacity: 0.84;
+        }
+
         :root {
             --gold: #e2b936;
             --gold-bright: #ffe36a;
@@ -1869,6 +1884,17 @@
     <div class="capacity">
         ⚡ {{ capacity }}-SLOT KNOCKOUT
     </div>
+</section>
+
+<section class="bracket-explainer">
+    <span class="eyebrow">HOW TO READ THE BRACKET</span>
+
+    <p>
+        The bracket shows the official progression of the tournament.
+        Each match represents a scheduled competition between players,
+        with results updating as matches are completed. A BYE indicates
+        that a player advances without a match in that position.
+    </p>
 </section>
 
 {% if rounds %}

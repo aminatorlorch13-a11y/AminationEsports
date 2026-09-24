@@ -12,6 +12,26 @@
 
     <style>
 
+        .matches-explainer {
+            margin: 0 0 1.5rem;
+            padding: 1.4rem;
+            border: 1px solid rgba(255, 215, 0, 0.14);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .matches-explainer > strong {
+            display: block;
+            margin-bottom: 0.65rem;
+        }
+
+        .matches-explainer p {
+            max-width: 820px;
+            margin: 0;
+            line-height: 1.65;
+            opacity: 0.84;
+        }
+
         * {
             box-sizing: border-box;
         }
@@ -155,6 +175,17 @@
         scheduled games and results.
     </p>
 
+
+    <section class="matches-explainer">
+        <strong>HOW MATCHES WORK</strong>
+
+        <p>
+            Tournament matches are organised by round and displayed with
+            their current status. Scheduled matches are upcoming, live
+            matches are currently being played, and completed matches
+            show recorded results.
+        </p>
+    </section>
 
     {% if matches %}
 

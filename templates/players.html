@@ -12,6 +12,54 @@
 
     <style>
 
+        .players-explainer {
+            margin: 0 0 1.5rem;
+            padding: 1.4rem;
+            border: 1px solid rgba(255, 215, 0, 0.14);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .players-explainer > strong {
+            display: block;
+            margin-bottom: 0.9rem;
+        }
+
+        .players-explainer-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.8rem;
+        }
+
+        .players-explainer-grid > div {
+            padding: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.14);
+        }
+
+        .players-explainer-grid b,
+        .players-explainer-grid span {
+            display: block;
+        }
+
+        .players-explainer-grid b {
+            margin-bottom: 0.35rem;
+            font-size: 0.82rem;
+        }
+
+        .players-explainer-grid span {
+            font-size: 0.9rem;
+            line-height: 1.45;
+            opacity: 0.72;
+        }
+
+        @media (max-width: 700px) {
+            .players-explainer-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         * {
             box-sizing: border-box;
         }
@@ -765,6 +813,27 @@ footer {
         tournament profile, status and match information.
     </p>
 
+
+    <section class="players-explainer">
+        <strong>PLAYER DIRECTORY</strong>
+
+        <div class="players-explainer-grid">
+            <div>
+                <b>PLAYER PROFILE</b>
+                <span>View a player's public tournament information.</span>
+            </div>
+
+            <div>
+                <b>STATUS</b>
+                <span>See their current competition status and activity.</span>
+            </div>
+
+            <div>
+                <b>MATCH INFORMATION</b>
+                <span>Follow recorded matches connected to the player.</span>
+            </div>
+        </div>
+    </section>
 
     {% if players %}
 

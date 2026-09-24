@@ -918,6 +918,70 @@ footer {
     }
 }
 
+
+    .about-platform {
+        margin: 2rem 0;
+        padding: 2rem;
+        border: 1px solid rgba(255, 215, 0, 0.16);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.025);
+    }
+
+    .about-platform-content {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .about-platform h2 {
+        margin: 0.45rem 0 0.8rem;
+    }
+
+    .about-platform p {
+        max-width: 760px;
+        line-height: 1.7;
+        opacity: 0.86;
+    }
+
+    .tournament-flow {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.9rem;
+        margin: 1.5rem 0;
+    }
+
+    .tournament-flow > div {
+        padding: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.16);
+    }
+
+    .tournament-flow strong,
+    .tournament-flow span {
+        display: block;
+    }
+
+    .tournament-flow strong {
+        margin-bottom: 0.45rem;
+        font-size: 0.82rem;
+    }
+
+    .tournament-flow span {
+        font-size: 0.9rem;
+        line-height: 1.5;
+        opacity: 0.72;
+    }
+
+    @media (max-width: 700px) {
+        .about-platform {
+            padding: 1.35rem;
+        }
+
+        .tournament-flow {
+            grid-template-columns: 1fr;
+        }
+    }
+
     </style>
 
 </head>
@@ -1045,7 +1109,45 @@ footer {
 
 </section>
 
+<section class="about-platform">
+    <div class="about-platform-content">
+        <span class="highlights-eyebrow">ABOUT AMINATION ESPORTS</span>
 
+        <h2>COMPETITIVE FC MOBILE, BUILT AROUND REAL TOURNAMENTS</h2>
+
+        <p>
+            Amination Esports is a tournament platform where FC Mobile
+            players can register, compete through organised brackets,
+            follow matches and see official results.
+        </p>
+
+        <div class="tournament-flow">
+            <div>
+                <strong>01 · REGISTER</strong>
+                <span>Enter an active tournament.</span>
+            </div>
+
+            <div>
+                <strong>02 · GET PLACED</strong>
+                <span>Receive your position in the draw.</span>
+            </div>
+
+            <div>
+                <strong>03 · COMPETE</strong>
+                <span>Play your scheduled matches.</span>
+            </div>
+
+            <div>
+                <strong>04 · ADVANCE</strong>
+                <span>Progress through the bracket toward the championship.</span>
+            </div>
+        </div>
+
+        <a class="button" href="{{ url_for('tournament') }}">
+            VIEW THE CURRENT TOURNAMENT
+        </a>
+    </div>
+</section>
 
 <section class="highlights-section">
 

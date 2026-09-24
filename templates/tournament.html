@@ -784,6 +784,61 @@ footer {
     }
 }
 
+
+    .tournament-explainer {
+        margin: 0 0 2rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 215, 0, 0.14);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.025);
+    }
+
+    .tournament-explainer h2 {
+        margin: 0.4rem 0 0.7rem;
+    }
+
+    .tournament-explainer > p {
+        max-width: 820px;
+        line-height: 1.65;
+        opacity: 0.84;
+    }
+
+    .tournament-steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.8rem;
+        margin-top: 1.25rem;
+    }
+
+    .tournament-steps > div {
+        padding: 0.9rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.14);
+    }
+
+    .tournament-steps strong,
+    .tournament-steps span {
+        display: block;
+    }
+
+    .tournament-steps strong {
+        margin-bottom: 0.35rem;
+        font-size: 0.82rem;
+    }
+
+    .tournament-steps span {
+        font-size: 0.9rem;
+        line-height: 1.45;
+        opacity: 0.72;
+    }
+
+    @media (max-width: 700px) {
+        .tournament-steps {
+            grid-template-columns: 1fr;
+        }
+    }
+
     </style>
 
 </head>
@@ -861,9 +916,37 @@ footer {
 
     </div>
 
+<section class="tournament-explainer">
+    <span class="eyebrow">HOW IT WORKS</span>
 
+    <h2>FROM REGISTRATION TO CHAMPIONSHIP</h2>
 
-    {% if latest_notice %}
+    <p>
+        Players register for an active tournament before registration closes.
+        Once the official draw is released, registered players are placed into
+        the competition bracket and play their scheduled matches. Winners
+        progress through the bracket while official results are recorded.
+    </p>
+
+    <div class="tournament-steps">
+        <div>
+            <strong>01 · REGISTER</strong>
+            <span>Submit your tournament entry.</span>
+        </div>
+
+        <div>
+            <strong>02 · PLAY</strong>
+            <span>Complete your assigned match.</span>
+        </div>
+
+        <div>
+            <strong>03 · ADVANCE</strong>
+            <span>Progress through the bracket when you win.</span>
+        </div>
+    </div>
+</section>
+
+{% if latest_notice %}
 
         <div class="draw-status" style="margin-bottom:20px;">
 
