@@ -2595,6 +2595,25 @@
 
             </form>
 
+            <form
+                method="POST"
+                action="{{ url_for('founder_remove_public_announcement') }}"
+                style="margin-top:12px;"
+                onsubmit="return confirm('Permanently remove the current public announcement? This cannot be undone.');"
+            >
+                <button
+                    type="submit"
+                    class="button"
+                    style="
+                        border:none;
+                        cursor:pointer;
+                        width:100%;
+                    "
+                >
+                    🗑️ REMOVE CURRENT PUBLIC ANNOUNCEMENT
+                </button>
+            </form>
+
             {% if unread_messages is not none %}
 
                 <div

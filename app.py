@@ -4990,6 +4990,41 @@ def founder_public_announcement():
         url_for("admin_dashboard")
     )
 
+
+# ============================================================
+# FOUNDER — REMOVE PUBLIC ANNOUNCEMENT
+# ============================================================
+
+@app.route(
+    "/admin/founder/remove-public-announcement",
+    methods=["POST"]
+)
+def founder_remove_public_announcement():
+
+    access = founder_required()
+    if access:
+        return access
+
+    notice = (
+        AdminAction.query
+        .filter_by(action="public_notice")
+        .order_by(AdminAction.created_at.desc())
+        .first()
+    )
+
+    if not notice:
+        return (
+            "No public announcement exists."
+        ), 404
+
+    db.session.delete(notice)
+    db.session.commit()
+
+    return redirect(
+        url_for("admin_dashboard")
+    )
+
+
 # ============================================================
 # FOUNDER — MATCH PLAYER SUBSTITUTION
 # ============================================================
