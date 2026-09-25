@@ -3998,11 +3998,7 @@ def draw_tournament():
     if access:
         return access
 
-    tournament = (
-        Tournament.query
-        .order_by(Tournament.id.desc())
-        .first()
-    )
+    tournament = current_tournament()
 
     if not tournament:
         return "No tournament exists.", 404
