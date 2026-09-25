@@ -1216,6 +1216,58 @@ def home():
     )
 
 
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    return (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Sitemap: https://aminationesports.co.za/sitemap.xml\n",
+        200,
+        {"Content-Type": "text/plain; charset=utf-8"},
+    )
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    base_url = "https://aminationesports.co.za"
+
+    pages = [
+        f"{base_url}/",
+        f"{base_url}/about",
+        f"{base_url}/tournament",
+        f"{base_url}/live",
+        f"{base_url}/standings",
+        f"{base_url}/hall-of-fame",
+        f"{base_url}/players",
+        f"{base_url}/matches",
+        f"{base_url}/terms",
+        f"{base_url}/privacy",
+    ]
+
+    urls = "".join(
+        f"<url><loc>{page}</loc></url>"
+        for page in pages
+    )
+
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{urls}"
+        "</urlset>"
+    )
+
+    return (
+        xml,
+        200,
+        {"Content-Type": "application/xml; charset=utf-8"},
+    )
+
+
 @app.route("/tournament")
 def tournament():
 

@@ -8,7 +8,42 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Amination Esports</title>
+    <title>Amination eSports | South African Esports Tournaments</title>
+    <meta name="description" content="Amination eSports is a South African esports tournament platform founded by Amin Shabangu, built to organize competitive mobile football gaming tournaments and grow a structured esports community.">
+    <meta name="author" content="Amin Shabangu">
+    <link
+        rel="icon"
+        type="image/jpeg"
+        href="{{ url_for('static', filename='images/amination-logo.jpg') }}"
+    >
+    <link rel="canonical" href="https://aminationesports.co.za/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Amination eSports">
+    <meta property="og:title" content="Amination eSports | South African Esports Tournaments">
+    <meta property="og:description" content="A South African esports tournament platform founded by Amin Shabangu.">
+    <meta property="og:url" content="https://aminationesports.co.za/">
+    <meta property="og:image" content="https://aminationesports.co.za/static/images/amination-logo.jpg">
+
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Amination eSports | South African Esports Tournaments">
+    <meta name="twitter:description" content="A South African esports tournament platform founded by Amin Shabangu.">
+    <meta name="twitter:image" content="https://aminationesports.co.za/static/images/amination-logo.jpg">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Amination eSports",
+        "url": "https://aminationesports.co.za/",
+        "logo": "https://aminationesports.co.za/static/images/amination-logo.jpg",
+        "description": "A South African esports tournament platform founded by Amin Shabangu, built to organize competitive mobile football gaming tournaments and grow a structured esports community.",
+        "founder": {
+            "@type": "Person",
+            "name": "Amin Shabangu"
+        }
+    }
+    </script>
 
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2519851917327788"
             crossorigin="anonymous"></script>
@@ -40,6 +75,28 @@
 
         .brand span {
             color: #e2b936;
+        }
+
+        .brand-logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .brand-logo img {
+            display: block;
+            width: min(150px, 42vw);
+            height: auto;
+            max-height: 150px;
+            object-fit: contain;
+        }
+
+        @media (max-width: 600px) {
+            .brand-logo img {
+                width: min(125px, 48vw);
+                max-height: 125px;
+            }
         }
 
         nav {
@@ -990,9 +1047,12 @@ footer {
 
 <header>
 
-    <div class="brand">
-        AMINATION <span>ESPORTS</span>
-    </div>
+    <a class="brand-logo" href="{{ url_for('home') }}" aria-label="Amination eSports home">
+        <img
+            src="{{ url_for('static', filename='images/amination-logo.jpg') }}"
+            alt="Amination eSports — From Imagination to Reality"
+        >
+    </a>
 
 </header>
 
