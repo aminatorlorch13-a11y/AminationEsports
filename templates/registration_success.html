@@ -76,7 +76,47 @@
     </div>
 
 
-    <h2>WHILE YOU WAIT...</h2>
+    {% if new_player_whatsapp_required %}
+<div class="rules-box" style="border:2px solid #25D366;">
+    <h3>📱 WHATSAPP REQUIRED</h3>
+
+    <p>
+        <strong>Your tournament registration is not complete until
+        you join the official Amination Esports WhatsApp group.</strong>
+    </p>
+
+    <p>
+        WhatsApp is used to confirm player availability and coordinate
+        tournament participation.
+    </p>
+
+    <p>
+        <strong>⚠️ Important:</strong>
+        Registering on this website alone does not make you eligible
+        for the tournament bracket. You must join the WhatsApp group.
+    </p>
+
+    <a
+        class="button primary"
+        href="{{ whatsapp_group_link }}"
+        target="_blank"
+        rel="noopener noreferrer"
+    >
+        JOIN OFFICIAL WHATSAPP GROUP
+    </a>
+
+    <p style="margin-top:16px;">
+        If the group link has expired or does not work, contact
+        Amination Esports:
+    </p>
+
+    <p>
+        <strong>WhatsApp: {{ whatsapp_contact }}</strong>
+    </p>
+</div>
+{% endif %}
+
+<h2>WHILE YOU WAIT...</h2>
 
     <p>
         Your application is being reviewed by

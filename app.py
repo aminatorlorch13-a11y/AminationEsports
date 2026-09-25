@@ -101,6 +101,11 @@ db.init_app(app)
 # Secure PayFast payment routes.
 from payment_routes import register_payment_routes
 
+AMINATION_ESPORTS_WHATSAPP_GROUP = (
+    "https://chat.whatsapp.com/Eg0VGqL5NPy1yeQ0eNQk1w"
+)
+
+AMINATION_ESPORTS_WHATSAPP_CONTACT = "+27787995599"
 
 register_payment_routes(app)
 
@@ -1957,6 +1962,7 @@ def register():
         # approval state, so returning players can register for a
         # new season without overwriting their historical records.
         registration_player = returning_player
+        new_player_registration = False
 
         if registration_player:
             existing_participant = (
@@ -1976,6 +1982,11 @@ def register():
             player = registration_player
 
         else:
+            # This flag is true ONLY for a brand-new Player account.
+            # Existing players must never receive the new-user
+            # WhatsApp onboarding prompt.
+            new_player_registration = True
+
             player = Player(
                 name=name,
                 fc_username=fc_username,
@@ -2055,6 +2066,16 @@ def register():
                 priority_source_tournament_id=priority_source_tournament_id,
                 availability_status="unknown",
 
+                # New players must complete WhatsApp onboarding.
+                # Returning players are already established group members
+                # and must never be asked to confirm again.
+                whatsapp_joined=not new_player_registration,
+                whatsapp_joined_at=(
+                    datetime.utcnow()
+                    if not new_player_registration
+                    else None
+                ),
+
                 payment_status=(
                     "unpaid"
                     if payment_required
@@ -2088,6 +2109,12 @@ def register():
             # Player account and tournament participation are committed together.
             # If either operation fails, the transaction can roll back.
             db.session.commit()
+
+            # Only a genuinely new Player account receives the
+            # mandatory WhatsApp onboarding prompt.
+            session["new_player_whatsapp_required"] = bool(
+                new_player_registration
+            )
 
         except Exception:
             db.session.rollback()
@@ -2295,6 +2322,10 @@ def register_current_tournament():
         priority_reason=priority_reason,
         priority_source_tournament_id=priority_source_tournament_id,
         availability_status="unknown",
+        # Returning player accounts already completed the
+        # one-time WhatsApp onboarding requirement.
+        whatsapp_joined=True,
+        whatsapp_joined_at=datetime.utcnow(),
         payment_status=(
             "unpaid"
             if payment_required
@@ -2402,9 +2433,22 @@ def registration_success(player_id):
             )
         )
 
+    new_player_whatsapp_required = (
+        session.get("new_player_whatsapp_required", False)
+    )
+
+    if new_player_whatsapp_required:
+        session.pop(
+            "new_player_whatsapp_required",
+            None
+        )
+
     return render_template(
         "registration_success.html",
-        player=player
+        player=player,
+        new_player_whatsapp_required=new_player_whatsapp_required,
+        whatsapp_group_link=AMINATION_ESPORTS_WHATSAPP_GROUP,
+        whatsapp_contact=AMINATION_ESPORTS_WHATSAPP_CONTACT
     )
 
 
@@ -3263,6 +3307,52 @@ def admin_dashboard():
 # ============================================================
 
 @app.route(
+    "/admin/tournament/participant/<int:participant_id>/whatsapp",
+    methods=["POST"]
+)
+def confirm_tournament_participant_whatsapp(participant_id):
+
+    access = founder_required()
+    if access:
+        return access
+
+    tournament = current_tournament()
+
+    if not tournament:
+        return "No tournament exists.", 404
+
+    participant = TournamentParticipant.query.filter_by(
+        id=participant_id,
+        tournament_id=tournament.id
+    ).first()
+
+    if not participant:
+        return (
+            "That participant does not belong to the current tournament."
+        ), 404
+
+    participant.whatsapp_joined = True
+    participant.whatsapp_joined_at = datetime.utcnow()
+
+    action = AdminAction(
+        player_id=participant.player_id,
+        action="tournament_participant_whatsapp_confirmed",
+        notes=(
+            f"Founder confirmed WhatsApp group membership for "
+            f"participant {participant.id}. "
+            f"Tournament ID={tournament.id}, "
+            f"season={tournament.season_number}."
+        ),
+        created_at=datetime.utcnow()
+    )
+
+    db.session.add(action)
+    db.session.commit()
+
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route(
     "/admin/tournament/participant/<int:participant_id>/status",
     methods=["POST"]
 )
@@ -3310,6 +3400,14 @@ def change_tournament_participant_status(participant_id):
         return "Invalid tournament participant status.", 400
 
     old_status = participant.status
+
+    # WhatsApp membership is mandatory before a participant
+    # can become eligible for the tournament bracket.
+    if new_status == "approved" and not participant.whatsapp_joined:
+        return (
+            "This participant cannot be approved until their "
+            "WhatsApp group membership has been confirmed."
+        ), 409
 
     # Approval capacity is calculated ONLY from this tournament's
     # TournamentParticipant records.

@@ -1363,6 +1363,28 @@
                             {% endif %}
                         </p>
 
+                        {% if not participant.whatsapp_joined %}
+                            <form
+                                method="POST"
+                                action="{{ url_for(
+                                    'confirm_tournament_participant_whatsapp',
+                                    participant_id=participant.id
+                                ) }}"
+                                style="margin-top:8px;"
+                                onsubmit="return confirm(
+                                    'Confirm that this player has joined the official Amination Esports WhatsApp group?'
+                                );"
+                            >
+                                <button
+                                    type="submit"
+                                    class="button"
+                                    style="width:100%;"
+                                >
+                                    📱 CONFIRM WHATSAPP JOINED
+                                </button>
+                            </form>
+                        {% endif %}
+
                         {% if participant.status == "pending" %}
                             <form
                                 method="POST"
