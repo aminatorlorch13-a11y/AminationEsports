@@ -86,7 +86,11 @@ def log_unhandled_exception(error):
         request.path,
     )
 
-    return "Internal Server Error", 500
+    import traceback
+    return (
+        "<pre>" + traceback.format_exc() + "</pre>",
+        500
+    )
 
 
 
