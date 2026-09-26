@@ -2091,6 +2091,62 @@
 
         <div class="control-card">
 
+            <!-- CURRENT SEASON PARTICIPANTS -->
+            <div class="control-card" style="
+                margin:0 0 20px;
+                border:1px solid rgba(255,215,0,0.35);
+                border-radius:10px;
+            ">
+                <h3 style="margin-top:0;">🏆 CURRENT SEASON PARTICIPANTS</h3>
+
+                <p>
+                    Season:
+                    <strong>{{ tournament.season_number or "—" }}</strong>
+                </p>
+
+                <p>
+                    Registered participants:
+                    <strong>{{ current_participants|length }}</strong>
+                    {% if tournament.max_players %}
+                        / {{ tournament.max_players }}
+                    {% endif %}
+                </p>
+
+                {% if current_participants %}
+                    <div style="
+                        display:grid;
+                        grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+                        gap:10px;
+                        margin-top:15px;
+                    ">
+                        {% for participant in current_participants %}
+                            <div style="
+                                padding:12px;
+                                border:1px solid rgba(255,255,255,0.15);
+                                border-radius:8px;
+                            ">
+                                <strong>
+                                    {% if players_by_id.get(participant.player_id) %}
+                                        {{ players_by_id[participant.player_id].name }}
+                                    {% else %}
+                                        Player #{{ participant.player_id }}
+                                    {% endif %}
+                                </strong>
+
+                                <div style="margin-top:5px;">
+                                    Status:
+                                    <strong>{{ participant.status|upper }}</strong>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty">
+                        No participants are currently registered for this tournament.
+                    </div>
+                {% endif %}
+            </div>
+
             <h3>
                 Official Match Control
             </h3>
@@ -2490,6 +2546,17 @@
                                   </button>
                               </form>
                               {% endif %}
+                          </div>
+
+                          <!-- FOUNDER MATCH OPERATIONS -->
+                          <div style="
+                              margin:20px 0;
+                              padding:16px;
+                              border:1px solid rgba(255,215,0,0.35);
+                              border-radius:10px;
+                          ">
+                              <h3 style="margin-top:0;">🎮 MATCH OPERATIONS</h3>
+                              <p>Official Founder controls for this match.</p>
                           </div>
 
                           <!-- START LIVE MATCH -->
@@ -3426,7 +3493,7 @@
         if (sectionIds.has(initialId)) {
             showSection(initialId, false);
         } else {
-            showSection("overview", false);
+            showSection("founder-live-match-control", false);
         }
     })();
     </script>
