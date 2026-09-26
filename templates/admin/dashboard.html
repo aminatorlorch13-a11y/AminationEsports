@@ -85,11 +85,17 @@
             background: rgba(255, 215, 0, 0.12);
         }
 
-        body.founder-focused .admin-section[data-founder-panel="true"] {
+        body.founder-focused .admin-section[data-founder-panel="true"]:not(#founder-live-match-control) {
             display: none;
         }
 
         body.founder-focused .admin-section[data-founder-panel="true"].founder-panel-active {
+            display: block;
+        }
+
+        /* Founder match operations must remain visible.
+           These are live operational controls, not a navigation-only panel. */
+        body.founder-focused #founder-live-match-control {
             display: block;
         }
 
@@ -212,6 +218,27 @@
         <a class="button" href="#activity">📜 Activity</a>
         <a class="button" href="#player-administration">🛠️ Player Admin</a>
       </nav>
+        {% with flashed_messages = get_flashed_messages() %}
+            {% if flashed_messages %}
+                <div
+                    role="status"
+                    aria-live="polite"
+                    style="
+                        margin: 0 0 25px;
+                        padding: 14px 16px;
+                        border: 1px solid rgba(255, 215, 0, 0.45);
+                        border-radius: 10px;
+                        background: rgba(255, 215, 0, 0.08);
+                        font-weight: 700;
+                    "
+                >
+                    {% for message in flashed_messages %}
+                        <div>{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
 
 <!-- OVERVIEW -->
     <!-- ================================= -->
@@ -1723,81 +1750,200 @@
                 </p>
 
                 <!-- STATUS CONTROLS -->
-
-                <div class="activity-card">
-
-                    <h3>
-                        🎛️ Tournament Status
+                                                          <div class="activity-card">
+                                                              <h3>
+                        🎛️ Tournament Lifecycle
                     </h3>
 
-                    <form
-                        method="POST"
-                        action="{{ url_for(
-                            'founder_tournament_control'
-                        ) }}"
-                    >
+                    <p>
+                        <strong>Current status:</strong>
+                        {{ tournament.status|upper }}
+                    </p>
 
-                        <label>
-                            Founder action
-                        </label>
+                    {% if tournament.status == "registration" %}
 
-                        <select
-                            name="action"
-                            required
-                            style="
-                                width:100%;
-                                box-sizing:border-box;
-                                padding:10px;
-                                margin:8px 0 12px;
-                                border-radius:8px;
-                            "
+                        <p>
+                            Registration is open. Once the approved field is
+                            final, release the official draw.
+                        </p>
+
+                        <form
+                            method="POST"
+                            action="{{ url_for('founder_tournament_control') }}"
+                            style="margin-top:15px;"
                         >
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="release_draw"
+                            >
 
-                            <option value="">
-                                Select tournament action
-                            </option>
+                            <button
+                                type="submit"
+                                class="button"
+                                style="
+                                    border:none;
+                                    cursor:pointer;
+                                    width:100%;
+                                "
+                                onclick="return confirm(
+                                    'Release the official tournament draw now?'
+                                );"
+                            >
+                                🎲 RELEASE OFFICIAL DRAW
+                            </button>
+                        </form>
 
-                            <option value="open_registration">
-                                📝 Open Registration
-                            </option>
+                    {% elif tournament.status == "draw_released" %}
 
-                            <option value="start_tournament">
-                                ▶️ Start Tournament
-                            </option>
+                        <p>
+                            The official draw is released. The tournament can
+                            now be started, or the draw can be reset before
+                            play begins.
+                        </p>
 
-                            <option value="pause_tournament">
-                                ⏸️ Pause Tournament
-                            </option>
-
-                            <option value="resume_tournament">
-                                ▶️ Resume Tournament
-                            </option>
-
-                            <option value="complete_tournament">
-                                🏁 Complete Tournament
-                            </option>
-
-                        </select>
-
-                        <button
-                            type="submit"
-                            class="button"
-                            style="
-                                border:none;
-                                cursor:pointer;
-                                width:100%;
-                            "
-                            onclick="return confirm(
-                                'Apply this Founder tournament control action?'
-                            );"
+                        <form
+                            method="POST"
+                            action="{{ url_for('founder_tournament_control') }}"
+                            style="margin-top:15px;"
                         >
-                            APPLY TOURNAMENT CONTROL
-                        </button>
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="start_tournament"
+                            >
 
-                    </form>
+                            <button
+                                type="submit"
+                                class="button"
+                                style="
+                                    border:none;
+                                    cursor:pointer;
+                                    width:100%;
+                                "
+                                onclick="return confirm(
+                                    'Start the tournament now?'
+                                );"
+                            >
+                                ▶️ START TOURNAMENT
+                            </button>
+                        </form>
 
-                </div>
+                        <form
+                            method="POST"
+                            action="{{ url_for('founder_tournament_control') }}"
+                            style="margin-top:10px;"
+                        >
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="reset_registration"
+                            >
 
+                            <button
+                                type="submit"
+                                class="button"
+                                style="
+                                    border:none;
+                                    cursor:pointer;
+                                    width:100%;
+                                "
+                                onclick="return confirm(
+                                    'Reset the official draw and reopen registration? All matches in this tournament will be removed.'
+                                );"
+                            >
+                                🔄 RESET DRAW / REOPEN REGISTRATION
+                            </button>
+                        </form>
+
+                    {% elif tournament.status == "in_progress" %}
+
+                        <p>
+                            The tournament is currently in progress.
+                        </p>
+
+                        <form
+                            method="POST"
+                            action="{{ url_for('founder_tournament_control') }}"
+                            style="margin-top:15px;"
+                        >
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="pause_tournament"
+                            >
+
+                            <button
+                                type="submit"
+                                class="button"
+                                style="
+                                    border:none;
+                                    cursor:pointer;
+                                    width:100%;
+                                "
+                                onclick="return confirm(
+                                    'Pause the tournament?'
+                                );"
+                            >
+                                ⏸️ PAUSE TOURNAMENT
+                            </button>
+                        </form>
+
+                    {% elif tournament.status == "paused" %}
+
+                        <p>
+                            The tournament is paused. Resume it when play is
+                            ready to continue.
+                        </p>
+
+                        <form
+                            method="POST"
+                            action="{{ url_for('founder_tournament_control') }}"
+                            style="margin-top:15px;"
+                        >
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="resume_tournament"
+                            >
+
+                            <button
+                                type="submit"
+                                class="button"
+                                style="
+                                    border:none;
+                                    cursor:pointer;
+                                    width:100%;
+                                "
+                                onclick="return confirm(
+                                    'Resume the tournament?'
+                                );"
+                            >
+                                ▶️ RESUME TOURNAMENT
+                            </button>
+                        </form>
+
+                    {% elif tournament.status == "completed" %}
+
+                        <p>
+                            🏆 This tournament is completed and historical.
+                        </p>
+
+                        <p>
+                            The Final match completion process records the
+                            champion and runner-up and creates the next
+                            numbered tournament season when appropriate.
+                        </p>
+
+                    {% else %}
+
+                        <p>
+                            No Founder lifecycle control is available for the
+                            current tournament state.
+                        </p>
+
+                    {% endif %}
+                                                          </div>
 
                 <!-- ================================= -->
                 <!-- TOURNAMENT COMPLETION SUMMARY -->
@@ -2414,6 +2560,102 @@
                               </button>
 
                           </form>
+
+
+                          <!-- UPDATE LIVE SCORE -->
+
+                          {% if match.is_live %}
+                          <form
+                              method="POST"
+                              action="{{ url_for(
+                                  'founder_live_match_control',
+                                  match_id=match.id
+                              ) }}"
+                              style="margin-top:10px;"
+                          >
+
+                              <input
+                                  type="hidden"
+                                  name="action"
+                                  value="update_score"
+                              >
+
+                              <div style="
+                                  display:flex;
+                                  gap:10px;
+                                  margin-bottom:10px;
+                              ">
+
+                                  <div style="flex:1;">
+
+                                      <label>
+                                          <strong>
+                                              {% if players_by_id.get(match.player1_id) %}
+                                                  {{ players_by_id[match.player1_id].name }}
+                                              {% else %}
+                                                  Player 1
+                                              {% endif %}
+                                          </strong>
+                                      </label>
+
+                                      <input
+                                          type="number"
+                                          name="player1_score"
+                                          min="0"
+                                          step="1"
+                                          value="{{ match.player1_score or 0 }}"
+                                          required
+                                          style="
+                                              width:100%;
+                                              box-sizing:border-box;
+                                          "
+                                      >
+
+                                  </div>
+
+                                  <div style="flex:1;">
+
+                                      <label>
+                                          <strong>
+                                              {% if players_by_id.get(match.player2_id) %}
+                                                  {{ players_by_id[match.player2_id].name }}
+                                              {% else %}
+                                                  Player 2
+                                              {% endif %}
+                                          </strong>
+                                      </label>
+
+                                      <input
+                                          type="number"
+                                          name="player2_score"
+                                          min="0"
+                                          step="1"
+                                          value="{{ match.player2_score or 0 }}"
+                                          required
+                                          style="
+                                              width:100%;
+                                              box-sizing:border-box;
+                                          "
+                                      >
+
+                                  </div>
+
+                              </div>
+
+                              <button
+                                  type="submit"
+                                  class="button"
+                                  style="
+                                      border:none;
+                                      cursor:pointer;
+                                      width:100%;
+                                  "
+                              >
+                                  📊 UPDATE LIVE SCORE
+                              </button>
+
+                          </form>
+                          {% endif %}
 
 
                           <!-- FINISH MATCH -->

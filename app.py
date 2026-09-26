@@ -3418,6 +3418,15 @@ def change_tournament_participant_status(participant_id):
     if not tournament:
         return "No tournament exists.", 404
 
+    # Serialize current-tournament registration decisions so
+    # concurrent approvals cannot exceed max_players.
+    tournament = (
+        Tournament.query
+        .filter_by(id=tournament.id)
+        .with_for_update()
+        .one()
+    )
+
     # Registration decisions are only allowed while registration
     # is open. Once the draw is released, the field is locked.
     if tournament.status != TOURNAMENT_REGISTRATION:
@@ -3784,9 +3793,7 @@ def founder_tournament_control():
     if access:
         return access
 
-    tournament = Tournament.query.order_by(
-        Tournament.id.desc()
-    ).first()
+    tournament = current_tournament()
 
     if not tournament:
         return "No tournament exists.", 404
@@ -3797,19 +3804,29 @@ def founder_tournament_control():
     ).strip()
 
     allowed_actions = {
-        "open_registration": TOURNAMENT_REGISTRATION,
         "start_tournament": TOURNAMENT_IN_PROGRESS,
         "pause_tournament": TOURNAMENT_PAUSED,
-        "resume_tournament": TOURNAMENT_IN_PROGRESS,
-        "complete_tournament": TOURNAMENT_COMPLETED
+        "resume_tournament": TOURNAMENT_IN_PROGRESS
     }
 
     if action_type == "release_draw":
+        if tournament.status != TOURNAMENT_REGISTRATION:
+            return (
+                "The official draw can only be released "
+                "while registration is open."
+            ), 409
+
         return redirect(
             url_for("draw_tournament")
         )
 
     if action_type == "reset_registration":
+        if tournament.status != TOURNAMENT_DRAW_RELEASED:
+            return (
+                "The tournament can only be reset after "
+                "the official draw has been released."
+            ), 409
+
         return redirect(
             url_for("reset_tournament")
         )
@@ -3821,7 +3838,7 @@ def founder_tournament_control():
     new_status = allowed_actions[action_type]
 
     if action_type == "start_tournament":
-        if old_status not in [TOURNAMENT_DRAW_RELEASED, TOURNAMENT_PAUSED]:
+        if old_status != TOURNAMENT_DRAW_RELEASED:
             return (
                 "The tournament must have a released draw "
                 "before it can start."
@@ -3839,19 +3856,9 @@ def founder_tournament_control():
                 "Only a paused tournament can be resumed."
             ), 409
 
-    if action_type == "complete_tournament":
-        if old_status not in [TOURNAMENT_IN_PROGRESS, TOURNAMENT_PAUSED]:
-            return (
-                "The tournament must be in progress or paused "
-                "before it can be completed."
-            ), 409
-
     tournament.status = new_status
 
     labels = {
-        "open_registration":
-            "Founder opened tournament registration.",
-
         "start_tournament":
             "Founder started the tournament.",
 
@@ -3859,10 +3866,7 @@ def founder_tournament_control():
             "Founder paused the tournament.",
 
         "resume_tournament":
-            "Founder resumed the tournament.",
-
-        "complete_tournament":
-            "Founder marked the tournament completed."
+            "Founder resumed the tournament."
     }
 
     action = AdminAction(
@@ -4542,16 +4546,16 @@ def reset_tournament():
     if access:
         return access
 
-    tournament = Tournament.query.order_by(
-        Tournament.id.desc()
-    ).first()
+    tournament = current_tournament()
 
     if not tournament:
         return "No tournament exists.", 404
 
-    if tournament.status == TOURNAMENT_COMPLETED:
+    if tournament.status != TOURNAMENT_DRAW_RELEASED:
         return (
-            "A completed tournament cannot be reset."
+            "Only a released tournament draw can be reset. "
+            "Live, paused, and completed tournaments cannot "
+            "be reset from this control."
         ), 409
 
     matches = Match.query.filter_by(
@@ -5253,8 +5257,9 @@ def founder_substitute_match_player(match_id):
 
     replacement = db.session.get(Player, replacement_player)
 
-    # If the replacement player is already in another scheduled match,
-    # swap the two players instead of rejecting the operation.
+    # A player already assigned to another bracket match cannot be
+    # silently moved. Automatic cross-match swaps can corrupt the
+    # bracket feeder structure and future-round advancement.
     replacement_match = Match.query.filter(
         Match.tournament_id == tournament.id,
         Match.id != match.id,
@@ -5268,10 +5273,11 @@ def founder_substitute_match_player(match_id):
     ).first()
 
     if replacement_match:
-        if replacement_match.player1_id == replacement_player:
-            replacement_match.player1_id = player_to_replace
-        else:
-            replacement_match.player2_id = player_to_replace
+        return (
+            "That replacement player is already assigned to "
+            f"Match #{replacement_match.id}. Remove that assignment "
+            "before using the player as a replacement."
+        ), 409
 
     if match.player1_id == player_to_replace:
         match.player1_id = replacement_player
@@ -5281,17 +5287,10 @@ def founder_substitute_match_player(match_id):
     old_player = Player.query.get(player_to_replace)
     old_name = old_player.name if old_player else f"Player #{player_to_replace}"
 
-    if replacement_match:
-        notes = (
-            f"Founder swapped {old_name} with {replacement.name}. "
-            f"Match #{match.id} now contains {replacement.name}; "
-            f"Match #{replacement_match.id} now contains {old_name}."
-        )
-    else:
-        notes = (
-            f"Founder substituted {old_name} with "
-            f"{replacement.name} in Match #{match.id}."
-        )
+    notes = (
+        f"Founder substituted {old_name} with "
+        f"{replacement.name} in Match #{match.id}."
+    )
 
     action = AdminAction(
         action="match_player_substituted",
@@ -5330,6 +5329,20 @@ def founder_schedule_match(match_id):
     if not match:
         return "That match does not belong to the current tournament.", 404
 
+    if match.is_bye:
+        return "A BYE match cannot be scheduled.", 409
+
+    if match.status != MATCH_SCHEDULED:
+        return "Only scheduled matches can be given a match time.", 409
+
+    if match.winner_id or match.loser_id:
+        return "A match with a recorded result cannot be rescheduled.", 409
+
+    if not match.player1_id or not match.player2_id:
+        return (
+            "Both players must be present before a match can be scheduled."
+        ), 409
+
     scheduled_time = request.form.get(
         "scheduled_time",
         ""
@@ -5339,11 +5352,30 @@ def founder_schedule_match(match_id):
         return "A match date and time are required.", 400
 
     try:
-        match.scheduled_time = datetime.fromisoformat(
+        parsed_scheduled_time = datetime.fromisoformat(
             scheduled_time
         )
     except ValueError:
         return "Invalid match date/time.", 400
+
+    old_scheduled_time = match.scheduled_time
+    match.scheduled_time = parsed_scheduled_time
+
+    old_value = (
+        old_scheduled_time.isoformat()
+        if old_scheduled_time
+        else "unscheduled"
+    )
+
+    action = AdminAction(
+        action="match_scheduled",
+        notes=(
+            f"Founder scheduled Match #{match.id} "
+            f"from {old_value} to {parsed_scheduled_time.isoformat()}."
+        ),
+        created_at=datetime.utcnow()
+    )
+    db.session.add(action)
 
     db.session.commit()
 
@@ -5569,6 +5601,17 @@ def founder_configure_live_broadcast(match_id):
     if not success:
         return message, 400
 
+    action = AdminAction(
+        action="live_broadcast_configured",
+        notes=(
+            f"Founder configured the official "
+            f"{tournament.live_provider} broadcast for "
+            f"Match #{match.id}: {tournament.live_title}."
+        ),
+        created_at=datetime.utcnow()
+    )
+    db.session.add(action)
+
     db.session.commit()
 
     return redirect(url_for("admin_dashboard"))
@@ -5588,11 +5631,30 @@ def founder_disable_live_broadcast():
     if not tournament:
         return "No current tournament exists.", 404
 
+    if not tournament.live_enabled or not tournament.live_match_id:
+        return "No active official broadcast is configured.", 409
+
+    disabled_match_id = tournament.live_match_id
+    disabled_provider = tournament.live_provider
+    disabled_title = tournament.live_title
+
     tournament.live_enabled = False
     tournament.live_provider = None
     tournament.live_embed_url = None
     tournament.live_title = None
     tournament.live_match_id = None
+
+    action = AdminAction(
+        action="live_broadcast_disabled",
+        notes=(
+            f"Founder disabled the official "
+            f"{disabled_provider or 'unknown'} broadcast for "
+            f"Match #{disabled_match_id}"
+            f"{': ' + disabled_title if disabled_title else ''}."
+        ),
+        created_at=datetime.utcnow()
+    )
+    db.session.add(action)
 
     db.session.commit()
 
@@ -5994,12 +6056,16 @@ def founder_live_match_control(match_id):
 
     db.session.commit()
 
-    # Score updates return directly.
+    # Score updates return to the Founder dashboard
+    # after the authoritative database commit.
     if action_type in ["update", "update_score"]:
-        return (
+        flash(
             f"Live score updated: "
             f"{match.player1_score} - {match.player2_score}"
-        ), 200
+        )
+        return redirect(
+            url_for("admin_dashboard")
+        )
 
     return redirect(
         url_for("admin_dashboard")
