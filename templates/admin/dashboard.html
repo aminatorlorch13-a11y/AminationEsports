@@ -60,45 +60,6 @@
             text-align: center;
         }
 
-        /* Founder Control Center focused-section mode */
-        .admin-section[data-founder-panel="true"] {
-            scroll-margin-top: 24px;
-        }
-
-        .founder-panel-back {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 44px;
-            margin: 0 0 20px;
-            padding: 10px 16px;
-            border: 1px solid rgba(255, 215, 0, 0.45);
-            border-radius: 10px;
-            background: rgba(255, 215, 0, 0.06);
-            color: inherit;
-            text-decoration: none;
-            font-weight: 700;
-            letter-spacing: 0.03em;
-        }
-
-        .founder-panel-back:hover {
-            background: rgba(255, 215, 0, 0.12);
-        }
-
-        body.founder-focused .admin-section[data-founder-panel="true"]:not(#founder-live-match-control) {
-            display: none;
-        }
-
-        body.founder-focused .admin-section[data-founder-panel="true"].founder-panel-active {
-            display: block;
-        }
-
-        /* Founder match operations must remain visible.
-           These are live operational controls, not a navigation-only panel. */
-        body.founder-focused #founder-live-match-control {
-            display: block;
-        }
-
         .admin-section {
             margin-bottom: 45px;
         }
@@ -3382,7 +3343,6 @@
             "players",
             "messages",
             "tournament",
-            "live",
             "current-season-registrations",
             "founder-live-match-control",
             "website-analytics",
@@ -3396,38 +3356,17 @@
         const sections = Array.from(
             document.querySelectorAll(".admin-section[id]")
         ).filter((section) => navigableIds.has(section.id));
-
-        if (!sections.length) {
-            return;
-        }
-
         const sectionIds = new Set(
             sections.map((section) => section.id)
         );
 
-        sections.forEach((section) => {
-            section.dataset.founderPanel = "true";
-
-            if (!section.querySelector(".founder-panel-back")) {
-                const back = document.createElement("a");
-                back.className = "founder-panel-back";
-                back.href = "#overview";
-                back.textContent = "← Back to Founder Control Center";
-                section.insertBefore(back, section.firstChild);
-            }
-        });
-
         function showSection(id, updateHash) {
             const targetId = sectionIds.has(id) ? id : "overview";
+            const target = document.getElementById(targetId);
 
-            document.body.classList.add("founder-focused");
-
-            sections.forEach((section) => {
-                section.classList.toggle(
-                    "founder-panel-active",
-                    section.id === targetId
-                );
-            });
+            if (!target) {
+                return;
+            }
 
             if (
                 updateHash &&
@@ -3440,14 +3379,10 @@
                 );
             }
 
-            const target = document.getElementById(targetId);
-
-            if (target) {
-                window.scrollTo({
-                    top: Math.max(0, target.offsetTop - 16),
-                    behavior: "smooth"
-                });
-            }
+            target.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
         }
 
         nav.addEventListener("click", function (event) {
@@ -3467,19 +3402,6 @@
             showSection(id, true);
         });
 
-        sections.forEach((section) => {
-            section.addEventListener("click", function (event) {
-                const back = event.target.closest(".founder-panel-back");
-
-                if (!back) {
-                    return;
-                }
-
-                event.preventDefault();
-                showSection("overview", true);
-            });
-        });
-
         window.addEventListener("hashchange", function () {
             const id = window.location.hash.slice(1);
 
@@ -3493,7 +3415,7 @@
         if (sectionIds.has(initialId)) {
             showSection(initialId, false);
         } else {
-            showSection("founder-live-match-control", false);
+            showSection("overview", false);
         }
     })();
     </script>
